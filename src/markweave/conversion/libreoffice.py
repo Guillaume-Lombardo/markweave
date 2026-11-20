@@ -11,19 +11,17 @@ import signal
 import stat
 import subprocess
 import tempfile
-import threading
 import time
 import unicodedata
 import zipfile
-from collections.abc import Callable, Generator, Mapping
-from contextlib import contextmanager, suppress
+from collections.abc import Callable, Mapping
+from contextlib import suppress
 from dataclasses import asdict, dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import NoReturn
 from urllib.parse import urlsplit
 
-from pypdf import PdfReader
-from pypdf import filters as pypdf_filters
+from pypdf import PdfReader, apply_configuration
 from pypdf.errors import LimitReachedError, PyPdfError
 from pypdf.generic import ArrayObject, DictionaryObject, IndirectObject
 
@@ -76,17 +74,6 @@ _SAFE_PDF_ACTIONS = frozenset({"/GoTo", "/URI"})
 _HEX_DIGITS = frozenset("0123456789abcdef")
 _MAX_METADATA_CHARACTERS = 256
 _SHA256_CHARACTERS = 64
-_PDF_FILTER_LIMIT_NAMES = (
-    "FLATE_MAX_BUFFER_SIZE",
-    "JBIG2_MAX_OUTPUT_LENGTH",
-    "LZW_MAX_OUTPUT_LENGTH",
-    "MAX_ARRAY_BASED_STREAM_OUTPUT_LENGTH",
-    "MAX_DECLARED_STREAM_LENGTH",
-    "RUN_LENGTH_MAX_OUTPUT_LENGTH",
-    "ZLIB_MAX_OUTPUT_LENGTH",
-    "ZLIB_MAX_RECOVERY_INPUT_LENGTH",
-)
-_PDF_PARSE_LOCK = threading.Lock()
 _REQUIRED_DOCX_PARTS = frozenset(
     {"[Content_Types].xml", "_rels/.rels", "word/document.xml"}
 )
@@ -552,28 +539,21 @@ def _walk_pdf_object(
             _walk_pdf_object(child, state, depth + 1, action_context=action_context)
 
 
-@contextmanager
-def _bounded_pdf_parser(limits: PdfLimits) -> Generator[None]:
-    """Serialize pypdf while applying this call's decoded-stream bounds."""
-
-    with _PDF_PARSE_LOCK:
-        previous = {
-            name: getattr(pypdf_filters, name) for name in _PDF_FILTER_LIMIT_NAMES
-        }
-        try:
-            for name in _PDF_FILTER_LIMIT_NAMES:
-                setattr(pypdf_filters, name, limits.max_pdf_decoded_stream_bytes)
-            yield
-        finally:
-            for name, value in previous.items():
-                setattr(pypdf_filters, name, value)
-
-
 def _validate_pdf(data: bytes, limits: PdfLimits) -> tuple[PdfPage, ...]:
     if not data.startswith(b"%PDF-") or not data.rstrip().endswith(b"%%EOF"):
         _error(ConversionErrorCode.INVALID_PDF, "LibreOffice produced an invalid PDF.")
+    stream_limit = limits.max_pdf_decoded_stream_bytes
     try:
-        with _bounded_pdf_parser(limits):
+        with apply_configuration(
+            maximum_declared_stream_length=stream_limit,
+            array_based_stream_maximum_output_length=stream_limit,
+            image_maximum_buffer_size=stream_limit,
+            jbig2_maximum_output_length=stream_limit,
+            lzw_maximum_output_length=stream_limit,
+            run_length_maximum_output_length=stream_limit,
+            zlib_maximum_output_length=stream_limit,
+            zlib_maximum_recovery_input_length=stream_limit,
+        ):
             reader = PdfReader(io.BytesIO(data), strict=True)
             if reader.is_encrypted:
                 _error(

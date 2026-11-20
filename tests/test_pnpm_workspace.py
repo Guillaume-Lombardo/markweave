@@ -36,7 +36,7 @@ def test_lock_preserves_the_audited_npm_package_versions_and_integrities() -> No
     assert hashlib.sha256(
         Path("toolchain/document-engines/package-lock.json").read_bytes()
     ).hexdigest() == (
-        "7c482e9ea57e31a772ac7004d24cab0cad11bbf1dd5911f3d4019a3202c1e3e2"
+        "60b798232d7e331f8e8d5245fdc7ef6f188f2554e4987515e9773ed1f578a8d8"
     )
 
 

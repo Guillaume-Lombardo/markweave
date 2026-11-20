@@ -70,9 +70,9 @@ def test_mutation_campaign_runs_the_reviewed_full_scope_and_retains_evidence() -
     assert artifact_step["with"]["path"] == "mutation-results/report.json"
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     lock = (ROOT / "uv.lock").read_text(encoding="utf-8")
-    assert '"mutmut==3.8.0"' in pyproject
+    assert '"mutmut==3.8.1"' in pyproject
     assert "[tool.mutmut]" in pyproject
-    assert 'name = "mutmut"\nversion = "3.8.0"' in lock
+    assert 'name = "mutmut"\nversion = "3.8.1"' in lock
 
 
 @pytest.mark.unit

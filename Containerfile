@@ -14,7 +14,8 @@ ARG UV_SHA256=90b2f223fb69d19db49e117da601f64978593417988530aa733d456141b4bcbb
 ARG GOOGLE_RPM_KEY_SHA256=54dea5f6c2a26091578cf52a999cebc6b64df478d37ad4dce96376b711e3b27c
 ARG APPLICATION_VERSION
 
-RUN dnf install -y \
+RUN dnf upgrade -y ca-certificates \
+    && dnf install -y \
         alsa-lib at-spi2-atk at-spi2-core atk cups-libs curl-minimal findutils \
         fontconfig libXcomposite libXdamage libXfixes libXinerama libXrandr \
         libxkbcommon mesa-libgbm nspr nss pango tar unzip \
@@ -112,16 +113,12 @@ COPY --chmod=0444 toolchain/document-engines/fonts/manifest.json /opt/md-convert
 COPY --chmod=0444 toolchain/document-engines/THIRD_PARTY_NOTICES.md /opt/md-converter/THIRD_PARTY_NOTICES.md
 COPY --chmod=0444 toolchain/document-engines/LICENSE.containers-common /opt/md-converter/LICENSE.chrome-seccomp
 
-# Reviewed UBI inventory: Curl 7.76.1-40.el9_8.8 and OpenSSL 3.5.8-2.el9_8.
-ARG RPM_INVENTORY_SHA256=92063803ffaf534054d2d198abd814d08f22626a4238cb126e03376fb102a99e
-RUN mkdir -p /data /work /tmp/md-converter \
+RUN --mount=type=bind,source=container,target=/tmp/container-policy,ro \
+    /bin/bash /tmp/container-policy/check-rpm-inventory.sh \
+        /tmp/container-policy/rpm-package-licenses.txt /opt/md-converter/rpm-inventory.txt \
+    && mkdir -p /data /work /tmp/md-converter \
     && chgrp -R 0 /data /work /tmp/md-converter \
     && chmod -R g=u /data /work /tmp/md-converter \
-    && rpm -qa --qf '%{NAME}|%{EPOCHNUM}:%{VERSION}-%{RELEASE}|%{ARCH}|%{LICENSE}\n' \
-        | LC_ALL=C sort > /opt/md-converter/rpm-inventory.txt \
-    && sha256sum /opt/md-converter/rpm-inventory.txt \
-    && echo "${RPM_INVENTORY_SHA256}  /opt/md-converter/rpm-inventory.txt" \
-        | sha256sum --check --strict \
     && rm -f /usr/bin/curl /usr/bin/openssl /usr/sbin/httpd \
     && find /opt/md-converter -xdev -type d -exec chmod g=u {} + \
     && find /opt/md-converter -xdev -type f -exec chmod g=u {} +

@@ -377,7 +377,7 @@ def test_ci_upload_artifact_pin_and_comment_are_canonical() -> None:
 def test_ci_uses_only_github_hosted_runners() -> None:
     """The upload-artifact v7 runner floor is delegated to GitHub-hosted images."""
     workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
-    assert workflow.count("runs-on: ubuntu-24.04") == 11
+    assert workflow.count("runs-on: ubuntu-24.04") == 12
     assert "self-hosted" not in workflow
 
 
@@ -435,7 +435,7 @@ def test_document_engine_job_installs_checksum_locked_document_engines() -> None
         "878e5ab495b8a694980fca61bc09b37e651ccedce2291c73434d16e48a2646fd" in workflow
     )
     assert (
-        "7c482e9ea57e31a772ac7004d24cab0cad11bbf1dd5911f3d4019a3202c1e3e2" in workflow
+        "60b798232d7e331f8e8d5245fdc7ef6f188f2554e4987515e9773ed1f578a8d8" in workflow
     )
     assert 'PUPPETEER_SKIP_DOWNLOAD: "true"' in workflow
     assert "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1" in workflow
@@ -574,10 +574,35 @@ def test_validator_rejects_short_hex_revision_and_missing_timeout() -> None:
 
 
 @pytest.mark.unit
-def test_validator_rejects_any_write_permission() -> None:
-    """The validation-only workflow cannot acquire repository write access."""
-    assert "write permission is forbidden in the CI workflow" in validate_workflow_text(
-        "permissions:\n  checks: write\n"
+def test_validator_rejects_workflow_write_permission() -> None:
+    """The workflow default remains read-only."""
+    assert (
+        "read-only workflow permissions must be exactly contents: read"
+        in validate_workflow_text("permissions:\n  checks: write\n")
+    )
+
+
+@pytest.mark.unit
+def test_ci_alert_permissions_and_trusted_event_guard_are_narrow() -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+    widened_token = workflow.replace("issues: write", "actions: write")
+    assert (
+        "main-ci-alert job permissions must be exactly contents: read and issues: write"
+        in validate_workflow_text(widened_token)
+    )
+    widened_trigger = workflow.replace(
+        "github.event_name == 'schedule' || github.event_name == 'push'",
+        "github.event_name == 'schedule' || github.event_name == 'pull_request'",
+    )
+    assert "job 'main-ci-alert' condition does not match the explicit policy" in (
+        validate_workflow_text(widened_trigger)
+    )
+    untrusted_job = workflow.replace(
+        "  domain-plan:\n",
+        "  domain-plan:\n    permissions: {issues: write}\n",
+    )
+    assert "read-only job 'domain-plan' must not override workflow permissions" in (
+        validate_workflow_text(untrusted_job)
     )
 
 
@@ -1232,7 +1257,7 @@ def test_container_attestation_requires_job_local_registry_authentication() -> N
     )
     weakened = workflow.replace(
         "      - name: Log in to GHCR for attestation publication\n"
-        "        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0\n"
+        "        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0\n"
         "        with:\n"
         "          registry: ghcr.io\n"
         "          username: ${{ github.actor }}\n"
@@ -1799,7 +1824,7 @@ def test_read_only_policy_rejects_unallowlisted_action_and_privileged_command() 
     """A pinned action or container command is not trusted merely because it is valid YAML."""
     workflow = Path(".github/workflows/mutation.yml").read_text(encoding="utf-8")
     weakened = workflow.replace(
-        "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+        "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
         f"third-party/unknown@{FULL_SHA_A}",
     ).replace("uv sync --locked --all-groups", "docker run --privileged image")
     errors = validate_workflow_text(weakened, workflow_name="mutation.yml")

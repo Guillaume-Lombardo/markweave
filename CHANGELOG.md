@@ -10,6 +10,10 @@ Use the [upgrade guide](docs/upgrading.md) for supported transitions and rollbac
 [release process](docs/releasing.md) for artifact evidence, the [security policy](SECURITY.md) for
 private reporting, and the [support policy](SUPPORT.md) for help with a published release.
 
+## [Unreleased]
+
+- Accept UBI RPM version updates within the reviewed package and license baseline, refresh Python and Mermaid dependencies, and track main CI failures in one GitHub issue.
+
 <a id="release-0-7-5"></a>
 
 ## [0.7.5] - 2026-10-12

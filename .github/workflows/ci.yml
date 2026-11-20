@@ -39,7 +39,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Python 3.14
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
           check-latest: false
@@ -87,7 +87,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Python 3.14
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
           check-latest: false
@@ -109,7 +109,7 @@ jobs:
           path: ~/.local/share/pnpm/store/v11
           key: ${{ runner.os }}-node-24.19.0-pnpm-11.25.0-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Set up uv with a lock-keyed cache
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "0.12.1"
           enable-cache: true
@@ -197,12 +197,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Python 3.14
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
           check-latest: false
       - name: Set up uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "0.12.1"
           enable-cache: true
@@ -274,12 +274,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Python 3.14
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
           check-latest: false
       - name: Set up uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "0.12.1"
           enable-cache: true
@@ -318,12 +318,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Python 3.14
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
           check-latest: false
       - name: Set up uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "0.12.1"
           enable-cache: true
@@ -412,12 +412,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Python 3.14
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
           check-latest: false
       - name: Set up uv with a lock-keyed cache
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "0.12.1"
           enable-cache: true
@@ -511,7 +511,7 @@ jobs:
         env:
           CHROME_SHA256: 878e5ab495b8a694980fca61bc09b37e651ccedce2291c73434d16e48a2646fd
           CHROME_URL: https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_151.0.7922.173-1_amd64.deb
-          MERMAID_LOCK_SHA256: 7c482e9ea57e31a772ac7004d24cab0cad11bbf1dd5911f3d4019a3202c1e3e2
+          MERMAID_LOCK_SHA256: 60b798232d7e331f8e8d5245fdc7ef6f188f2554e4987515e9773ed1f578a8d8
           PUPPETEER_SKIP_DOWNLOAD: "true"
         run: |
           set -euo pipefail
@@ -526,7 +526,7 @@ jobs:
           npm ci --prefix toolchain/document-engines --omit=dev --ignore-scripts
           echo "$GITHUB_WORKSPACE/toolchain/document-engines/node_modules/.bin" >> "$GITHUB_PATH"
           test "$(node --version)" = "v22.23.1"
-          test "$(toolchain/document-engines/node_modules/.bin/mmdc --version)" = "12.0.0"
+          test "$(toolchain/document-engines/node_modules/.bin/mmdc --version)" = "12.2.0"
           test "$(google-chrome-stable --version | awk '{$1=$1; print}')" \
             = "Google Chrome 151.0.7922.173"
       - name: Run selected domain suite without a shell
@@ -561,12 +561,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Python 3.14
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
           check-latest: false
       - name: Set up uv with a lock-keyed cache
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "0.12.1"
           enable-cache: true
@@ -657,7 +657,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Python 3.14
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
           check-latest: false
@@ -668,7 +668,7 @@ jobs:
           node-version: 24.19.0
           check-latest: false
       - name: Set up uv with a lock-keyed cache
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "0.12.1"
           enable-cache: true
@@ -785,12 +785,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Python 3.14
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
           check-latest: false
       - name: Set up uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "0.12.1"
           enable-cache: false
@@ -860,3 +860,28 @@ jobs:
           [[ "$MUTATION_RESULT" == "success" ]]
           [[ "$PYTHON_TESTS_RESULT" == "success" ]]
           [[ "$PYTHON_COVERAGE_RESULT" == "success" ]]
+
+  main-ci-alert:
+    name: CI / main failure tracking
+    needs: gate
+    if: "${{ !cancelled() && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'push') && (needs.gate.result == 'failure' || needs.gate.result == 'success') }}"
+    permissions:
+      contents: read
+      issues: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.14
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: .python-version
+          check-latest: false
+      - name: Reconcile the main CI tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_GATE_RESULT: ${{ needs.gate.result }}
+        run: python -m scripts.ci.main_ci_alert

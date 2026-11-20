@@ -2,7 +2,14 @@
 
 The final UBI 9/Python 3.14 image is built with `scripts/container/build.sh`. The build pins the
 base manifest, every downloaded engine archive, the Google signing key and Chrome RPM signature,
-the Mermaid npm graph, the `uv` binary, the Python lock, and the complete resolved RPM inventory.
+the Mermaid npm graph, the `uv` binary, and the Python lock. The build records the complete
+resolved RPM inventory in `/opt/md-converter/rpm-inventory.txt` with epoch, version, release,
+architecture, and license. UBI repositories resolve live RPM versions. The image build compares
+the sorted package name, architecture, and license rows with
+`container/rpm-package-licenses.txt`, including duplicate rows. Version changes can pass this
+comparison. Added or missing packages, architecture changes, and license changes require review
+and an explicit baseline update. Supply-chain CI scans the resolved image for fixable Critical
+vulnerabilities.
 Use `SOURCE_DATE_EPOCH` only when intentionally producing a new reviewed image identity; the
 default is fixed for reproducibility. Every build helper first acquires its digest-pinned base
 images through `scripts/container/pull-base-images.sh`, which retries transient registry transport

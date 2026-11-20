@@ -467,7 +467,7 @@ def exercise_markdown_refusal(harness: DocxEditHarness) -> None:
 def exercise_owner_fence(harness: DocxEditHarness) -> None:
     draft, base, etag = _docx_draft(harness)
     path = f"/api/v1/composer/drafts/{draft.id}/revisions/{base['id']}"
-    harness.authentication.authenticate.return_value = harness.other  # ty: ignore[unresolved-attribute]
+    harness.authentication.authenticate.return_value = harness.other  # ty: ignore[missing-attribute]
 
     assert harness.client.get(f"{path}/docx-text-targets").status_code == 404
     edited = harness.client.post(
@@ -734,7 +734,7 @@ def exercise_pptx_workflow(harness: DocxEditHarness) -> None:  # noqa: PLR0915 -
     assert (
         client.get(f"{path}/{restored.json()['id']}/artifacts/download").content == deck
     )
-    harness.authentication.authenticate.return_value = harness.other  # ty: ignore[unresolved-attribute]
+    harness.authentication.authenticate.return_value = harness.other  # ty: ignore[missing-attribute]
     assert client.get(f"{path}/{base['id']}/pptx-text-targets").status_code == 404
     assert (
         client.post(
