@@ -248,8 +248,8 @@ observability domain preserves the original
 `markweave.observability.x__normalize_method__mutmut_*` target and
 `tests/unit/test_observability.py`. Its JSON evidence records the exact selected and killed counts;
 the gate rejects every surviving, untested, suspicious, timed-out, interrupted, or crashing
-mutant. Pull requests and merge-queue candidates run the reviewed domains affected by the exact
-base/head diff, while scheduled and manually dispatched campaigns run every domain. Both retain
+mutant. Pull requests run the reviewed domains affected by the exact base/head diff.
+Scheduled, release, merge-queue, and manual campaigns run every domain. Both retain
 the JSON report as evidence. The existing required `CI / gate` consumes the pull-request mutation
 job, including its successful `not-affected` result. This is a repository-owned workflow: a
 contributor can modify it in a pull request, so it is not contributor-immutable enforcement.
@@ -275,7 +275,8 @@ omit them. The category marker guard also requires every test under `tests/funct
 `.github/ci/domains.json`. A planned domain is reported in the Actions summary but is never counted
 as executed. Activate a domain only in the ticket that delivers its real suite by changing its
 status to `active` and adding the reviewed command as an argument array; the matrix runner invokes
-that array without a shell. Scheduled, release, and manual runs select every domain. The four Compose sub-suites (`compose-secure`, `compose-simple-docker`,
+that array without a shell. Scheduled, release, merge-queue, and manual runs select every domain.
+The four Compose sub-suites (`compose-secure`, `compose-simple-docker`,
 `compose-simple-podman`, and `compose-podman-insecure`) are separate domains. Shared quickstart
 inputs select all of them, and each self-contained `scripts/e2e/run-compose*.sh` runner selects
 only the domains that execute it; every other `scripts/e2e/` change still selects every
@@ -285,12 +286,15 @@ Domains that need the final images (`container`, `supply-chain`, `frontend`, and
 E2E shards `e2e-standalone-<n>` and `e2e-distributed-<n>`) run in the `final-image` matrix. Every
 other active domain runs in the `heavy` matrix. When a final-image domain is selected,
 `CI / build images` builds each required backend, frontend, and reverse-attempt image exactly once
-for the run, after acquiring the pinned base images with retries. It exports each image as an
+for the run, after acquiring the pinned base images with retries. Up to two role builds and
+exports run concurrently on the same runner. The job exports each image as an
 OCI archive with zstd layers (`podman push --compression-format zstd`), which load faster than
 the default gzip layers, and verifies that every layer is zstd and that the archive configuration
-digest is the built image ID. Release qualification keeps `podman save` and gzip layers. It then uploads one run-scoped archive per image for one day, and publishes the IDs as job
-outputs. It writes no cache from an untrusted context and publishes nothing to a registry. Each
-consumer downloads only the archives its domain needs. `scripts/container/ci_images.py load`
+digest is the built image ID. Release qualification keeps `podman save` and gzip layers.
+The CI producer uploads one run-scoped archive per image for one day and publishes the image
+and artifact IDs as job outputs. It writes no cache from an untrusted context and publishes
+nothing to a registry. Each consumer downloads only the archives its domain needs, in one
+parallel download by artifact ID. `scripts/container/ci_images.py load`
 tags an image only after the archive configuration digest, the ID that `podman load` reports, and
 the tagged image's ID all equal the build output; a missing, substituted, or partially loaded
 archive fails closed.
