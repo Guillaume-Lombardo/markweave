@@ -160,6 +160,8 @@ prototype is preserved in the `archive/t74-kubernetes-backend` Git tag.
 
 <a id="configuration-compatibility"></a>
 
+### Configuration compatibility
+
 Version 0.8.0 removes the deprecated `MD_CONVERTER_*` aliases. Before starting the
 new version, rename each former alias in environment files, service definitions,
 Compose overrides, and deployment manifests. Keep its value and remove the old name
