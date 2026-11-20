@@ -6,6 +6,7 @@
 - The product specification is the sole normative source for those decisions. This file contains only operational repository rules. If the two diverge, the product specification prevails.
 - Treat the specification as context, not as authorization to implement work outside the current request.
 - Map every change to an explicit objective and the relevant T00–T23 tickets and acceptance criteria.
+- Scope freeze: Composer and the experimental 2md reverse conversion are feature-frozen by decisions D15 and D16 in section 3.7 of the specification. Accept only bug fixes, security fixes, dependency updates, regression fixes, and removals for them; never add a capability without a new ticket that records an explicit owner decision. Keep their code and tests in CI.
 - Do not invent values listed as unresolved in section 14. Keep them configurable when a provisional value is harmless; otherwise request a decision before changing a contract, architecture, or acceptance test.
 
 ## Language

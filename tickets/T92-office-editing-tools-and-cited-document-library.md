@@ -2,7 +2,7 @@
 ticket: T92
 linear_id: G1L-591
 linear_url: https://linear.app/g1lom/issue/G1L-591/t92-deliver-bounded-office-editing-tools-and-cited-document-library
-status: In Progress
+status: Backlog
 priority: High
 project: Markdown to DOCX and PDF Converter
 ---
@@ -211,6 +211,8 @@ T91.
   installed CLI with foreign-user and stale-ETag refusals in both profiles, verified only by hosted
   CI. Model tools for structural edits, DOCX tables and sections, and PPTX tables, styles, and
   objects remain open.
+- 2026-11-20: Frozen by owner decision (T155); delivered parts remain; remaining scope needs a new
+  owner decision.
 
 ## Synchronization
 
