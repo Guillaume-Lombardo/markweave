@@ -1,6 +1,7 @@
 """Real loopback HTTP coverage for external-worker process metrics."""
 
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from datetime import datetime
 from socket import create_connection
 from threading import Event, Lock
@@ -223,7 +224,9 @@ def test_worker_metrics_server_enforces_slowloris_deadline_and_releases_capacity
                 break
             sleep(0.03)
         slow.settimeout(0.5)
-        assert slow.recv(1) == b""
+        # Closing a connection with unread request bytes can send a TCP reset.
+        with suppress(ConnectionResetError):
+            assert slow.recv(1) == b""
         assert monotonic() - started < 0.6
         assert _get(f"http://{host}:{port}/metrics")[0] == 200
     finally:

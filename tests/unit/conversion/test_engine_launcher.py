@@ -16,6 +16,7 @@ def test_filter_sets_no_new_privileges_before_installing_seccomp(mocker) -> None
     libc = mocker.Mock()
     libc.prctl.return_value = 0
     mocker.patch.object(engine_launcher.ctypes, "CDLL", return_value=libc)
+    mocker.patch.object(engine_launcher.sys, "platform", "linux")
     mocker.patch.object(engine_launcher.platform, "machine", return_value="x86_64")
 
     engine_launcher._install_no_network_filter()
@@ -32,6 +33,7 @@ def test_filter_rejects_unsupported_architecture(mocker) -> None:
     assert captured.value.errno == errno.ENOTSUP
 
 
+@pytest.mark.requires_linux
 def test_namespace_maps_current_uid_and_gid(mocker) -> None:
     unshare = mocker.patch.object(engine_launcher.os, "unshare")
     mocker.patch.object(engine_launcher.os, "geteuid", return_value=12345)
@@ -56,6 +58,7 @@ def test_filter_setup_failure_never_executes_engine(mocker, calls: list[int]) ->
     libc.prctl.side_effect = calls
     mocker.patch.object(engine_launcher.ctypes, "CDLL", return_value=libc)
     mocker.patch.object(engine_launcher.ctypes, "get_errno", return_value=errno.EPERM)
+    mocker.patch.object(engine_launcher.sys, "platform", "linux")
     mocker.patch.object(engine_launcher.platform, "machine", return_value="x86_64")
     execute = mocker.patch.object(engine_launcher.os, "execvpe")
     mocker.patch.object(engine_launcher.sys, "argv", ["launcher.py", "pandoc"])

@@ -650,6 +650,7 @@ def test_load_reports_the_store_layout_and_disk_traffic(
         runner=runtime,
         clock=lambda: next(times),
         diskstats=lambda: next(samples),
+        cpustats=lambda: (0, 0, 0),
     )
 
     output = capsys.readouterr().out
@@ -715,6 +716,7 @@ def test_disk_traffic_skips_unmeasured_or_unreadable_devices(
         runner=runtime,
         clock=_clock,
         diskstats=diskstats,
+        cpustats=lambda: (0, 0, 0),
     )
 
     output = capsys.readouterr().out

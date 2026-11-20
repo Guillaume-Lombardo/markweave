@@ -47,7 +47,11 @@ from tests.integration.broker.slow_reaping import (
     install_slow_reaping,
 )
 
-pytestmark = [pytest.mark.integration, pytest.mark.light_coverage]
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.light_coverage,
+    pytest.mark.usefixtures("broker_peer_identity"),
+]
 
 REQUEST_ID = UUID("00000000-0000-4000-8000-000000000001")
 PRINCIPAL = AuthenticatedPrincipal(UUID("00000000-0000-4000-8000-000000000005"))
@@ -62,13 +66,13 @@ CONTENT_LIMITS = ReverseContentLimits(
 
 
 def _server(
-    tmp_path: Path,
+    short_socket_directory: Path,
     mocker: MockerFixture,
     *,
     limits: UnixTransportLimits | None = None,
     workspace: bool = False,
 ) -> tuple[Path, UnixBrokerServer, Any]:
-    parent = tmp_path / "broker"
+    parent = short_socket_directory / "broker"
     parent.mkdir(mode=0o700)
     parent.chmod(0o700)
     path = parent / "broker.sock"
@@ -121,10 +125,11 @@ def test_peer_close_assertion_fails_deterministically_on_timeout(
     connection.settimeout.assert_called_once_with(PEER_CLOSE_TIMEOUT_SECONDS)
 
 
+@pytest.mark.requires_linux
 def test_real_unix_exchange_authenticates_both_peers_and_dispatches_once(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path, server, dispatcher = _server(tmp_path, mocker)
+    path, server, dispatcher = _server(short_socket_directory, mocker)
     request = ReadyRequest(REQUEST_ID, 1)
 
     with server:
@@ -142,11 +147,11 @@ def test_real_unix_exchange_authenticates_both_peers_and_dispatches_once(
 
 
 def test_real_unix_dispatch_publishes_a_budget_before_its_deadline(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
     observed: list[float | None] = []
     path, server, dispatcher = _server(
-        tmp_path, mocker, limits=UnixTransportLimits(2, 1, 1, 1)
+        short_socket_directory, mocker, limits=UnixTransportLimits(2, 1, 1, 1)
     )
 
     def dispatch(*_args: object) -> ReadyResponse:
@@ -172,11 +177,11 @@ def test_real_unix_dispatch_publishes_a_budget_before_its_deadline(
 
 
 def test_real_unix_dispatch_refuses_before_its_deadline_when_reaping_is_slow(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    runner = budget_exhausting_runner(tmp_path)
+    runner = budget_exhausting_runner(short_socket_directory)
     path, server, dispatcher = _server(
-        tmp_path, mocker, limits=UnixTransportLimits(2, 1, 1, 1)
+        short_socket_directory, mocker, limits=UnixTransportLimits(2, 1, 1, 1)
     )
     refusals: list[str] = []
 
@@ -212,9 +217,9 @@ def test_real_unix_dispatch_refuses_before_its_deadline_when_reaping_is_slow(
 
 
 def test_real_unix_reconciliation_exchange_binds_authenticated_principal(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path, server, dispatcher = _server(tmp_path, mocker)
+    path, server, dispatcher = _server(short_socket_directory, mocker)
     request = ReconciliationRequest(REQUEST_ID, 0)
     expected = ReconciliationResponse(
         REQUEST_ID, PRINCIPAL.principal_id, 0, 7, None, True
@@ -234,9 +239,9 @@ def test_real_unix_reconciliation_exchange_binds_authenticated_principal(
 
 
 def test_real_workspace_stage_collect_pending_and_success_exchange(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path, server, dispatcher = _server(tmp_path, mocker, workspace=True)
+    path, server, dispatcher = _server(short_socket_directory, mocker, workspace=True)
     stage = _workspace_stage()
     receipt = WorkspaceStageReceipt(
         stage.request_id,
@@ -286,10 +291,10 @@ def test_real_workspace_stage_collect_pending_and_success_exchange(
 
 
 def test_workspace_disabled_and_partial_or_oversized_payload_never_dispatch(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
     path, server, dispatcher = _server(
-        tmp_path,
+        short_socket_directory,
         mocker,
         limits=UnixTransportLimits(0.1, 1, 2, 2),
     )
@@ -300,7 +305,7 @@ def test_workspace_disabled_and_partial_or_oversized_payload_never_dispatch(
         _assert_peer_closed(connection)
     dispatcher.dispatch_workspace.assert_not_called()
 
-    second = tmp_path / "second"
+    second = short_socket_directory / "second"
     second.mkdir()
     path, server, dispatcher = _server(
         second,
@@ -321,9 +326,9 @@ def test_workspace_disabled_and_partial_or_oversized_payload_never_dispatch(
 
 
 def test_shutdown_during_real_reconciliation_never_opens_admission(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path, server, dispatcher = _server(tmp_path, mocker)
+    path, server, dispatcher = _server(short_socket_directory, mocker)
     hard_exit = mocker.Mock()
     process = BrokerProcess(
         server, hard_shutdown_timeout_seconds=1, hard_exit=hard_exit
@@ -348,9 +353,9 @@ def test_shutdown_during_real_reconciliation_never_opens_admission(
 
 
 def test_shutdown_immediately_before_real_start_never_opens_admission(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path, server, dispatcher = _server(tmp_path, mocker)
+    path, server, dispatcher = _server(short_socket_directory, mocker)
     hard_exit = mocker.Mock()
     process = BrokerProcess(
         server, hard_shutdown_timeout_seconds=1, hard_exit=hard_exit
@@ -375,9 +380,9 @@ def test_shutdown_immediately_before_real_start_never_opens_admission(
 
 
 def test_server_authenticates_peer_before_read_or_dispatch(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path, server, dispatcher = _server(tmp_path, mocker)
+    path, server, dispatcher = _server(short_socket_directory, mocker)
     mocker.patch(
         "markweave.broker.unix_transport._peer_credentials",
         return_value=(1, os.geteuid() + 1, os.getegid()),
@@ -393,11 +398,11 @@ def test_server_authenticates_peer_before_read_or_dispatch(
 
 @pytest.mark.parametrize("trailing", [b"x", b""])
 def test_server_requires_exact_frame_and_client_eof_before_dispatch(
-    tmp_path: Path,
+    short_socket_directory: Path,
     mocker: MockerFixture,
     trailing: bytes,
 ) -> None:
-    path, server, dispatcher = _server(tmp_path, mocker)
+    path, server, dispatcher = _server(short_socket_directory, mocker)
 
     with server, socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         connection.settimeout(1)
@@ -410,10 +415,11 @@ def test_server_requires_exact_frame_and_client_eof_before_dispatch(
     dispatcher.dispatch.assert_not_called()
 
 
+@pytest.mark.requires_linux
 def test_client_rejects_unexpected_kernel_server_uid_without_sending(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path, server, dispatcher = _server(tmp_path, mocker)
+    path, server, dispatcher = _server(short_socket_directory, mocker)
 
     def peer_credentials(connection: socket.socket) -> tuple[int, int, int]:
         pid, uid, gid = _peer_credentials(connection)
@@ -440,9 +446,9 @@ def test_client_rejects_unexpected_kernel_server_uid_without_sending(
 
 
 def test_unexpected_dispatch_failure_stops_server_fail_closed(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path, server, dispatcher = _server(tmp_path, mocker)
+    path, server, dispatcher = _server(short_socket_directory, mocker)
     dispatcher.dispatch.side_effect = ValueError("private runtime detail")
     server.start()
     client = UnixBrokerClient(
@@ -462,9 +468,9 @@ def test_unexpected_dispatch_failure_stops_server_fail_closed(
 
 
 def test_lifecycle_lock_prevents_replacement_during_reconciliation(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path, first, first_dispatcher = _server(tmp_path, mocker)
+    path, first, first_dispatcher = _server(short_socket_directory, mocker)
     entered = Event()
     release = Event()
 
@@ -494,10 +500,10 @@ def test_lifecycle_lock_prevents_replacement_during_reconciliation(
 
 
 def test_dispatch_deadline_stops_admission_and_blocks_restart_until_drained(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
     path, server, dispatcher = _server(
-        tmp_path, mocker, limits=UnixTransportLimits(0.05, 0.05, 1, 1)
+        short_socket_directory, mocker, limits=UnixTransportLimits(0.05, 0.05, 1, 1)
     )
     release = Event()
     exited = Event()
@@ -541,10 +547,10 @@ def test_dispatch_deadline_stops_admission_and_blocks_restart_until_drained(
 
 
 def test_expired_queued_dispatch_never_enters_service_after_active_request(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
     path, server, dispatcher = _server(
-        tmp_path, mocker, limits=UnixTransportLimits(0.1, 1, 2, 2)
+        short_socket_directory, mocker, limits=UnixTransportLimits(0.1, 1, 2, 2)
     )
     entered = Event()
     release = Event()
@@ -589,10 +595,10 @@ def test_expired_queued_dispatch_never_enters_service_after_active_request(
 
 
 def test_unexpected_dispatch_failure_fences_queued_request_before_gate_release(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
     path, server, dispatcher = _server(
-        tmp_path, mocker, limits=UnixTransportLimits(0.5, 1, 2, 2)
+        short_socket_directory, mocker, limits=UnixTransportLimits(0.5, 1, 2, 2)
     )
     entered = Event()
     release = Event()
@@ -657,9 +663,9 @@ def test_unexpected_dispatch_failure_fences_queued_request_before_gate_release(
     ],
 )
 def test_real_unix_rejects_oversized_or_truncated_frame_before_dispatch(
-    tmp_path: Path, mocker: MockerFixture, invalid_frame: bytes
+    short_socket_directory: Path, mocker: MockerFixture, invalid_frame: bytes
 ) -> None:
-    path, server, dispatcher = _server(tmp_path, mocker)
+    path, server, dispatcher = _server(short_socket_directory, mocker)
 
     with server, socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         connection.settimeout(1)
@@ -672,11 +678,11 @@ def test_real_unix_rejects_oversized_or_truncated_frame_before_dispatch(
 
 
 def test_real_unix_handler_saturation_rejects_excess_connection(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
     # Keep the first handler occupied longer than the peer-close assertion budget.
     path, server, dispatcher = _server(
-        tmp_path, mocker, limits=UnixTransportLimits(5, 1, 1, 1)
+        short_socket_directory, mocker, limits=UnixTransportLimits(5, 1, 1, 1)
     )
 
     with (
@@ -699,9 +705,9 @@ def test_real_unix_handler_saturation_rejects_excess_connection(
 
 
 def test_client_preserves_canonical_response_binding_failure(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path, server, dispatcher = _server(tmp_path, mocker)
+    path, server, dispatcher = _server(short_socket_directory, mocker)
     dispatcher.dispatch.return_value = ReadyResponse(UUID(int=0), True)
 
     with server:
@@ -719,12 +725,12 @@ def test_client_preserves_canonical_response_binding_failure(
 
 @pytest.mark.parametrize("first_exchange", ["served", "rejected"])
 def test_real_unix_reconnect_at_the_handler_limit_is_admitted(
-    tmp_path: Path, mocker: MockerFixture, first_exchange: str
+    short_socket_directory: Path, mocker: MockerFixture, first_exchange: str
 ) -> None:
     # A client may reconnect as soon as its exchange completes. The single handler
     # slot must already be free then, however late the old handler thread runs.
     path, server, dispatcher = _server(
-        tmp_path, mocker, limits=UnixTransportLimits(2, 2, 1, 1)
+        short_socket_directory, mocker, limits=UnixTransportLimits(2, 2, 1, 1)
     )
     release = delay_slot_releases(mocker, server._handlers)
     request = ReadyRequest(REQUEST_ID, 1)

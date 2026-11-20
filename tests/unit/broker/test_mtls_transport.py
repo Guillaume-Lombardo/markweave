@@ -490,6 +490,7 @@ def test_server_context_uses_the_direct_identity_when_no_alias_is_needed(
     assert prepared._context is context
 
 
+@pytest.mark.requires_linux
 def test_server_context_loads_an_immutable_material_snapshot(
     mocker: MockerFixture,
 ) -> None:
@@ -535,6 +536,7 @@ def test_server_context_rejects_invalid_material_snapshot(
         )
 
 
+@pytest.mark.requires_linux
 def test_server_context_closes_memory_file_after_short_write(
     mocker: MockerFixture,
 ) -> None:

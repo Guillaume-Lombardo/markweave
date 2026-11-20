@@ -56,7 +56,7 @@
 
 ## Tests and external engines
 
-- Register and use the markers defined by the product specification, including `unit`, `functional`, `integration`, `e2e`, `slow`, `requires_pandoc`, `requires_mermaid`, `requires_libreoffice`, `requires_postgres`, `requires_s3`, `requires_podman`, and `requires_docker`.
+- Register and use the markers defined by the product specification, including `unit`, `functional`, `integration`, `e2e`, `slow`, `requires_pandoc`, `requires_mermaid`, `requires_libreoffice`, `requires_postgres`, `requires_s3`, `requires_podman`, `requires_docker`, and `requires_linux`.
 - The default local test command excludes only Pandoc, Mermaid/Chromium, LibreOffice, and Podman tests, as shown above. It must not silently exclude PostgreSQL, S3, Docker, slow, integration, or E2E tests when those suites are otherwise runnable.
 - Every test that executes Podman carries `requires_podman`, and every test that executes Docker carries `requires_docker`; the runtime guard `tests/container_runtime_guard.py` (registered by `tests/conftest.py`) enforces this during every test run.
 - Tests requiring an unavailable engine must carry the matching marker. Never skip them through ad hoc environment checks or an unconditional `pytest.skip`.

@@ -8,10 +8,12 @@ import sys
 import traceback
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 import pytest
 from fastapi.dependencies import models as fastapi_dependency_models
+from pytest_mock import MockerFixture
 
 from markweave.observability import JsonLogFormatter
 from markweave.persistence import sql as sql_persistence
@@ -44,16 +46,40 @@ _LIBC = ctypes.CDLL(None, use_errno=True) if sys.platform.startswith("linux") el
 def pytest_collection_modifyitems(
     config: pytest.Config, items: list[pytest.Item]
 ) -> None:
-    """Keep service-backed tests on one xdist worker under ``--dist loadgroup``.
-
-    Each worker process owns its own session fixture, so other distribution
-    modes stay isolated by starting one private service stack per worker.
-    """
-    if not config.pluginmanager.hasplugin("xdist"):
-        return
+    """Skip Linux-only tests off Linux and group distributed tests under xdist."""
+    linux_host = sys.platform == "linux"
+    has_xdist = config.pluginmanager.hasplugin("xdist")
     for item in items:
-        if any(item.get_closest_marker(name) for name in DISTRIBUTED_SERVICE_MARKERS):
+        if not linux_host and item.get_closest_marker("requires_linux") is not None:
+            item.add_marker(
+                pytest.mark.skip(
+                    reason="requires Linux kernel or GNU userland behavior"
+                )
+            )
+        # Keep these tests on one worker under --dist loadgroup so they share
+        # the session's disposable service stack.
+        if has_xdist and any(
+            item.get_closest_marker(name) for name in DISTRIBUTED_SERVICE_MARKERS
+        ):
             item.add_marker(pytest.mark.xdist_group(DISTRIBUTED_SERVICES_GROUP))
+
+
+@pytest.fixture
+def short_socket_directory() -> Iterator[Path]:
+    """Provide a private canonical directory that fits in a Unix socket address."""
+    root = Path("/tmp").resolve()  # noqa: S108 - TemporaryDirectory creates a private child
+    with TemporaryDirectory(prefix="mw-", dir=root) as directory:
+        yield Path(directory)
+
+
+@pytest.fixture
+def broker_peer_identity(mocker: MockerFixture) -> None:
+    """Keep real Unix sockets usable for protocol tests without Linux SO_PEERCRED."""
+    if sys.platform != "linux":
+        mocker.patch(
+            "markweave.broker.unix_transport._peer_credentials",
+            return_value=(os.getpid(), os.geteuid(), os.getegid()),
+        )
 
 
 @pytest.fixture(scope="session")

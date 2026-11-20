@@ -812,6 +812,7 @@ def test_simple_quickstart_image_selection_consumes_producer_and_propagates_fail
         (SIMPLE_QUICKSTART, "markweave-quickstart-simple"),
     ],
 )
+@pytest.mark.requires_linux
 def test_quickstart_password_is_create_once_and_rejects_symlinks(
     tmp_path: Path,
     quickstart: Path,
@@ -858,6 +859,7 @@ def test_quickstart_password_is_create_once_and_rejects_symlinks(
     assert target.read_text(encoding="utf-8") == "unchanged"
 
 
+@pytest.mark.requires_linux
 def test_simple_quickstart_rejects_a_concurrent_state_user(tmp_path: Path) -> None:
     environment = os.environ | {"XDG_STATE_HOME": str(tmp_path / "state")}
     command = [str(SIMPLE_QUICKSTART), "password"]
@@ -898,6 +900,7 @@ def test_simple_quickstart_rejects_a_concurrent_state_user(tmp_path: Path) -> No
 
 
 @pytest.mark.parametrize("flag", ["--trust-upstream-antivirus", "--insecure"])
+@pytest.mark.requires_linux
 def test_clamav_free_podman_rejects_missing_slirp4netns(
     tmp_path: Path,
     flag: str,

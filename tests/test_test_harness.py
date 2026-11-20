@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gc
+import sys
 from pathlib import Path
 
 import pytest
@@ -63,6 +64,45 @@ def _run(pytester: pytest.Pytester, mode: tuple[str, ...]) -> pytest.RunResult:
     return pytester.runpytest_subprocess(
         "-p", "no:cacheprovider", "-p", "no:pytest_cov", "-rE", *mode
     )
+
+
+@pytest.mark.integration
+@pytest.mark.light_coverage
+def test_linux_only_tests_are_skipped_on_other_hosts(
+    pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _project(pytester, monkeypatch)
+    pytester.makeini("[pytest]\nmarkers = requires_linux: requires Linux\n")
+    pytester.makeconftest(
+        "from tests.conftest import pytest_collection_modifyitems\n"
+        "import pytest\n"
+        "@pytest.fixture\n"
+        "def linux_fixture():\n"
+        "    import sys\n"
+        "    assert sys.platform == 'linux'\n"
+    )
+    pytester.makepyfile(
+        """
+        import pytest
+
+        @pytest.mark.requires_linux
+        def test_needs_linux(linux_fixture):
+            pass
+
+        def test_portable():
+            pass
+        """
+    )
+
+    result = pytester.runpytest_subprocess("-p", "no:pytest_cov", "-rs")
+
+    if sys.platform == "linux":
+        result.assert_outcomes(passed=2)
+    else:
+        result.assert_outcomes(passed=1, skipped=1)
+        result.stdout.fnmatch_lines(
+            ["*requires Linux kernel or GNU userland behavior*"]
+        )
 
 
 @pytest.mark.unit
@@ -288,6 +328,7 @@ def test_detached_descendant_group_ends(monkeypatch):
 @pytest.mark.light_coverage
 @MODES
 @pytest.mark.parametrize("guarded", [True, False], ids=["guarded", "unguarded"])
+@pytest.mark.requires_linux
 def test_child_subreaper_leak_fails_its_own_test_and_is_undone(
     pytester: pytest.Pytester,
     monkeypatch: pytest.MonkeyPatch,

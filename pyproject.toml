@@ -143,6 +143,7 @@ markers = [
     "requires_s3: requires S3-compatible storage",
     "requires_podman: requires the Podman executable and a rootless Podman runtime",
     "requires_docker: requires the Docker CLI and Compose plugin",
+    "requires_linux: requires Linux kernel or GNU userland behavior",
     "container_runtime_guard_exempt(reason): reviewed opt-out from the container runtime guard only",
 ]
 
@@ -182,6 +183,7 @@ select = [
 
 [tool.ty.environment]
 python-version = "3.14"
+python-platform = "linux"
 
 [tool.ty.src]
 include = ["src", "scripts", "tests"]

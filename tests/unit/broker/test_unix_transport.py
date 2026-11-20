@@ -107,8 +107,8 @@ def _workspace_collect() -> WorkspaceCollectRequest:
     )
 
 
-def _private_parent(tmp_path: Path) -> Path:
-    parent = tmp_path / "broker"
+def _private_parent(short_socket_directory: Path) -> Path:
+    parent = short_socket_directory / "broker"
     parent.mkdir(mode=0o700)
     parent.chmod(0o700)
     return parent
@@ -135,8 +135,10 @@ def test_transport_limits_require_explicit_positive_values(arguments) -> None:
         UnixTransportLimits(*arguments)
 
 
-def test_path_must_be_absolute_real_owner_only_directory(tmp_path: Path) -> None:
-    insecure = tmp_path / "insecure"
+def test_path_must_be_absolute_real_owner_only_directory(
+    short_socket_directory: Path,
+) -> None:
+    insecure = short_socket_directory / "insecure"
     insecure.mkdir(mode=0o755)
     insecure.chmod(0o755)
 
@@ -156,9 +158,9 @@ def test_path_must_be_absolute_real_owner_only_directory(tmp_path: Path) -> None
         )
 
 
-def test_path_rejects_symlinked_parent(tmp_path: Path) -> None:
-    parent = _private_parent(tmp_path)
-    alias = tmp_path / "alias"
+def test_path_rejects_symlinked_parent(short_socket_directory: Path) -> None:
+    parent = _private_parent(short_socket_directory)
+    alias = short_socket_directory / "alias"
     alias.symlink_to(parent, target_is_directory=True)
 
     with pytest.raises(ValueError, match="real"):
@@ -170,8 +172,8 @@ def test_path_rejects_symlinked_parent(tmp_path: Path) -> None:
         )
 
 
-def test_path_rejects_linux_sockaddr_overflow(tmp_path: Path) -> None:
-    parent = _private_parent(tmp_path)
+def test_path_rejects_linux_sockaddr_overflow(short_socket_directory: Path) -> None:
+    parent = _private_parent(short_socket_directory)
 
     with pytest.raises(ValueError, match="Linux limit"):
         UnixBrokerClient(
@@ -183,9 +185,9 @@ def test_path_rejects_linux_sockaddr_overflow(tmp_path: Path) -> None:
 
 
 def test_server_refuses_to_replace_non_socket(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path = _private_parent(tmp_path) / "broker.sock"
+    path = _private_parent(short_socket_directory) / "broker.sock"
     path.touch(mode=0o600)
     dispatcher = mocker.Mock(spec=BrokerDispatcher)
     server = UnixBrokerServer(
@@ -206,9 +208,9 @@ def test_server_refuses_to_replace_non_socket(
 
 
 def test_stop_reports_handler_that_cannot_drain(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path = _private_parent(tmp_path) / "broker.sock"
+    path = _private_parent(short_socket_directory) / "broker.sock"
     server = UnixBrokerServer(
         path,
         expected_client_uid=os.geteuid(),
@@ -238,12 +240,12 @@ def test_stop_reports_handler_that_cannot_drain(
     ],
 )
 def test_server_rejects_invalid_identity_or_components(
-    tmp_path: Path,
+    short_socket_directory: Path,
     mocker: MockerFixture,
     field: str,
     value: object,
 ) -> None:
-    path = _private_parent(tmp_path) / "broker.sock"
+    path = _private_parent(short_socket_directory) / "broker.sock"
     arguments: dict[str, Any] = {
         "expected_client_uid": os.geteuid(),
         "principal": PRINCIPAL,
@@ -257,9 +259,9 @@ def test_server_rejects_invalid_identity_or_components(
 
 
 def test_server_reconciles_before_exposing_socket(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path = _private_parent(tmp_path) / "broker.sock"
+    path = _private_parent(short_socket_directory) / "broker.sock"
     dispatcher = mocker.Mock(spec=BrokerDispatcher)
     dispatcher.start.side_effect = lambda: assert_bound_not_listening(path)
     server = UnixBrokerServer(
@@ -280,9 +282,9 @@ def test_server_reconciles_before_exposing_socket(
 
 
 def test_server_start_thread_failure_releases_socket_and_lifecycle_lock(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path = _private_parent(tmp_path) / "broker.sock"
+    path = _private_parent(short_socket_directory) / "broker.sock"
     dispatcher = mocker.Mock(spec=BrokerDispatcher)
     thread_type = mocker.patch("markweave.broker.unix_transport.Thread")
     thread_type.return_value.start.side_effect = RuntimeError("thread unavailable")
@@ -302,9 +304,9 @@ def test_server_start_thread_failure_releases_socket_and_lifecycle_lock(
 
 
 def test_accept_failure_marks_server_fatal(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path = _private_parent(tmp_path) / "broker.sock"
+    path = _private_parent(short_socket_directory) / "broker.sock"
     listener = mocker.Mock(spec=socket.socket)
     failure = OSError("accept unavailable")
     listener.accept.side_effect = failure
@@ -334,9 +336,9 @@ def assert_bound_not_listening(path: Path) -> None:
 
 
 def test_server_removes_only_its_bound_inode_on_stop(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path = _private_parent(tmp_path) / "broker.sock"
+    path = _private_parent(short_socket_directory) / "broker.sock"
     dispatcher = mocker.Mock(spec=BrokerDispatcher)
     server = UnixBrokerServer(
         path,
@@ -356,9 +358,9 @@ def test_server_removes_only_its_bound_inode_on_stop(
 
 
 def test_server_cleans_owned_stale_socket(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path = _private_parent(tmp_path) / "broker.sock"
+    path = _private_parent(short_socket_directory) / "broker.sock"
     stale = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     stale.bind(str(path))
     path.chmod(0o600)
@@ -379,9 +381,9 @@ def test_server_cleans_owned_stale_socket(
 
 
 def test_server_refuses_insecure_stale_socket(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    path = _private_parent(tmp_path) / "broker.sock"
+    path = _private_parent(short_socket_directory) / "broker.sock"
     stale = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     stale.bind(str(path))
     path.chmod(0o666)
@@ -399,8 +401,10 @@ def test_server_refuses_insecure_stale_socket(
     path.unlink()
 
 
-def test_server_refuses_active_socket(tmp_path: Path, mocker: MockerFixture) -> None:
-    path = _private_parent(tmp_path) / "broker.sock"
+def test_server_refuses_active_socket(
+    short_socket_directory: Path, mocker: MockerFixture
+) -> None:
+    path = _private_parent(short_socket_directory) / "broker.sock"
     active = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     active.bind(str(path))
     path.chmod(0o600)
@@ -420,6 +424,7 @@ def test_server_refuses_active_socket(tmp_path: Path, mocker: MockerFixture) -> 
     path.unlink()
 
 
+@pytest.mark.requires_linux
 def test_peer_credentials_fail_closed_when_kernel_lookup_fails(
     mocker: MockerFixture,
 ) -> None:
@@ -432,6 +437,7 @@ def test_peer_credentials_fail_closed_when_kernel_lookup_fails(
 
 
 @pytest.mark.parametrize("credentials", [(0, 1, 1), (1, -1, 1), (1, 1, -1)])
+@pytest.mark.requires_linux
 def test_peer_credentials_reject_invalid_kernel_identity(
     mocker: MockerFixture, credentials: tuple[int, int, int]
 ) -> None:
@@ -459,8 +465,10 @@ def test_io_helpers_reject_expired_deadline_eof_and_zero_send(
         _send_all(connection, b"x", monotonic() + 1)
 
 
-def test_client_maps_connect_failure_to_stable_transport_error(tmp_path: Path) -> None:
-    path = _private_parent(tmp_path) / "missing.sock"
+def test_client_maps_connect_failure_to_stable_transport_error(
+    short_socket_directory: Path,
+) -> None:
+    path = _private_parent(short_socket_directory) / "missing.sock"
     client = UnixBrokerClient(
         path,
         expected_server_uid=os.geteuid(),
@@ -473,8 +481,8 @@ def test_client_maps_connect_failure_to_stable_transport_error(tmp_path: Path) -
     assert captured.value.category is BrokerErrorCategory.TRANSPORT_FAILURE
 
 
-def test_client_rejects_non_socket_leaf(tmp_path: Path) -> None:
-    path = _private_parent(tmp_path) / "broker.sock"
+def test_client_rejects_non_socket_leaf(short_socket_directory: Path) -> None:
+    path = _private_parent(short_socket_directory) / "broker.sock"
     path.touch(mode=0o600)
     client = UnixBrokerClient(
         path,
@@ -500,9 +508,9 @@ def test_client_rejects_non_socket_leaf(tmp_path: Path) -> None:
     ],
 )
 def test_client_rejects_invalid_configuration(
-    tmp_path: Path, uid: object, principal: object, timeout: object
+    short_socket_directory: Path, uid: object, principal: object, timeout: object
 ) -> None:
-    path = _private_parent(tmp_path) / "broker.sock"
+    path = _private_parent(short_socket_directory) / "broker.sock"
 
     with pytest.raises(ValueError):
         UnixBrokerClient(
@@ -662,8 +670,10 @@ def test_workspace_response_binding_rejects_substitution(
     assert captured.value.category is BrokerErrorCategory.PROTOCOL_ERROR
 
 
-def test_workspace_client_is_disabled_without_explicit_limits(tmp_path: Path) -> None:
-    parent = _private_parent(tmp_path)
+def test_workspace_client_is_disabled_without_explicit_limits(
+    short_socket_directory: Path,
+) -> None:
+    parent = _private_parent(short_socket_directory)
     client = UnixBrokerClient(
         parent / "broker.sock",
         expected_server_uid=os.geteuid(),
@@ -749,11 +759,11 @@ def test_workspace_client_is_disabled_without_explicit_limits(tmp_path: Path) ->
     ],
 )
 def test_workspace_client_rejects_channel_substitution_before_encode_or_socket(
-    tmp_path: Path,
+    short_socket_directory: Path,
     mocker: MockerFixture,
     stage: WorkspaceStageRequest,
 ) -> None:
-    parent = _private_parent(tmp_path)
+    parent = _private_parent(short_socket_directory)
     client = UnixBrokerClient(
         parent / "broker.sock",
         expected_server_uid=os.geteuid(),
@@ -773,9 +783,9 @@ def test_workspace_client_rejects_channel_substitution_before_encode_or_socket(
 
 
 def test_workspace_client_deadline_includes_encoding_before_socket_allocation(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    parent = _private_parent(tmp_path)
+    parent = _private_parent(short_socket_directory)
     client = UnixBrokerClient(
         parent / "broker.sock",
         expected_server_uid=os.geteuid(),
@@ -803,10 +813,10 @@ def test_workspace_client_deadline_includes_encoding_before_socket_allocation(
 
 
 def test_public_stop_signal_is_content_free_and_wakes_waiters(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
     server = UnixBrokerServer(
-        _private_parent(tmp_path) / "broker.sock",
+        _private_parent(short_socket_directory) / "broker.sock",
         expected_client_uid=os.geteuid(),
         principal=PRINCIPAL,
         dispatcher=mocker.Mock(spec=BrokerDispatcher),
@@ -825,10 +835,10 @@ def test_public_stop_signal_is_content_free_and_wakes_waiters(
 
 
 def test_public_fatal_signal_exposes_no_internal_cause(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
     server = UnixBrokerServer(
-        _private_parent(tmp_path) / "broker.sock",
+        _private_parent(short_socket_directory) / "broker.sock",
         expected_client_uid=os.geteuid(),
         principal=PRINCIPAL,
         dispatcher=mocker.Mock(spec=BrokerDispatcher),
@@ -844,10 +854,10 @@ def test_public_fatal_signal_exposes_no_internal_cause(
 
 @pytest.mark.parametrize("timeout", [-1, float("inf"), True, "1"])
 def test_public_stop_wait_rejects_invalid_timeout(
-    tmp_path: Path, mocker: MockerFixture, timeout: object
+    short_socket_directory: Path, mocker: MockerFixture, timeout: object
 ) -> None:
     server = UnixBrokerServer(
-        _private_parent(tmp_path) / "broker.sock",
+        _private_parent(short_socket_directory) / "broker.sock",
         expected_client_uid=os.geteuid(),
         principal=PRINCIPAL,
         dispatcher=mocker.Mock(spec=BrokerDispatcher),
@@ -870,9 +880,9 @@ def test_public_stop_wait_rejects_invalid_timeout(
     ],
 )
 def test_workspace_client_revalidates_required_and_optional_limits_before_transport(
-    tmp_path: Path, mocker: MockerFixture, field: str, value: object
+    short_socket_directory: Path, mocker: MockerFixture, field: str, value: object
 ) -> None:
-    parent = _private_parent(tmp_path)
+    parent = _private_parent(short_socket_directory)
     client = UnixBrokerClient(
         parent / "broker.sock",
         expected_server_uid=os.geteuid(),
@@ -913,10 +923,10 @@ def _record_slot_release_and_close(
 
 @pytest.mark.parametrize("outcome", ["returned", "failed"])
 def test_handler_frees_its_slot_before_the_close_that_completes_the_exchange(
-    tmp_path: Path, mocker: MockerFixture, outcome: str
+    short_socket_directory: Path, mocker: MockerFixture, outcome: str
 ) -> None:
     server = UnixBrokerServer(
-        _private_parent(tmp_path) / "broker.sock",
+        _private_parent(short_socket_directory) / "broker.sock",
         expected_client_uid=os.geteuid(),
         principal=PRINCIPAL,
         dispatcher=mocker.Mock(spec=BrokerDispatcher),
@@ -937,10 +947,10 @@ def test_handler_frees_its_slot_before_the_close_that_completes_the_exchange(
 
 
 def test_handler_thread_start_failure_frees_its_slot_before_closing(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
     server = UnixBrokerServer(
-        _private_parent(tmp_path) / "broker.sock",
+        _private_parent(short_socket_directory) / "broker.sock",
         expected_client_uid=os.geteuid(),
         principal=PRINCIPAL,
         dispatcher=mocker.Mock(spec=BrokerDispatcher),

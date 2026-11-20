@@ -1,10 +1,12 @@
 """Functional ASGI coverage for the versioned template HTTP contract."""
 
 import stat
+import sys
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from pytest_mock import MockerFixture
 
 from markweave.app import create_app
 from markweave.config import Settings
@@ -13,6 +15,16 @@ from tests.settings import template_settings
 from tests.unit.test_template_validation import _docx
 
 pytestmark = [pytest.mark.functional, pytest.mark.light_coverage]
+
+
+@pytest.fixture(autouse=True)
+def launch_template_test_engine(mocker: MockerFixture) -> None:
+    """Run the fixture engine without Linux isolation on other development hosts."""
+    if sys.platform != "linux":
+        mocker.patch(
+            "markweave.templates.engines.isolated_engine_command",
+            side_effect=lambda arguments: arguments,
+        )
 
 
 def _client(tmp_path: Path) -> TestClient:

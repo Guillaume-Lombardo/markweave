@@ -14,7 +14,7 @@ from scripts.release.artifacts import ArtifactError, verify_release
 from scripts.release.build import build_release
 from scripts.release.verify_install import verify_clean_install
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.requires_linux]
 
 
 def test_real_build_validation_clean_install_and_tamper_failure(

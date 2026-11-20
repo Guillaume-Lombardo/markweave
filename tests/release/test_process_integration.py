@@ -16,7 +16,11 @@ from scripts.release import process as runner
 from scripts.release.artifacts import ArtifactError
 from scripts.release.process import run_command
 
-pytestmark = [pytest.mark.integration, pytest.mark.light_coverage]
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.light_coverage,
+    pytest.mark.requires_linux,
+]
 
 SPAWN_DESCENDANT = """\
 import subprocess
@@ -157,8 +161,8 @@ def test_reaping_preserves_unrelated_child_exit_status(tmp_path: Path) -> None:
         assert unrelated.wait(timeout=5) == 17
 
 
-def test_portable_release_process_probe() -> None:
-    """Keep the final-image acceptance probe executable on development hosts too."""
+def test_linux_release_process_probe() -> None:
+    """Run the final-image acceptance probe directly on a Linux host."""
     subprocess.run(
         (sys.executable, "-m", "tests.release.process_probe"),
         cwd=Path(__file__).resolve().parents[2],

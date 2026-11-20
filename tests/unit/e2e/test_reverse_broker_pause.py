@@ -495,6 +495,7 @@ def test_vanished_target_never_pauses_unrelated_unit(
 
 
 @pytest.mark.parametrize("signal_name", ["TERM", "KILL"])
+@pytest.mark.requires_linux
 def test_signal_targets_pidfd_of_exact_broker_child(
     tmp_path: Path, mocker: MockerFixture, signal_name: str
 ) -> None:
@@ -517,6 +518,7 @@ def test_signal_targets_pidfd_of_exact_broker_child(
 
 
 @pytest.mark.parametrize("fault", ["wrapper", "children", "child"])
+@pytest.mark.requires_linux
 def test_signal_rejects_unbound_process(
     tmp_path: Path, mocker: MockerFixture, fault: str
 ) -> None:

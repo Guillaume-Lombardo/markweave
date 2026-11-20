@@ -14,7 +14,7 @@ from markweave.conversion.engine_versions import (
     EngineVersionProbe,
 )
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.requires_linux]
 
 
 def _resistant_engine(tmp_path: Path) -> tuple[Path, Path]:

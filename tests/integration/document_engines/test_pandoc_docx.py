@@ -150,6 +150,7 @@ def test_real_pandoc_preserves_safe_external_hyperlinks_without_loading_them(
         ("import time; time.sleep(30)", ConversionErrorCode.PANDOC_TIMEOUT),
     ],
 )
+@pytest.mark.requires_linux
 def test_real_process_boundary_normalizes_failures(
     tmp_path: Path, program: str, expected_code: ConversionErrorCode
 ) -> None:
@@ -164,6 +165,7 @@ def test_real_process_boundary_normalizes_failures(
     assert captured.value.code is expected_code
 
 
+@pytest.mark.requires_linux
 def test_real_process_boundary_reports_unavailable_engine(tmp_path: Path) -> None:
     converter = PandocDocxConverter(
         PandocConfig(str(tmp_path / "absent-pandoc"), 1.0, 0.2, tmp_path), os.environ

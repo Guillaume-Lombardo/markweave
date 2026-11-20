@@ -6,16 +6,20 @@ import json
 import socket
 import ssl
 import struct
-import subprocess
 import time
 from contextlib import suppress
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Event, Thread
 from typing import cast
 from uuid import UUID
 
 import pytest
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 from pytest_mock import MockerFixture
 
 from markweave.broker import mtls_transport
@@ -107,14 +111,55 @@ class CertificateSet:
     expired_client_key: Path
 
 
-def _run(*arguments: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        arguments,
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=10,
+def _certificate_builder(
+    name: str, key: rsa.RSAPrivateKey, *, ca: bool, expired: bool = False
+) -> x509.CertificateBuilder:
+    now = datetime.now(UTC)
+    return (
+        x509.CertificateBuilder()
+        .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, name)]))
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - timedelta(minutes=5))
+        .not_valid_after(
+            now - timedelta(seconds=1) if expired else now + timedelta(days=1)
+        )
+        .add_extension(x509.BasicConstraints(ca=ca, path_length=None), critical=True)
+        .add_extension(
+            x509.KeyUsage(
+                digital_signature=not ca,
+                content_commitment=False,
+                key_encipherment=False,
+                data_encipherment=False,
+                key_agreement=False,
+                key_cert_sign=ca,
+                crl_sign=ca,
+                encipher_only=False,
+                decipher_only=False,
+            ),
+            critical=True,
+        )
+        .add_extension(
+            x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False
+        )
     )
+
+
+def _write_certificate(
+    root: Path, name: str, certificate: x509.Certificate, key: rsa.RSAPrivateKey
+) -> tuple[Path, Path]:
+    certificate_path = root / f"{name}.crt"
+    key_path = root / f"{name}.key"
+    certificate_path.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+    key_path.touch(mode=0o600, exist_ok=False)
+    key_path.write_bytes(
+        key.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+    )
+    return certificate_path, key_path
 
 
 def _issue(  # noqa: PLR0913
@@ -127,94 +172,42 @@ def _issue(  # noqa: PLR0913
     extra_san: bool = False,
     expired: bool = False,
 ) -> tuple[Path, Path]:
-    certificate = root / f"{name}.crt"
-    key = root / f"{name}.key"
-    request = root / f"{name}.csr"
-    extensions = root / f"{name}.ext"
-    san = f"URI:{uri}"
+    ca = x509.load_pem_x509_certificate((root / f"{ca_name}.crt").read_bytes())
+    ca_key = serialization.load_pem_private_key(
+        (root / f"{ca_name}.key").read_bytes(), password=None
+    )
+    assert isinstance(ca_key, rsa.RSAPrivateKey)
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    names: list[x509.GeneralName] = [x509.UniformResourceIdentifier(uri)]
     if extra_san:
-        san += ",DNS:unexpected.example"
-    extensions.write_text(
-        "basicConstraints=critical,CA:FALSE\n"
-        "keyUsage=critical,digitalSignature\n"
-        f"extendedKeyUsage={eku}\n"
-        f"subjectAltName={san}\n"
-        "subjectKeyIdentifier=hash\n"
-        "authorityKeyIdentifier=keyid,issuer\n",
-        encoding="ascii",
+        names.append(x509.DNSName("unexpected.example"))
+    usages = {
+        "serverAuth": ExtendedKeyUsageOID.SERVER_AUTH,
+        "clientAuth": ExtendedKeyUsageOID.CLIENT_AUTH,
+    }
+    certificate = (
+        _certificate_builder(name, key, ca=False, expired=expired)
+        .issuer_name(ca.subject)
+        .add_extension(x509.ExtendedKeyUsage([usages[eku]]), critical=False)
+        .add_extension(x509.SubjectAlternativeName(names), critical=False)
+        .add_extension(
+            x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()),
+            critical=False,
+        )
+        .sign(ca_key, hashes.SHA256())
     )
-    _run(
-        "openssl",
-        "req",
-        "-newkey",
-        "rsa:2048",
-        "-nodes",
-        "-subj",
-        f"/CN={name}",
-        "-keyout",
-        str(key),
-        "-out",
-        str(request),
-    )
-    validity = ("-days", "0" if expired else "1")
-    _run(
-        "openssl",
-        "x509",
-        "-req",
-        *validity,
-        "-in",
-        str(request),
-        "-CA",
-        str(root / f"{ca_name}.crt"),
-        "-CAkey",
-        str(root / f"{ca_name}.key"),
-        "-CAcreateserial",
-        "-extfile",
-        str(extensions),
-        "-out",
-        str(certificate),
-    )
-    if expired:
-        end_date = _run(
-            "openssl", "x509", "-enddate", "-noout", "-in", str(certificate)
-        ).stdout.strip()
-        prefix = "notAfter="
-        if not end_date.startswith(prefix):
-            raise RuntimeError("Expired test certificate validity is unavailable")
-        expires_at = ssl.cert_time_to_seconds(end_date.removeprefix(prefix))
-        wait_deadline = time.monotonic() + 2
-        while time.time() <= expires_at:
-            if time.monotonic() >= wait_deadline:
-                raise RuntimeError("Expired test certificate did not expire")
-            time.sleep(0.01)
-    return certificate, key
+    return _write_certificate(root, name, certificate, key)
 
 
 def _ca(root: Path, name: str) -> Path:
-    certificate = root / f"{name}.crt"
-    _run(
-        "openssl",
-        "req",
-        "-x509",
-        "-newkey",
-        "rsa:2048",
-        "-nodes",
-        "-days",
-        "1",
-        "-subj",
-        f"/CN={name}",
-        "-addext",
-        "basicConstraints=critical,CA:TRUE",
-        "-addext",
-        "keyUsage=critical,keyCertSign,cRLSign",
-        "-addext",
-        "subjectKeyIdentifier=hash",
-        "-keyout",
-        str(root / f"{name}.key"),
-        "-out",
-        str(certificate),
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    certificate = (
+        _certificate_builder(name, key, ca=True)
+        .issuer_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, name)]))
+        .sign(key, hashes.SHA256())
     )
-    return certificate
+    certificate_path, _ = _write_certificate(root, name, certificate, key)
+    return certificate_path
 
 
 @pytest.fixture(scope="module")

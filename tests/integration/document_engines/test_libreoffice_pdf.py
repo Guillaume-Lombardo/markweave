@@ -120,6 +120,7 @@ def _executable(workspace: Path, name: str, program: str) -> Path:
     return path
 
 
+@pytest.mark.requires_linux
 def test_real_process_boundary_reports_unavailable_engine(tmp_path: Path) -> None:
     workspace = _workspace(tmp_path)
     output = io.BytesIO()
@@ -349,6 +350,7 @@ def test_real_pdf_keeps_equations_and_malformed_tex_literals(
         ),
     ),
 )
+@pytest.mark.requires_linux
 def test_real_process_boundary_normalizes_output_and_exit_failures(
     tmp_path: Path,
     program: str,
@@ -383,6 +385,7 @@ def _wait_for_descendant_exit(descendant_pid: int) -> None:
 
 
 @pytest.mark.parametrize("mode", ("timeout", "cancel", "probe-failure"))
+@pytest.mark.requires_linux
 def test_timeout_and_cancellation_kill_process_group_descendants(
     tmp_path: Path, mode: str
 ) -> None:

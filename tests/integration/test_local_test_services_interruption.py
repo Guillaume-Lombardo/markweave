@@ -30,6 +30,7 @@ from scripts.testing import services
 from tests.local_service_bookkeeping import isolated_service_bookkeeping
 
 pytestmark = [
+    pytest.mark.requires_linux,
     pytest.mark.integration,
     pytest.mark.light_coverage,
     pytest.mark.container_runtime_guard_exempt(
