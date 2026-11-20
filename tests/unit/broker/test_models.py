@@ -360,17 +360,17 @@ def test_evidence_digest_is_strict_and_content_free(digest: object) -> None:
 
 
 def test_runtime_recovery_binding_is_versioned_ascii_and_bounded() -> None:
-    binding = RuntimeRecoveryBinding("kubernetes", 1, b'{"pod_uid":"content-free"}')
+    binding = RuntimeRecoveryBinding("fake", 1, b'{"unit":"content-free"}')
     assert binding.schema_version == 1
     assert "content-free" not in repr(binding)
 
     invalid = (
-        ("Kubernetes", 1, b"{}"),
-        ("kubernetes", 0, b"{}"),
-        ("kubernetes", 1, b""),
-        ("kubernetes", 1, "{}"),
-        ("kubernetes", 1, b"\xff"),
-        ("kubernetes", 1, b"x" * (broker_models.MAX_RECOVERY_BINDING_BYTES + 1)),
+        ("Fake", 1, b"{}"),
+        ("fake", 0, b"{}"),
+        ("fake", 1, b""),
+        ("fake", 1, "{}"),
+        ("fake", 1, b"\xff"),
+        ("fake", 1, b"x" * (broker_models.MAX_RECOVERY_BINDING_BYTES + 1)),
     )
     for backend, version, payload in invalid:
         with pytest.raises(ValueError, match="recovery binding"):

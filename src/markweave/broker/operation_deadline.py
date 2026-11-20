@@ -5,10 +5,8 @@ deadline. Each dispatch therefore publishes an absolute monotonic budget that
 ends before that deadline, reserving time to encode and send the response and to
 reap a cancelled command. Runtime commands and observation loops clamp
 themselves to the remaining budget, so a slow operation is refused through the
-ordinary error path instead of tripping the fatal dispatch watchdog. Like the
-Kubernetes attester client, which bounds each exchange by
-``min(request timeout, remaining readiness time)``, every bound here is the
-smaller of its own policy limit and the time remaining.
+ordinary error path instead of tripping the fatal dispatch watchdog. Every
+bound here is the smaller of its own policy limit and the time remaining.
 """
 
 from __future__ import annotations

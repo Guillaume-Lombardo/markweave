@@ -14,9 +14,7 @@ and headless LibreOffice creates PDF.
 
 The experimental reverse path accepts supported office documents through the same authenticated
 browser, API, and CLI boundary, persists a separate durable job, and delegates document parsing to
-an isolated attempt runtime. Rootless Podman is the primary reviewed isolation backend. The
-Kubernetes backend remains optional and must not be described as production-qualified until its
-exact images pass the dedicated physical-worker acceptance matrix.
+an isolated attempt runtime. The external isolation broker runs each attempt in rootless Podman.
 
 ## Component boundaries
 

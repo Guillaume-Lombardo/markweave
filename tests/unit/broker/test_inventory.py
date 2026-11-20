@@ -266,9 +266,7 @@ def test_runtime_recovery_binding_is_authenticated_and_round_trips(
         expected_revision=reserved.revision,
         target=ManagedUnitState.CREATE_INTENT,
     )
-    binding = RuntimeRecoveryBinding(
-        "kubernetes", 1, b'{"content_free":"runtime-identity"}'
-    )
+    binding = RuntimeRecoveryBinding("fake", 1, b'{"content_free":"runtime-identity"}')
     created = inventory.transition(
         UNIT_ID,
         expected_revision=intent.revision,

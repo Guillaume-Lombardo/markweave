@@ -16,7 +16,7 @@ T141 (G1L-694, PR #304) fixed a race in the broker transports. A server released
 During T141, two other components were seen using the same release-after-close ordering. They were left out of scope:
 
 - `_BoundedMetricsHttpServer` in `src/markweave/observability.py`;
-- `src/markweave/broker/kubernetes_attester_transport.py`.
+- The node attester transport, now archived with [T74](T74-kubernetes-reverse-isolation.md).
 
 ## Scope
 

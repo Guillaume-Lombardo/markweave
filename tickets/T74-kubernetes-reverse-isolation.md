@@ -56,6 +56,9 @@ backend.
 
 ## Progress
 
+* 2026-11-20: T107 archived the implementation at `archive/t74-kubernetes-backend`. Restore it
+  from that tag if T74 resumes and qualify it against the current broker contract.
+
 * 2026-09-22: T74 is deferred until a concrete Kubernetes deployment need is selected. The optional
   backend's remaining real-cluster, production-environment, restart/recovery, and exact-image E2E
   evidence remains outstanding. Existing T70 Podman isolation, broker contracts, attestation

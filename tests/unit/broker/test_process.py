@@ -977,6 +977,19 @@ def test_main_emits_only_bounded_content_free_diagnostics(
 
 
 @pytest.mark.unit
+def test_main_rejects_archived_runtime_configuration_before_starting_broker(
+    capfd: pytest.CaptureFixture[str], tmp_path: Path, mocker: MockerFixture
+) -> None:
+    path, _ = _configuration(tmp_path)
+    _rewrite(path, {"namespace": "markweave-reverse", "attester_port": 9443})
+    build = mocker.patch("markweave.broker.process.build_broker_server")
+
+    assert main([str(path)]) == 2
+    assert capfd.readouterr() == ("", "broker configuration failed\n")
+    build.assert_not_called()
+
+
+@pytest.mark.unit
 def test_main_contains_unexpected_runtime_failure(
     capfd: pytest.CaptureFixture[str], tmp_path: Path, mocker: MockerFixture
 ) -> None:

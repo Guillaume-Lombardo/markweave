@@ -148,6 +148,14 @@ keep their verified `0.7.3` configuration until they adopt these exact pins and 
 deployment-specific verification. Do not run a `0.7.4` or `0.7.5` package against `0.7.3` images
 or invent a `0.7.4` image digest.
 
+### Reverse isolation in 0.8.0
+
+Version 0.8.0 removes the experimental `markweave[kubernetes]` extra and
+`markweave-kubernetes-attester` executable. Remove both from installation and startup automation.
+For reverse conversion, configure the [rootless Podman broker](reverse-broker-deployment.md) and
+one of its authenticated transports. The broker rejects old Kubernetes configuration. T74's
+prototype is preserved in the `archive/t74-kubernetes-backend` Git tag.
+
 ## Configuration compatibility
 
 ### During 0.x
