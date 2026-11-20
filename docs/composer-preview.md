@@ -128,7 +128,7 @@ To repeat the local browser probe after a production build and a fresh server re
 
 ```bash
 uv run --with python-docx==1.2.0 --with pillow==12.0.0 --with lxml \
-  python web/src/composer/preview/generate-fixtures.py /home/g1lom/dev/scratch
+  python web/tests/fixtures/composer-preview/generate-fixtures.py /home/g1lom/dev/scratch
 MARKWEAVE_PREVIEW_BASE_URL=http://127.0.0.1:3000 \
 MARKWEAVE_PREVIEW_LONG_DOCX=/home/g1lom/dev/scratch/composer-preview-long.docx \
 MARKWEAVE_PREVIEW_STRUCTURED_DOCX=/home/g1lom/dev/scratch/composer-preview-structured.docx \

@@ -88,9 +88,11 @@ Format-specific and security details are documented in [conversion jobs](jobs.md
 [Word templates and fonts](word-templates-fonts.md).
 
 Release-readiness work uses the executable
-[cross-surface qualification matrix](evidence/t50-cross-surface-qualification.md), which records
+[cross-surface qualification matrix](archive/evidence/t50-cross-surface-qualification.md), which records
 the exact commands, prerequisites, artifacts, and residual limitations without selecting a release
 version.
+
+See the [documentation archive](archive/index.md) for completed qualifications and migration records.
 
 The [product specification](product-specification.md) is normative for product, architecture,
 security, deployment, and acceptance decisions. The guides explain the implemented system; they do

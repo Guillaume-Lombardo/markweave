@@ -11,11 +11,13 @@ from urllib.parse import urlparse
 
 import pytest
 
-SPIKE = Path(__file__).parents[2] / "spikes" / "anydoc"
+ROOT = Path(__file__).parents[2]
+ANYDOC = ROOT / "toolchain" / "anydoc"
+MEASUREMENTS = ROOT / "docs" / "archive" / "anydoc"
 
 
-def _json(name: str) -> dict[str, Any]:
-    return json.loads((SPIKE / name).read_text())
+def _json(name: str, directory: Path = ANYDOC) -> dict[str, Any]:
+    return json.loads((directory / name).read_text())
 
 
 @pytest.mark.unit
@@ -25,17 +27,17 @@ def test_anydoc_corpus_is_bounded_hash_locked_and_redistributable() -> None:
     assert isinstance(files, list)
     assert len(files) == 24
     assert manifest["source_commit"] == "42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c"
-    assert (SPIKE / "LICENSE.anydoc").is_file()
+    assert (ANYDOC / "LICENSE.anydoc").is_file()
     assert sum(item["size"] for item in files) < 500_000
     expected_paths = set()
     for item in files:
-        path = SPIKE / "corpus" / item["path"]
+        path = ANYDOC / "corpus" / item["path"]
         expected_paths.add(path)
         assert path.stat().st_size == item["size"]
         assert hashlib.sha256(path.read_bytes()).hexdigest() == item["sha256"]
     actual_paths = {
         path
-        for path in (SPIKE / "corpus").rglob("*")
+        for path in (ANYDOC / "corpus").rglob("*")
         if path.is_file() and path.name != "manifest.json"
     }
     assert actual_paths == expected_paths
@@ -45,11 +47,11 @@ def test_anydoc_corpus_is_bounded_hash_locked_and_redistributable() -> None:
 def test_extension_alias_fixtures_are_deterministically_generated(
     tmp_path: Path,
 ) -> None:
-    source = SPIKE / "corpus/ppt/handmade-multimaster.ppt"
+    source = ANYDOC / "corpus/ppt/handmade-multimaster.ppt"
     generated_corpus = tmp_path / "corpus"
     (generated_corpus / "ppt").mkdir(parents=True)
     shutil.copyfile(source, generated_corpus / "ppt/handmade-multimaster.ppt")
-    generator = runpy.run_path(str(SPIKE / "generate_extension_fixtures.py"))[
+    generator = runpy.run_path(str(ANYDOC / "generate_extension_fixtures.py"))[
         "generate"
     ]
     generator(generated_corpus)
@@ -67,7 +69,7 @@ def test_extension_alias_fixtures_are_deterministically_generated(
     records = {item["path"]: item for item in manifest["files"]}
     assert generated_paths <= records.keys()
     for relative_path in generated_paths:
-        expected = SPIKE / "corpus" / relative_path
+        expected = ANYDOC / "corpus" / relative_path
         regenerated = generated_corpus / relative_path
         assert regenerated.read_bytes() == expected.read_bytes()
         record = records[relative_path]
@@ -77,7 +79,7 @@ def test_extension_alias_fixtures_are_deterministically_generated(
         else:
             assert (
                 expected.read_bytes()
-                == (SPIKE / "corpus" / record["source_path"]).read_bytes()
+                == (ANYDOC / "corpus" / record["source_path"]).read_bytes()
             )
 
 
@@ -236,12 +238,11 @@ def test_candidate_contract_records_approved_product_decisions() -> None:
 
 @pytest.mark.unit
 def test_approved_decisions_are_reflected_in_spec_and_t70_contract() -> None:
-    root = SPIKE.parent.parent
     product_spec = " ".join(
-        (root / "docs/product-specification.md").read_text().split()
+        (ROOT / "docs/product-specification.md").read_text().split()
     )
     t70 = " ".join(
-        (root / "tickets/T70-secure-asset-aware-anydoc.md").read_text().split()
+        (ROOT / "tickets/T70-secure-asset-aware-anydoc.md").read_text().split()
     )
     expected_spec_decisions = (
         "A trusted external isolation broker, separate from the application worker and "
@@ -290,7 +291,7 @@ def test_approved_decisions_are_reflected_in_spec_and_t70_contract() -> None:
 @pytest.mark.unit
 @pytest.mark.parametrize("name", ["measurements-host.json", "measurements-ubi9.json"])
 def test_measurements_cover_formats_failures_assets_and_execution(name: str) -> None:
-    report = _json(name)
+    report = _json(name, MEASUREMENTS)
     assert report["schema_version"] == 1
     environment = report["environment"]
     assert environment["anydoc_version"] == "0.2.4"
@@ -374,7 +375,7 @@ def test_measurements_cover_formats_failures_assets_and_execution(name: str) -> 
 
 @pytest.mark.unit
 def test_ubi_measurement_has_no_hosted_or_document_engine_escape_hatch() -> None:
-    report = _json("measurements-ubi9.json")
+    report = _json("measurements-ubi9.json", MEASUREMENTS)
     inventory = report["process_inventory"]
     assert set(inventory["engine_executables_on_path"]) == {
         "chromium",
@@ -401,7 +402,7 @@ def test_ubi_measurement_has_no_hosted_or_document_engine_escape_hatch() -> None
 def test_supply_chain_record_matches_the_lock() -> None:
     evidence = _json("supply-chain.json")
     wheel = evidence["linux_x86_64_wheel"]
-    lock = tomllib.loads((SPIKE / "uv.lock").read_text())
+    lock = tomllib.loads((ANYDOC / "uv.lock").read_text())
     packages = [
         package
         for package in lock["package"]
@@ -426,7 +427,7 @@ def test_supply_chain_record_matches_the_lock() -> None:
     assert evidence["license_expression"] == "MIT"
     assert evidence["source"]["commit"] == "42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c"
     assert (
-        hashlib.sha256((SPIKE / "LICENSE.anydoc").read_bytes()).hexdigest()
+        hashlib.sha256((ANYDOC / "LICENSE.anydoc").read_bytes()).hexdigest()
         == evidence["license_sha256"]
     )
 

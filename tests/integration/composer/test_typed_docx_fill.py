@@ -32,7 +32,7 @@ from tests.integration.document_engines.test_libreoffice_pdf import (
 )
 
 _ROOT = Path(__file__).resolve().parents[3]
-_SOURCE = _ROOT / "spikes/anydoc/corpus/docx/text.docx"
+_SOURCE = _ROOT / "toolchain/anydoc/corpus/docx/text.docx"
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 _MAIN = "word/document.xml"
 

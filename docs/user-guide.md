@@ -64,7 +64,7 @@ service advertises the supported format families and current upload limit.
 If the service cannot provide supported-format information, or the page does not recognize its
 capability schema, submission stays disabled. Ask the service operator if Revert remains unavailable.
 Reverse conversion is experimental. Its final-image qualification evidence is retained in the
-[reverse qualification record](evidence/t73-reverse-conversion-qualification.md).
+[reverse qualification record](archive/evidence/t73-reverse-conversion-qualification.md).
 
 ## Extract an edited PowerPoint presentation
 

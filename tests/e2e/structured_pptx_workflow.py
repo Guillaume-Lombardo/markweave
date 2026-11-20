@@ -24,7 +24,7 @@ from tests.e2e.service_workflow import (
     expect,
 )
 
-SOURCE = Path("spikes/anydoc/corpus/pptx/pres.pptx")
+SOURCE = Path("toolchain/anydoc/corpus/pptx/pres.pptx")
 _SLIDE_ONE = "ppt/slides/slide1.xml"
 _SLIDE_TWO = "ppt/slides/slide2.xml"
 _SLIDE_ONE_RELS = "ppt/slides/_rels/slide1.xml.rels"

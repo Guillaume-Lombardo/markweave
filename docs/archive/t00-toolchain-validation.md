@@ -1,8 +1,8 @@
 # T00 document toolchain validation
 
 > This is historical decision evidence captured during the T00 spike. Ticket-oriented future tense
-> below records the state at that time; use [container deployment](container-deployment.md),
-> [operations](operations.md), and [recovery](recovery.md) for the implemented runtime.
+> below records the state at that time; use [container deployment](../container-deployment.md),
+> [operations](../operations.md), and [recovery](../recovery.md) for the implemented runtime.
 
 ## Status
 
@@ -22,7 +22,7 @@ repositories are not pinned or snapshotted, so rebuilding later can produce a
 different package set. This is not a reproducible-image claim.
 
 The detailed source, signature, license, update-ownership, Chrome-sandbox,
-CommonMark, and font evidence is in `docs/evidence/t00-decision-matrix.md`. It
+CommonMark, and font evidence is in [the decision matrix](evidence/t00-decision-matrix.md). It
 records the PM-approved choices and the remaining validation gaps.
 
 ## Reproduce the evidence
@@ -256,7 +256,7 @@ this harness.
 
 The complete 552-package result of the reviewed build, including epoch, version,
 release, architecture, and RPM license metadata, is committed as
-`docs/evidence/t00-rpm-inventory.txt`. Its SHA-256 is
+[the archived RPM inventory](evidence/t00-rpm-inventory.txt). Its SHA-256 is
 `5322961d68d22c88af7e646d50480803289d572ff8b600f2db6a6f0f0734ca2d`.
 Every build also generates `/opt/toolchain/evidence/rpm-inventory.txt`; the test
 checks that it is sorted, and compares it with the committed reviewed snapshot.

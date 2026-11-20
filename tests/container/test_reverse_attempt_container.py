@@ -25,7 +25,9 @@ from scripts.container.verify_anydoc_cargo_sbom import (
 
 ROOT = Path(__file__).parents[2]
 CONTAINERFILE = ROOT / "containers/reverse-attempt/Containerfile"
-SUPPLY_CHAIN_EVIDENCE = ROOT / "docs/evidence/t70-reverse-attempt-supply-chain.json"
+SUPPLY_CHAIN_EVIDENCE = (
+    ROOT / "docs/archive/evidence/t70-reverse-attempt-supply-chain.json"
+)
 
 
 @pytest.mark.unit
@@ -50,7 +52,7 @@ def test_reverse_attempt_dependency_is_exact_and_excluded_from_application_all()
 def test_reverse_attempt_lock_pins_reviewed_linux_wheel() -> None:
     lock = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
     evidence = json.loads(
-        (ROOT / "spikes/anydoc/supply-chain.json").read_text(encoding="utf-8")
+        (ROOT / "toolchain/anydoc/supply-chain.json").read_text(encoding="utf-8")
     )["product_pin"]
     wheel = evidence["linux_x86_64_wheel"]
     review = json.loads(SUPPLY_CHAIN_EVIDENCE.read_text(encoding="utf-8"))["anydoc"]
@@ -89,7 +91,7 @@ def test_reverse_attempt_image_has_fixed_minimal_runtime_contract() -> None:
     assert "EXPOSE " not in containerfile
     assert "RAYON_NUM_THREADS=1" in containerfile
     assert "USER 1001:0" in containerfile
-    assert "spikes/anydoc/LICENSE.anydoc" in containerfile
+    assert "toolchain/anydoc/LICENSE.anydoc" in containerfile
     assert "/opt/markweave/licenses/markweave/LICENSE" in containerfile
     assert "src/markweave/reversions/ANYDOC_COMPAT_LICENSE.txt" in containerfile
     assert "/usr/lib/node_modules/npm" in containerfile
@@ -164,7 +166,7 @@ def test_reverse_attempt_smoke_enforces_runtime_separation() -> None:
         'test ! -s "$stdout_file"',
         'test ! -s "$stderr_file"',
         "decode_response_metadata",
-        'Path("spikes/anydoc/corpus/docx/text.docx")',
+        'Path("toolchain/anydoc/corpus/docx/text.docx")',
         'podman unshare chown -R 12345:0 -- "$workspace"',
         'podman unshare grep -q \'"state":"complete"\'',
         'PurePosixPath("safe.svg")',
@@ -425,8 +427,8 @@ def test_final_image_measurements_reuse_the_bounded_t69_probe() -> None:
         "--network none --read-only --cap-drop all",
         "--pids-limit 16 --memory 256m --cpus 1 --user 12345:0",
         "--tmpfs /work:rw,noexec,nosuid,nodev,size=32m,mode=0770",
-        '"$PWD/spikes/anydoc/probe.py:/probe.py:ro"',
-        '"$PWD/spikes/anydoc/corpus:/corpus:ro"',
+        '"$PWD/toolchain/anydoc/probe.py:/probe.py:ro"',
+        '"$PWD/toolchain/anydoc/corpus:/corpus:ro"',
         '--entrypoint python "$image"',
         'runpy.run_path("/probe.py", run_name="__main__")',
         '"--iterations", "5"',
@@ -441,7 +443,7 @@ def test_final_image_measurements_reuse_the_bounded_t69_probe() -> None:
         'os.statvfs("/work")',
     ):
         assert required in measurement
-    assert "spikes/anydoc/probe.py" not in measurement.split("uv run python", 1)[1]
+    assert "toolchain/anydoc/probe.py" not in measurement.split("uv run python", 1)[1]
 
 
 @pytest.mark.integration

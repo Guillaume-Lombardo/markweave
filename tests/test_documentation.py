@@ -167,7 +167,8 @@ def test_documentation_index_exposes_all_role_guides() -> None:
         "../CHANGELOG.md",
         "../SECURITY.md",
         "../SUPPORT.md",
-        "evidence/t50-cross-surface-qualification.md",
+        "archive/index.md",
+        "archive/evidence/t50-cross-surface-qualification.md",
     ):
         assert f"({guide})" in index
 
@@ -188,9 +189,9 @@ def test_frontend_guides_use_unambiguous_workspace_commands() -> None:
     assert "pnpm --filter @markweave/web run test:coverage" in administration
     assert "npm --prefix web" not in administration
 
-    architecture = (ROOT / "docs" / "nextjs-migration-architecture.md").read_text(
-        encoding="utf-8"
-    )
+    architecture = (
+        ROOT / "docs" / "archive" / "nextjs-migration-architecture.md"
+    ).read_text(encoding="utf-8")
     runtime = architecture.split("## Runtime image and rootless boundary", 1)[1]
     assert "Application builds do not use that bundled npm" in runtime
     assert "No package-manager binary or package-manager cache is present" in runtime

@@ -301,7 +301,7 @@ rebuild is permitted. Cutover switches the route to their exact published digest
 the previous matched backend release with its legacy UI and route manifest; if persistent schema or data changed, it
 also restores the matching pre-cutover database and object backup according to the upgrade
 contract. Mixed releases and mutable rollback tags are forbidden. The complete inventory and
-failure matrix are in [the reviewed migration architecture](nextjs-migration-architecture.md).
+failure matrix are in [the reviewed migration architecture](archive/nextjs-migration-architecture.md).
 
 ### 3.4 Command-line interface
 

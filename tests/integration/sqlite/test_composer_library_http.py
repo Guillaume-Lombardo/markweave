@@ -337,8 +337,8 @@ def exercise_office_and_rejected_sources(harness: LibraryHarness) -> None:
     """Office text is indexed; infected, unsupported and empty sources never persist."""
 
     client = harness.client
-    docx = (_ROOT / "spikes/anydoc/corpus/docx/text.docx").read_bytes()
-    pptx = (_ROOT / "spikes/anydoc/corpus/pptx/pres.pptx").read_bytes()
+    docx = (_ROOT / "toolchain/anydoc/corpus/docx/text.docx").read_bytes()
+    pptx = (_ROOT / "toolchain/anydoc/corpus/pptx/pres.pptx").read_bytes()
     assert _upload(harness, "report.docx", docx).status_code == 201
     assert _upload(harness, "deck.pptx", pptx).status_code == 201
     assert [hit["title"] for hit in _search(harness, "struck runs")] == ["report"]

@@ -1170,7 +1170,7 @@ def test_real_process_workspace_pending_success_and_failure_over_mtls(  # noqa: 
             2,
             ".pdf",
             CONTENT_LIMITS,
-            (ROOT / "spikes/anydoc/corpus/pdf/text.pdf").read_bytes(),
+            (ROOT / "toolchain/anydoc/corpus/pdf/text.pdf").read_bytes(),
         )
         receipt = client.stage_workspace(stage)
         assert isinstance(receipt, WorkspaceStageReceipt)
@@ -1297,7 +1297,7 @@ def test_real_process_workspace_lost_receipt_retry_pending_success_and_failure( 
         created = client.request(CreateRequest(uuid4(), 2, successful_attempt))
         assert isinstance(created, CreateResponse)
         units.append((successful_attempt, created.unit_id))
-        source = (ROOT / "spikes/anydoc/corpus/pdf/text.pdf").read_bytes()
+        source = (ROOT / "toolchain/anydoc/corpus/pdf/text.pdf").read_bytes()
         stage = WorkspaceStageRequest(
             uuid4(),
             3,
@@ -1801,7 +1801,7 @@ def test_systemd_user_service_runs_workspace_success_and_failure(
                 2,
                 ".pdf",
                 CONTENT_LIMITS,
-                (ROOT / "spikes/anydoc/corpus/pdf/text.pdf").read_bytes(),
+                (ROOT / "toolchain/anydoc/corpus/pdf/text.pdf").read_bytes(),
             )
         )
         assert isinstance(receipt, WorkspaceStageReceipt)

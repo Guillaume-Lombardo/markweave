@@ -24,10 +24,10 @@ the exact source, image, and configuration in an isolated environment that
 matches the selected storage profile before production use.
 
 Select a complete published release with verified receipts for every required image. Version `0.7.2`
-has no qualified published container set; see the [incident record](evidence/release-migration-history.md#incomplete-072-container-release).
+has no qualified published container set; see the [incident record](archive/evidence/release-migration-history.md#incomplete-072-container-release).
 Version `0.7.4` was published to PyPI only and has no container images; container deployments
 upgrade from `0.7.3` directly to `0.7.5`. See the
-[0.7.4 incident record](evidence/release-migration-history.md#incomplete-074-container-release).
+[0.7.4 incident record](archive/evidence/release-migration-history.md#incomplete-074-container-release).
 The repository quickstarts pin the matched published `0.7.5` backend/frontend images. Reverse-enabled
 deployments also require the matching reverse-attempt image and native broker.
 
@@ -106,7 +106,7 @@ Current releases use separate backend and frontend images. Upgrade and roll back
 set and routing manifest together; verify frontend routes, FastAPI readiness, login and an authorized
 workflow before restoring traffic. Restore the matching database and object backup if persistent
 state changed. The one-time legacy-renderer migration and its old rollback procedure are retained
-in [cutover history](evidence/release-migration-history.md#nextjs-cutover-and-legacy-rollback).
+in [cutover history](archive/evidence/release-migration-history.md#nextjs-cutover-and-legacy-rollback).
 
 ### Upgrading to 0.7.5
 

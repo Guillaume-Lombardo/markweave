@@ -8,24 +8,24 @@ outside the repository. No application dependency or root pnpm lockfile changes 
 ## Reproduce
 
 From the repository root, using the reviewed local pnpm bootstrap described in
-`docs/package-management.md`:
+[the package-management guide](../../package-management.md):
 
 ```bash
 uv run --with python-docx==1.2.0 --with python-pptx==1.0.2 --with pypdf==6.1.1 \
-  python spikes/composer/office_edit_probe.py \
+  python docs/archive/composer/office_edit_probe.py \
   --fixture-dir "$HOME/dev/scratch/composer-renderer-qualification/fixtures"
 uv run --with python-docx==1.2.0 --with python-pptx==1.0.2 --with pypdf==6.1.1 \
-  python spikes/composer/office_family_probe.py
-cd spikes/composer
+  python docs/archive/composer/office_family_probe.py
+cd docs/archive/composer
 pnpm install --frozen-lockfile --ignore-scripts
-cd ../..
-node spikes/composer/browser_preview_probe.mjs \
+cd ../../..
+node docs/archive/composer/browser_preview_probe.mjs \
   "$HOME/dev/scratch/composer-renderer-qualification/fixtures"
-node spikes/composer/browser_preview_probe.mjs \
+node docs/archive/composer/browser_preview_probe.mjs \
   "$HOME/dev/scratch/composer-renderer-qualification/fixtures" allow-styles
-node spikes/composer/browser_preview_probe.mjs \
+node docs/archive/composer/browser_preview_probe.mjs \
   "$HOME/dev/scratch/composer-renderer-qualification/fixtures" allow-worker
-node spikes/composer/browser_isolated_preview_probe.mjs \
+node docs/archive/composer/browser_isolated_preview_probe.mjs \
   "$HOME/dev/scratch/composer-renderer-qualification/fixtures"
 ```
 

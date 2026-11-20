@@ -59,9 +59,9 @@ Protected release run `38223418529` published the schema-2 `0.7.5` set from sour
 - reverse attempt: `sha256:104d35de4f75459ed5bab4583a5fc472d521247cc23a339ed9b8995296ec97bc`.
 
 No `0.7.4` image exists; see the
-[0.7.4 incident record](evidence/release-migration-history.md#incomplete-074-container-release).
+[0.7.4 incident record](archive/evidence/release-migration-history.md#incomplete-074-container-release).
 The previous `0.7.3` receipts are retained in the
-[release history](evidence/release-migration-history.md#release-incidents-and-receipts-through-073).
+[release history](archive/evidence/release-migration-history.md#release-incidents-and-receipts-through-073).
 
 The ordinary quickstarts remain reverse-disabled. Configure the reverse-attempt digest only in the
 documented native-broker deployment; do not add the broker or its runtime socket to Compose.
@@ -194,7 +194,7 @@ recorded. This reduces unused attack surface without altering the vulnerability 
 The public default pins the verified `0.7.5` image pair published from source
 `d54a9c5f9440205bc415e7a49c4583f502392c29`. The deployment uses a separate frontend image and the
 literal one-origin routing, resource, probe, supply-chain, and rollback contract defined in
-[the reviewed Next.js migration architecture](nextjs-migration-architecture.md).
+[the reviewed Next.js migration architecture](archive/nextjs-migration-architecture.md).
 
 The frontend uses a UBI 9 Node.js 24 builder and UBI 9 Node.js 24 minimal runtime pinned by
 the reviewed Linux/AMD64 digests. The process is stateless, arbitrary-UID, read-only-root, and
@@ -243,7 +243,7 @@ candidate uses 30 seconds; production manifests require the operator to supply t
 At release, deploy only a matched backend/frontend version pair pinned by both verified registry
 manifest digests. A partial pair, mutable tag, mixed version, or frontend whose CSP/routing probes
 fail is not deployable. Preserve the complete previous image set and routing manifest for rollback,
-together with the profile-consistent backup. The [legacy cutover procedure](evidence/release-migration-history.md#nextjs-cutover-and-legacy-rollback)
+together with the profile-consistent backup. The [legacy cutover procedure](archive/evidence/release-migration-history.md#nextjs-cutover-and-legacy-rollback)
 is retained as historical evidence.
 
 ## Related guidance

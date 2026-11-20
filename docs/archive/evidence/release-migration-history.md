@@ -2,8 +2,8 @@
 
 Historical snapshots moved from the active guides on 2026-09-22. Their instructions and
 completion claims describe the release named in each section, not the current deployment.
-Use the [release process](../releasing.md), [upgrade guide](../upgrading.md), and
-[capability matrix](../index.md#conversion-capabilities) for current instructions.
+Use the [release process](../../releasing.md), [upgrade guide](../../upgrading.md), and
+[capability matrix](../../index.md#conversion-capabilities) for current instructions.
 
 Version `0.3.0` was the first approved public release. T64 completed parity and its one-time
 pre-removal rollback rehearsal; the `0.6.1` continuation source satisfied that gate.
@@ -112,7 +112,7 @@ This release includes editable PowerPoint generation, native Pandoc defaults wit
 a template, typed presentation templates, stable progress/download geometry and the
 Markweave logo/favicon. Slide-oriented reverse Markdown/Marp extraction remains T83.
 The forward enum expansion is the explicit 0.6.4-to-0.7.0 exception documented in
-[PowerPoint compatibility](../powerpoint.md).
+[PowerPoint compatibility](../../powerpoint.md).
 
 Light CI now separates rapid checks, two complementary Python partitions and aggregate
 coverage. Final hosted partitions passed in 8m13s/7m29s, with aggregation in 14s;

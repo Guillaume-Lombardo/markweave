@@ -2,7 +2,7 @@
 ticket: T109
 linear_id: G1L-633
 linear_url: https://linear.app/g1lom/issue/G1L-633/t109-relocate-completed-spikes-and-archive-historical-evidence
-status: Backlog
+status: In Progress
 priority: Low
 project: Markdown to DOCX and PDF Converter
 ---
@@ -34,6 +34,22 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 
 - 2026-10-09: Created in Linear and mirrored here from the owner-accepted repository analysis.
   Not started.
+- 2026-11-20: Implemented on `chore/T109-archive-spikes-evidence`. Moved the AnyDoc license,
+  contract, inventory, corpus, and smoke probe to `toolchain/anydoc/`. Archived the T69
+  feasibility report, qualification image recipe, and measurements in `docs/archive/anydoc/`
+  and the T88 Composer probes in `docs/archive/composer/`. The Composer spike generated its
+  fixtures outside the repository. Moved the active web preview fixture generator to
+  `web/tests/fixtures/composer-preview/`. Archived the historical evidence and T00 and Next.js
+  records under `docs/archive/` and added an index. Updated the build, CI selector, scripts, tests,
+  and documentation references.
+  Dependency sync, Ruff checks, 372 targeted unit, integration, and documentation tests,
+  8 broker tests without Podman, and the corpus staging test with GNU coreutils passed.
+  The 16 root web tests, 898 frontend tests, production web build, and 8 browser preview cases
+  passed. The corpus, packaged license, and RPM snapshot are byte-identical. Stale-path
+  search and diff checks passed. A broader local run passed 545 tests and reproduced 23
+  platform or dependency failures on the base revision. Type checking reported 18 diagnostics
+  for Linux-only APIs on macOS (T154). The canonical broad suites and container image build,
+  smoke, and final-image E2E remain for Linux CI.
 
 ## Synchronization
 

@@ -7,7 +7,7 @@ Markdown of an edited presentation, or promise visual round-trip fidelity.
 ## Pinned engine evidence
 
 The local `firecrawl-anydoc==0.2.5` binding was tested with the repository's
-`spikes/anydoc/corpus/pptx/pres.pptx` and a deterministic synthetic presentation containing an embedded
+`toolchain/anydoc/corpus/pptx/pres.pptx` and a deterministic synthetic presentation containing an embedded
 PNG. No external document or hosted service was used.
 
 The corpus contains two slides, a nested list, a table, grouped text, and two presenter notes.
@@ -98,7 +98,7 @@ Earlier failed runs remain diagnostic evidence and are not counted as passing va
 HTTP/CLI/browser contracts and both database profiles have focused and integration coverage. The
 release candidate passed its two-profile final-image qualification, and the historical T83 candidate
 `4888cd067e848c59162d801c2399be99b7f81969` also passed both profiles. See the
-[reverse qualification evidence](evidence/t73-reverse-conversion-qualification.md) for the retained
+[reverse qualification evidence](archive/evidence/t73-reverse-conversion-qualification.md) for the retained
 CI, local-suite, and inventory-snapshot qualification boundaries.
 
 This evidence does not select a public digest or establish publication. Use only verified published

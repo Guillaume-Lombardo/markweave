@@ -186,7 +186,7 @@ See [broker deployment](reverse-broker-deployment.md) for its principal, certifi
 and image requirements. Worker and broker policy, transport identity, and immutable attempt-image
 digest must agree; do not copy forward-conversion limits or use an unpublished image digest. Use only
 the exact release manifest for a published three-image set. See the
-[reverse qualification evidence](evidence/t73-reverse-conversion-qualification.md) for candidate
+[reverse qualification evidence](archive/evidence/t73-reverse-conversion-qualification.md) for candidate
 history and current validation boundaries.
 
 ## Optional Composer connections

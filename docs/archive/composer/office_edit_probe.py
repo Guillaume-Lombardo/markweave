@@ -19,9 +19,9 @@ from lxml import etree
 from pptx import Presentation
 from pypdf import PdfReader, PdfWriter
 
-ROOT = Path(__file__).resolve().parents[2]
-DOCX_FIXTURE = ROOT / "spikes/anydoc/corpus/docx/text.docx"
-PPTX_FIXTURE = ROOT / "spikes/anydoc/corpus/pptx/pres.pptx"
+ROOT = Path(__file__).resolve().parents[3]
+DOCX_FIXTURE = ROOT / "toolchain/anydoc/corpus/docx/text.docx"
+PPTX_FIXTURE = ROOT / "toolchain/anydoc/corpus/pptx/pres.pptx"
 
 
 def require(condition: bool, message: str) -> None:
@@ -288,7 +288,7 @@ def long_presentation_probe(fixture_dir: Path | None) -> dict[str, object]:
 def long_pdf_fixture(fixture_dir: Path | None) -> dict[str, object] | None:
     if fixture_dir is None:
         return None
-    source = PdfReader(ROOT / "spikes/anydoc/corpus/pdf/text.pdf")
+    source = PdfReader(ROOT / "toolchain/anydoc/corpus/pdf/text.pdf")
     writer = PdfWriter()
     for _ in range(50):
         for page in source.pages:

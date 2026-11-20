@@ -40,7 +40,7 @@ prerequisites, never passed rows.
 These commands record the T50 candidate revision and are kept unchanged as evidence. Since T97,
 the default local command also excludes `requires_podman` so that it passes on a host without
 Podman; for current revisions, use the canonical commands in
-[the local-development guide](../local-development.md).
+[the local-development guide](../../local-development.md).
 
 The repository's existing `workflow_dispatch` path is the executable complete-suite coordinator.
 After the exact candidate branch is pushed and will no longer change, dispatch it and bind the run
@@ -137,9 +137,9 @@ T50 is verified Done; the distinct T48 and T73 boundaries below remain explicit.
 - Selecting or publishing a new version requires a separate product-manager decision and release
   workflow.
 
-Continue through the [documentation index](../index.md), [CLI guide](../cli.md),
-[Python distribution guide](../python-distribution.md),
-[container deployment](../container-deployment.md), [configuration reference](../configuration.md),
-[recovery guide](../recovery.md), [upgrade guide](../upgrading.md),
-[release process](../releasing.md), [changelog](../../CHANGELOG.md),
-[security policy](../../SECURITY.md), and [support policy](../../SUPPORT.md).
+Continue through the [documentation index](../../index.md), [CLI guide](../../cli.md),
+[Python distribution guide](../../python-distribution.md),
+[container deployment](../../container-deployment.md), [configuration reference](../../configuration.md),
+[recovery guide](../../recovery.md), [upgrade guide](../../upgrading.md),
+[release process](../../releasing.md), [changelog](../../../CHANGELOG.md),
+[security policy](../../../SECURITY.md), and [support policy](../../../SUPPORT.md).

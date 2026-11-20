@@ -106,9 +106,9 @@ normative product, security, packaging, and compatibility contract before implem
   non-PDF models, PDF remains text-only, and scanned PDF, malformed, encrypted, unsupported, and
   resource-limit failures have stable upstream classes. The no-network UBI run used one CPU,
   512 MiB, 64 PIDs, a read-only root, no capabilities, and `RAYON_NUM_THREADS=1`; it observed no
-  document-engine child, GPU/ML runtime, or hosted fallback. Exact measurements, provenance, format
-  matrix, candidate package schema, and authorization contract are retained under
-  `spikes/anydoc/`.
+  document-engine child, GPU/ML runtime, or hosted fallback. The exact measurements are retained in
+  the [archived qualification](../docs/archive/anydoc/README.md). Provenance, the format matrix,
+  the candidate package schema, and the authorization contract are in `toolchain/anydoc/`.
 * 2026-09-03: Identified two independent feasibility blockers. The synchronous Python API supplies
   no cancellation token, deadline, or memory budget; cancelling a running Future leaves native work
   active, and a shared-process ceiling or forced exit cannot isolate one call. Lease publication

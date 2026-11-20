@@ -552,12 +552,12 @@ run_browser_test() {
       --volume "$composer_provider_directory/server.crt:/run/composer-e2e-ca.crt:ro,z"
       --volume "$composer_provider_directory/client.crt:/run/composer-e2e-client.crt:ro,z"
       --volume "$composer_provider_directory/client.key:/run/composer-e2e-client.key:ro,z"
-      --volume "$composer_corpus_directory:/spikes/anydoc/corpus:ro,z"
+      --volume "$composer_corpus_directory:/toolchain/anydoc/corpus:ro,z"
     )
   elif [[ "$test_file" == /e2e/browser-next-composer-typed.test.mjs ]]; then
     browser_credentials=(
       --volume "$composer_provider_directory/server.crt:/run/composer-e2e-ca.crt:ro,z"
-      --volume "$composer_corpus_directory:/spikes/anydoc/corpus:ro,z"
+      --volume "$composer_corpus_directory:/toolchain/anydoc/corpus:ro,z"
     )
   elif [[ "$test_file" == /e2e/browser-next-composer-resilience.test.mjs ]]; then
     browser_credentials=(
@@ -1460,9 +1460,9 @@ podman unshare chown "$runtime_uid:0" \
   "$composer_provider_directory/client.key" "$composer_key_file"
 cp -a "$repository/tests/e2e" "$browser_runtime_directory"
 for corpus_file in docx/text.docx pdf/text.pdf pptx/pres.pptx; do
-  install -D -m 0444 -- "$repository/spikes/anydoc/corpus/$corpus_file" \
+  install -D -m 0444 -- "$repository/toolchain/anydoc/corpus/$corpus_file" \
     "$composer_corpus_directory/$corpus_file"
-  test "$(sha256sum "$repository/spikes/anydoc/corpus/$corpus_file" | cut -d ' ' -f 1)" = \
+  test "$(sha256sum "$repository/toolchain/anydoc/corpus/$corpus_file" | cut -d ' ' -f 1)" = \
     "$(sha256sum "$composer_corpus_directory/$corpus_file" | cut -d ' ' -f 1)"
 done
 uv run python - "$repository/tests/integration/composer/test_typed_docx_fill.py" \

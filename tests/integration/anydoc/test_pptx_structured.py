@@ -28,7 +28,7 @@ from markweave.reversions.options import (
 from tests.pptx_fixtures import LIMITS, archive, parts, picture, relations, text_shape
 
 pytestmark = [pytest.mark.integration, pytest.mark.light_coverage]
-CORPUS = Path(__file__).parents[3] / "spikes/anydoc/corpus/pptx/pres.pptx"
+CORPUS = Path(__file__).parents[3] / "toolchain/anydoc/corpus/pptx/pres.pptx"
 
 
 def _png() -> bytes:

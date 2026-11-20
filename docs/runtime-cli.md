@@ -36,5 +36,5 @@ Containers and local operations use the supported `markweave serve` and `markwea
 commands. The completed entrypoint migration is recorded in
 [T38](../tickets/T38-container-cli-entrypoints.md) and
 [T54](../tickets/T54-publish-cli-entrypoint-release.md); the
-[old compatibility guidance](evidence/release-migration-history.md#retired-runtime-entrypoint-guidance)
+[old compatibility guidance](archive/evidence/release-migration-history.md#retired-runtime-entrypoint-guidance)
 is historical.

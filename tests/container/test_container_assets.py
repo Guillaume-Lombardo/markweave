@@ -548,7 +548,7 @@ def test_container_ci_always_stages_bounded_status_evidence() -> None:
 def test_t64_historical_cutover_evidence_is_retained() -> None:
     """Keep the completed migration gate as evidence, never as a current CI fixture."""
     evidence = json.loads(
-        Path("docs/evidence/t64-cutover-gates.json").read_text(encoding="utf-8")
+        Path("docs/archive/evidence/t64-cutover-gates.json").read_text(encoding="utf-8")
     )
 
     assert evidence["schema"] == "t64-cutover-gates-v2"

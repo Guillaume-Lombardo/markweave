@@ -44,7 +44,9 @@ def main() -> None:
         media_document.add_paragraph(f"After image {index}.")
     media_document.save(output / "composer-preview-media.docx")
 
-    source = Path(__file__).resolve().parents[4] / "spikes/anydoc/corpus/docx/text.docx"
+    source = (
+        Path(__file__).resolve().parents[4] / "toolchain/anydoc/corpus/docx/text.docx"
+    )
     namespace = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
     with (
         ZipFile(source) as input_archive,

@@ -65,7 +65,7 @@ TOOLCHAIN_WORK_STORAGE=disk \
     'LC_ALL=C sort --check /opt/toolchain/evidence/rpm-inventory.txt'
 "${CONTAINER_RUNTIME}" run --rm --network none --entrypoint /bin/cat "${IMAGE}" \
     /opt/toolchain/evidence/rpm-inventory.txt >"${RESULTS}/rpm-inventory.txt"
-cmp "${SCRIPT_DIR}/../../docs/evidence/t00-rpm-inventory.txt" \
+cmp "${SCRIPT_DIR}/../../docs/archive/evidence/t00-rpm-inventory.txt" \
     "${RESULTS}/rpm-inventory.txt"
 
 if "${SCRIPT_DIR}/run-validation.sh" --runtime "${CONTAINER_RUNTIME}" unsupported \

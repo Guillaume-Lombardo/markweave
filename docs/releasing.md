@@ -27,12 +27,12 @@ this exception. A later revision at the unchanged new version also fails until t
 has been adopted.
 
 Past release incidents, one-time transition exceptions, source SHAs, run IDs and immutable receipts
-are retained in [release history](evidence/release-migration-history.md#release-incidents-and-receipts-through-073).
+are retained in [release history](archive/evidence/release-migration-history.md#release-incidents-and-receipts-through-073).
 The Python-only `0.7.4` release and its one-time exact `0.7.4` to `0.7.5` continuation are recorded
-in the [0.7.4 incident record](evidence/release-migration-history.md#incomplete-074-container-release).
+in the [0.7.4 incident record](archive/evidence/release-migration-history.md#incomplete-074-container-release).
 Those exceptions do not authorize another release or a replay of a completed transition. The
 adopted `0.7.5` receipts are recorded in the
-[0.7.5 publication record](evidence/release-migration-history.md#published-075-corrective-release).
+[0.7.5 publication record](archive/evidence/release-migration-history.md#published-075-corrective-release).
 
 ## GitHub and PyPI trust configuration
 
@@ -220,7 +220,7 @@ The post-publication adoption pull request pins both exact public manifest diges
 quickstarts, and deployment evidence before unrelated integration resumes. The existing GHCR
 preflight, exact-copy verification, narrow external-writer race disclosure, permissions,
 concurrency, provenance, attachment, and anonymous verification rules apply separately to each
-package. See [the reviewed migration architecture](nextjs-migration-architecture.md) for the image
+package. See [the reviewed migration architecture](archive/nextjs-migration-architecture.md) for the image
 baseline, staged cutover, and release-level rollback contract.
 
 ## Linux release-command cleanup
@@ -260,15 +260,15 @@ is not included in the application image and does not change either storage prof
 
 ## 0.6.4 adoption before the 0.7.0 transition
 
-See the [historical release record](evidence/release-migration-history.md#powerpoint-era-release-adoption).
+See the [historical release record](archive/evidence/release-migration-history.md#powerpoint-era-release-adoption).
 
 ## 0.7.0 publication and image adoption
 
-See the [historical release record](evidence/release-migration-history.md#powerpoint-era-release-adoption).
+See the [historical release record](archive/evidence/release-migration-history.md#powerpoint-era-release-adoption).
 
 ## 0.7.1 publication and image adoption
 
-See the [historical release record](evidence/release-migration-history.md#powerpoint-era-release-adoption).
+See the [historical release record](archive/evidence/release-migration-history.md#powerpoint-era-release-adoption).
 
 ## Related guidance
 

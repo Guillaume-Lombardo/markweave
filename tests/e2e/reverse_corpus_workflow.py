@@ -26,7 +26,7 @@ from tests.e2e.service_workflow import (
     expect,
 )
 
-CORPUS = Path("spikes/anydoc/corpus")
+CORPUS = Path("toolchain/anydoc/corpus")
 MANIFEST = CORPUS / "manifest.json"
 _RESULT_LIMIT = 4_000_000
 _POLL_SECONDS = 0.1

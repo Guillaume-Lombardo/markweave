@@ -249,7 +249,7 @@ def _headers(etag: str, key: str) -> dict[str, str]:
 def _office_draft(
     harness: OfficeStepHarness, fixture: str = "docx/text.docx", media: str = _DOCX
 ) -> tuple[str, str, str, bytes]:
-    source = (_ROOT / "spikes/anydoc/corpus" / fixture).read_bytes()
+    source = (_ROOT / "toolchain/anydoc/corpus" / fixture).read_bytes()
     draft = harness.store.create_draft_with_source(
         harness.owner.id,
         source,

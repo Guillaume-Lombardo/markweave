@@ -55,9 +55,9 @@ verifies its exact digest, component graph and license coverage, and scans both 
 with Grype. CI retains the exact OCI archive, both vulnerability reports, all SBOMs, metadata, and
 their checksum manifest as one self-verifiable evidence bundle. The reviewed anydoc artifact,
 provenance, license and native-component inventory are recorded in
-`spikes/anydoc/supply-chain.json`; its MIT license and the compatibility adapter's full MIT notice
+`toolchain/anydoc/supply-chain.json`; its MIT license and the compatibility adapter's full MIT notice
 are copied into the attempt image. The machine-readable T70 inventory in
-`docs/evidence/t70-reverse-attempt-supply-chain.json` identifies the exact public Python surface and
+`docs/archive/evidence/t70-reverse-attempt-supply-chain.json` identifies the exact public Python surface and
 every mirrored upstream renderer behavior. Every anydoc upgrade must refresh the lock, provenance,
 embedded Cargo inventory, vulnerability scans, compatibility/parity suite, both image SBOM formats
 and this image validation before adoption.
@@ -76,5 +76,5 @@ Local builds and CI candidate bundles do not establish public publication. No pu
 digest is selected here; use only verified published release receipts. The documented image
 restrictions describe the container contract; exact-image CPU, memory, thread, and concurrency
 measurements do not establish a production envelope. See the
-[reverse qualification evidence](evidence/t73-reverse-conversion-qualification.md) for candidate
+[reverse qualification evidence](archive/evidence/t73-reverse-conversion-qualification.md) for candidate
 history and validation boundaries.

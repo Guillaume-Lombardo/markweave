@@ -16,7 +16,7 @@ from markweave.reversions.errors import ReverseConversionError, ReverseErrorCate
 
 pytestmark = [pytest.mark.integration, pytest.mark.light_coverage]
 
-CORPUS = Path(__file__).parents[3] / "spikes" / "anydoc" / "corpus"
+CORPUS = Path(__file__).parents[3] / "toolchain" / "anydoc" / "corpus"
 _UNSAFE_DOCX_TARGET = b'Target="../../fixture-src/sibling.odt"'
 _SAFE_LINK = b"https://example.test/safe-url"
 
