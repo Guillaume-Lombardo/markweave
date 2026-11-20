@@ -27,7 +27,8 @@ delivered features and tests; they receive only bug fixes, security fixes, depen
 regression fixes, and removals. Any new capability needs a new ticket with an explicit owner
 decision.
 
-- **Composer** stays optional and disabled unless an administrator configures an LLM connection.
+- **Composer** stays optional; its model-assisted operations need a configured, enabled, and
+  authorized LLM connection, and retained drafts and revisions stay accessible without one.
   Delivered: guided drafts, reviewed proposals, revisions, private previews, author knowledge,
   typed templates, DOCX and PPTX text edits, model-proposed text edits, the permissioned cited
   reference library, and paragraph-style, slide-order, and image-replacement structure edits.

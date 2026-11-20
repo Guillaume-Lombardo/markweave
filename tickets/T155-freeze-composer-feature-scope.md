@@ -24,7 +24,8 @@ new ticket with an explicit owner decision. No code is removed, and all Composer
 - The product specification (section 3.7, decision D16) and `AGENTS.md` state the freeze.
 - Open Composer feature tickets (T92 remaining scope, T93) are moved out of In Progress with a
   frozen note; their delivered parts stay documented.
-- Composer remains optional and disabled unless an administrator configures an LLM connection.
+- Composer remains optional: model-assisted operations still require a configured, enabled, and
+  authorized LLM connection, and retained drafts, revisions, and exports stay accessible without one.
 
 ## Dependencies
 

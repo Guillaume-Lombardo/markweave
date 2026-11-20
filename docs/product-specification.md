@@ -473,8 +473,8 @@ download capability, and every administrator access follows the existing audit c
 
 ### 3.6 Composer workspace (T88–T93)
 
-Composer is feature-frozen by decision D16 in section 3.7. Requirements below that its delivered
-scope does not yet meet are paused, not dropped.
+Composer is feature-frozen by decision D16 in section 3.7. The scope D16 lists as paused is not
+dropped; every requirement below that applies to a delivered capability still holds.
 
 Composer is an optional guided workspace adjacent to Convert. The header has an explicit English
 **Convert | Composer** selector near the logo. Convert retains the independent `2docx`, `2pptx`,
@@ -760,14 +760,17 @@ On 2026-11-20 the owner restated the core product as Markdown to DOCX, PDF, and 
 amended D15, and added D16. The **freeze rule** applies to both optional workspaces: only bug
 fixes, security fixes, dependency updates that pass the existing qualification, regression fixes,
 and removals are accepted; any new capability requires a new ticket with an explicit owner
-decision. The freeze removes no code, and every existing test of a frozen workspace stays in CI.
+decision. The freeze itself removes no code or test; a later approved removal ticket (such as T107)
+may delete the tests that belong only to the code it removes.
 
 - **D16 – Composer freeze (T155).** Composer is frozen under the freeze rule at its delivered
   scope: T89–T91 and the T92 increments merged on main (DOCX and PPTX text edits, model-proposed
   text edits with browser and CLI controls, the permissioned cited library, and paragraph-style,
   slide-order, and image-replacement structure edits). The remaining T92 scope and the T93
-  real-provider qualification are paused; the 0.8.0 release does not wait for T93. Composer stays optional and disabled unless an administrator
-  configures an LLM connection, and ordinary conversion never depends on it.
+  real-provider qualification are paused; the 0.8.0 release does not wait for T93. Composer stays
+  optional: model-assisted operations still require a configured, enabled, and authorized LLM
+  connection as section 2 states, retained drafts, revisions, and exports stay accessible without
+  one, and ordinary conversion never depends on it.
 
 ## 4. Input contract
 
@@ -1192,7 +1195,7 @@ Before the first public release, configure a PyPI pending Trusted Publisher for 
 | T90 | Deliver Convert/Composer navigation, chat, proposals, exact-revision previews, history, diffs, and restore | T89 |
 | T91 | Add permissioned structured author knowledge and typed repeating document templates | T90 |
 | T92 | Deliver qualified structured DOCX/PPTX editing tools and a cited, permissioned document library (remaining scope frozen by D16) | T91 |
-| T93 | Complete two-profile/final-image Composer qualification, publish minor 0.8.0, adopt exact published receipts, and deploy the matched public set (frozen by D16) | T92 |
+| T93 | Complete two-profile/final-image Composer qualification, publish minor 0.8.0, adopt exact published receipts, and deploy the matched public set (Composer qualification frozen by D16; 0.8.0 ships without it) | T92 |
 | T96 | Record the owner scope decisions D1-D15 that the 2026-10-09 findings require before implementation | — |
 | T97 | Mark Podman-dependent tests and repair the default local test command | — |
 | T98 | Make the local Python test suite fast enough for iteration without weakening coverage gates | T97 |
