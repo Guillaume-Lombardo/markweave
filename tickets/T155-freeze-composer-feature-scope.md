@@ -43,8 +43,9 @@ new ticket with an explicit owner decision. No code is removed, and all Composer
   `AGENTS.md` gains a scope-freeze rule. T92 and T93 move to Backlog with a frozen note; T94 was delivered by PR #271 on 2026-09-26 and its
   mirror is synchronized to Done;
   their delivered progress is unchanged. README and `docs/index.md` record both freezes. The
-  existing Composer guards are unchanged: the workspace stays disabled until an administrator
-  configures an LLM connection. Documentation only; no code or test is removed.
+  existing Composer guards are unchanged: model-assisted operations need a configured, enabled,
+  and authorized LLM connection, and authorized users keep access to retained drafts, revisions,
+  and exports without one. Documentation only; no code or test is removed.
 
 ## Synchronization
 

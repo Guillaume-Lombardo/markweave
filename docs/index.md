@@ -28,7 +28,8 @@ regression fixes, and removals. Any new capability needs a new ticket with an ex
 decision.
 
 - **Composer** stays optional; its model-assisted operations need a configured, enabled, and
-  authorized LLM connection, and retained drafts and revisions stay accessible without one.
+  authorized LLM connection, and authorized users keep access to retained drafts,
+  revisions, and exports without one.
   Delivered: guided drafts, reviewed proposals, revisions, private previews, author knowledge,
   typed templates, DOCX and PPTX text edits, model-proposed text edits, the permissioned cited
   reference library, and paragraph-style, slide-order, and image-replacement structure edits.
