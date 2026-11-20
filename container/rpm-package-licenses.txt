@@ -310,7 +310,6 @@ libxcrypt|x86_64|LGPLv2+ and BSD and Public Domain
 libxkbcommon|x86_64|MIT
 libxml2-devel|x86_64|MIT
 libxml2|x86_64|MIT
-libxshmfence|x86_64|MIT
 libxslt-devel|x86_64|MIT
 libxslt|x86_64|MIT
 libyaml|x86_64|MIT
@@ -328,8 +327,6 @@ man-db|x86_64|GPLv2+ and GPLv3+
 mariadb-connector-c-config|noarch|LGPLv2+
 mariadb-connector-c-devel|x86_64|LGPLv2+
 mariadb-connector-c|x86_64|LGPLv2+
-mesa-dri-drivers|x86_64|MIT AND BSD-3-Clause AND SGI-B-2.0
-mesa-filesystem|x86_64|MIT AND BSD-3-Clause AND SGI-B-2.0
 mesa-libgbm|x86_64|MIT AND BSD-3-Clause AND SGI-B-2.0
 mod_auth_gssapi|x86_64|MIT
 mod_http2|x86_64|ASL 2.0
@@ -512,7 +509,6 @@ sed|x86_64|GPLv3+
 setup|noarch|Public Domain
 shadow-utils|x86_64|BSD and GPLv2+
 source-highlight|x86_64|GPLv3+
-spirv-tools-libs|x86_64|ASL 2.0
 sqlite-devel|x86_64|Public Domain
 sqlite-libs|x86_64|Public Domain
 sqlite|x86_64|Public Domain

@@ -305,6 +305,32 @@ def test_rpm_inventory_policy_accepts_only_version_drift(
         assert "RPM package or license differs" in result.stderr
 
 
+def test_rpm_inventory_policy_rejects_an_empty_baseline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    baseline = tmp_path / "expected"
+    baseline.write_text("", encoding="utf-8")
+    rpm = tmp_path / "rpm"
+    rpm.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    rpm.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path), prepend=os.pathsep)
+
+    result = subprocess.run(
+        [
+            "bash",
+            "container/check-rpm-inventory.sh",
+            str(baseline),
+            str(tmp_path / "inventory"),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+    assert "inventory is empty" in result.stderr
+
+
 def test_recovery_smoke_is_a_required_ci_and_release_final_image_gate() -> None:
     """Both reviewed final-image paths execute the complete recovery contract."""
 

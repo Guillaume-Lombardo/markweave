@@ -545,6 +545,7 @@ def _validate_pdf(data: bytes, limits: PdfLimits) -> tuple[PdfPage, ...]:
     stream_limit = limits.max_pdf_decoded_stream_bytes
     try:
         with apply_configuration(
+            disable_legacy_handling=True,
             maximum_declared_stream_length=stream_limit,
             array_based_stream_maximum_output_length=stream_limit,
             image_maximum_buffer_size=stream_limit,

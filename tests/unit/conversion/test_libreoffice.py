@@ -13,6 +13,7 @@ from typing import Any, cast
 
 import pytest
 from pypdf import PdfWriter, get_configuration
+from pypdf import filters as pypdf_filters
 from pypdf.errors import LimitReachedError, PyPdfError
 from pypdf.generic import (
     ContentStream,
@@ -673,6 +674,26 @@ def test_pdf_parser_enforces_the_declared_stream_length() -> None:
     stream.set_data(b"q Q\n" * 25)
     page.replace_contents(stream)
     writer.write(output)
+
+    assert libreoffice._validate_pdf(output.getvalue(), LIMITS)
+    with pytest.raises(ConversionError) as captured:
+        libreoffice._validate_pdf(
+            output.getvalue(), replace(LIMITS, max_pdf_decoded_stream_bytes=99)
+        )
+    assert captured.value.code is ConversionErrorCode.PDF_LIMIT_EXCEEDED
+
+
+def test_pdf_stream_limit_ignores_legacy_pypdf_constants(
+    mocker: MockerFixture,
+) -> None:
+    output = io.BytesIO()
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=612, height=792)
+    stream = ContentStream(None, None)
+    stream.set_data(b"q Q\n" * 25)
+    page.replace_contents(stream)
+    writer.write(output)
+    mocker.patch.object(pypdf_filters, "ZLIB_MAX_OUTPUT_LENGTH", 10**12)
 
     assert libreoffice._validate_pdf(output.getvalue(), LIMITS)
     with pytest.raises(ConversionError) as captured:
