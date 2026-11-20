@@ -2,7 +2,7 @@
 ticket: T100
 linear_id: G1L-619
 linear_url: https://linear.app/g1lom/issue/G1L-619/t100-automate-published-image-receipt-adoption-after-a-release
-status: Backlog
+status: In Progress
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -29,12 +29,13 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 
 ## Blocking points
 
-- A pull request created with the default `GITHUB_TOKEN` does not trigger the required CI workflows; the owner chose a dedicated GitHub App installed only on this repository with `contents: write` and `pull-requests: write` (2026-10-09). The owner must create it and store its credentials as repository secrets before implementation.
+- Repository settings currently forbid Actions from creating pull requests. Fully automatic PR creation remains a follow-up pending an owner decision on a dedicated GitHub App or PAT. The existing `GITHUB_TOKEN` can prepare the branch and dispatch CI, and a maintainer opens the pull request.
 
 ## Progress
 
 - 2026-10-09: Created in Linear and mirrored here from the owner-accepted repository analysis.
   Not started.
+- 2026-11-20: Added verified receipt adoption for Compose and the quickstart pins, branch CI dispatch, and a maintainer command in the release summary. Added a read-only dry run and tests for exact edits, incomplete evidence, and branch retries.
 
 ## Synchronization
 

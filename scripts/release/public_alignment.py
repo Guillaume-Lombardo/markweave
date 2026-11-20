@@ -361,6 +361,12 @@ def _json_response(
         url,
         headers={"Accept": "application/json", **(headers or {})},
     )
+    return _json_object(response, url, maximum_bytes=maximum_bytes)
+
+
+def _json_object(
+    response: HttpResponse, url: str, *, maximum_bytes: int
+) -> dict[str, Any]:
     if response.status != HTTP_OK or len(response.body) > maximum_bytes:
         raise AlignmentError(f"public endpoint returned an invalid response: {url}")
     try:
@@ -411,28 +417,31 @@ def _release_identity(transport: Transport, *, version: str) -> tuple[str, list[
     return source_sha, assets
 
 
-def _release_receipt(
+def _release_asset(
     transport: Transport,
     *,
     version: str,
-    expected_digest: str,
-    role: str | None = None,
-) -> None:
-    source_sha, assets = _release_identity(transport, version=version)
-    tag = f"v{version}"
-    receipt_name = (
-        f"{role}-registry-publication.json" if role else "registry-publication.json"
-    )
-    receipt_url = f"{GITHUB_RELEASES}/{tag}/{receipt_name}"
-    receipts = [
+    assets: list[Any],
+    name: str,
+    maximum_bytes: int,
+) -> tuple[dict[str, Any], bytes]:
+    url = f"{GITHUB_RELEASES}/v{version}/{name}"
+    matches = [
         asset
         for asset in assets
-        if isinstance(asset, dict) and asset.get("name") == receipt_name
+        if isinstance(asset, dict) and asset.get("name") == name
     ]
-    if len(receipts) != 1 or receipts[0].get("browser_download_url") != receipt_url:
-        raise AlignmentError("GitHub Release has no unique trusted publication receipt")
-    receipt = _json_response(transport, receipt_url, maximum_bytes=MAX_RECEIPT_BYTES)
+    if len(matches) != 1 or matches[0].get("browser_download_url") != url:
+        raise AlignmentError(f"GitHub Release has no unique trusted {name} asset")
+    response = transport.request(url, headers={"Accept": "application/json"})
+    return _json_object(response, url, maximum_bytes=maximum_bytes), response.body
+
+
+def _receipt_digest(
+    receipt: Mapping[str, Any], *, source_sha: str, version: str
+) -> str:
     archive_digest = receipt.get("oci_archive_manifest_digest")
+    registry_digest = receipt.get("registry_manifest_digest")
     if (
         set(receipt)
         != {
@@ -443,13 +452,39 @@ def _release_receipt(
         }
         or not isinstance(archive_digest, str)
         or DIGEST.fullmatch(archive_digest) is None
+        or not isinstance(registry_digest, str)
+        or DIGEST.fullmatch(registry_digest) is None
     ):
         raise AlignmentError("GitHub publication receipt has an invalid shape")
+    if (receipt.get("source_sha"), receipt.get("version")) != (source_sha, version):
+        raise AlignmentError(
+            "GitHub publication receipt does not match the public release"
+        )
+    return registry_digest
+
+
+def _release_receipt(
+    transport: Transport,
+    *,
+    version: str,
+    expected_digest: str,
+    role: str | None = None,
+) -> None:
+    source_sha, assets = _release_identity(transport, version=version)
+    receipt_name = (
+        f"{role}-registry-publication.json" if role else "registry-publication.json"
+    )
+    receipt, _ = _release_asset(
+        transport,
+        version=version,
+        assets=assets,
+        name=receipt_name,
+        maximum_bytes=MAX_RECEIPT_BYTES,
+    )
     if (
-        receipt.get("registry_manifest_digest"),
-        receipt.get("source_sha"),
-        receipt.get("version"),
-    ) != (expected_digest, source_sha, version):
+        _receipt_digest(receipt, source_sha=source_sha, version=version)
+        != expected_digest
+    ):
         raise AlignmentError(
             "GitHub publication receipt does not match the public release"
         )

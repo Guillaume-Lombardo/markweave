@@ -215,3 +215,60 @@ jobs:
       version: ${{ needs.detect.outputs.version }}
       tag: ${{ needs.detect.outputs.tag }}
       source-sha: ${{ needs.detect.outputs.source-sha }}
+
+  adopt-receipts:
+    needs: [detect, publish, container]
+    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.changed == 'true' && needs.publish.result == 'success' && needs.container.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Check out the exact published source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.detect.outputs.source-sha }}
+          persist-credentials: false
+      - name: Set up Python 3.14
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: .python-version
+          check-latest: false
+      - name: Set up uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.12.1"
+          enable-cache: false
+      - name: Verify receipts, prepare the adoption branch, and dispatch CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.detect.outputs.version }}
+          SOURCE_SHA: ${{ needs.detect.outputs.source-sha }}
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: credential.https://github.com.helper
+          GIT_CONFIG_VALUE_0: "!gh auth git-credential"
+        run: >-
+          uv run --locked python -m scripts.release.adopt_receipts
+          --version "$RELEASE_VERSION" --source-sha "$SOURCE_SHA"
+
+  report-incomplete-publication:
+    needs: [detect, publish, container]
+    if: ${{ !cancelled() && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.detect.result == 'failure' || (needs.detect.outputs.changed == 'true' && (needs.publish.result != 'success' || needs.container.result != 'success'))) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Summarize why adoption was skipped
+        env:
+          DETECT_RESULT: ${{ needs.detect.result }}
+          PYPI_RESULT: ${{ needs.publish.result }}
+          GHCR_RESULT: ${{ needs.container.result }}
+        run: |
+          {
+            echo '### Release receipt adoption skipped'
+            echo
+            echo 'Publication did not complete. No adoption branch was created.'
+            printf '\n- Version detection: %s\n- PyPI publication: %s\n- GHCR publication and evidence: %s\n' \
+              "$DETECT_RESULT" "$PYPI_RESULT" "$GHCR_RESULT"
+          } >> "$GITHUB_STEP_SUMMARY"

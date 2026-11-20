@@ -151,9 +151,7 @@ def test_composer_candidate_overlay_does_not_change_published_quickstart(
         return json.loads(result.stdout)
 
     published = render([])["services"]["markweave"]
-    assert published["image"].startswith(
-        "ghcr.io/guillaume-lombardo/md-converter:0.7.5@sha256:"
-    )
+    assert published["image"] == PUBLISHED_BACKEND
     assert "MARKWEAVE_COMPOSER_ENABLED" not in published["environment"]
     assert not _load_rendered_settings(
         monkeypatch, published["environment"]

@@ -230,7 +230,7 @@ CONTAINER_PAIR_PUBLISHER_CANONICAL_DIGEST = (
 )
 RELEASE_IMAGE_ROLES = ("backend", "frontend", "reverse_attempt")
 PRODUCTION_RELEASE_CANONICAL_DIGEST = (
-    "6b06c62e79b3c8599ea4c5e94faa68f559ba4c81aa5d795a5d92ae70128a5ab4"
+    "d01e5beb982c9f88fcd2f8d87e82f5124c09e99fcdf07ae9a3a1f4b19b3a59e8"
 )
 
 
@@ -2703,6 +2703,8 @@ def validate_production_release_workflow_text(  # noqa: PLR0912, PLR0915
         "create-release",
         "publish",
         "container",
+        "adopt-receipts",
+        "report-incomplete-publication",
     }
     if set(jobs) != expected_jobs:
         errors.append("automatic release jobs do not match the exact contract")
@@ -2729,6 +2731,8 @@ def validate_production_release_workflow_text(  # noqa: PLR0912, PLR0915
     expected_permissions = {
         "create-release": {"contents": "write"},
         "publish": {"id-token": "write"},
+        "adopt-receipts": {"contents": "write", "actions": "write"},
+        "report-incomplete-publication": {},
         "container": {
             "actions": "read",
             "attestations": "write",
@@ -2774,6 +2778,23 @@ def validate_production_release_workflow_text(  # noqa: PLR0912, PLR0915
         )
     if re.search(r"\bsecrets\b", text, re.IGNORECASE):
         errors.append("automatic release workflow must not access stored secrets")
+    if any(
+        "continue-on-error" in item
+        for name, job in jobs.items()
+        for item in [(_mapping(job) or {}), *_job_steps(workflow, name)]
+    ):
+        errors.append("automatic release jobs and steps must fail closed")
+    adoption = _mapping(jobs.get("adopt-receipts")) or {}
+    condition = str(adoption.get("if", ""))
+    if (
+        adoption.get("needs") != ["detect", "publish", "container"]
+        or "needs.publish.result == 'success'" not in condition
+        or "needs.container.result == 'success'" not in condition
+        or re.search(r"\b(?:always|failure|cancelled)\(\)", condition)
+    ):
+        errors.append(
+            "receipt adoption must wait for successful PyPI and GHCR publication"
+        )
     required_contracts = (
         "scripts.release.detect_version",
         "scripts.release.check_changelog",
@@ -2790,6 +2811,7 @@ def validate_production_release_workflow_text(  # noqa: PLR0912, PLR0915
         '--version "$RELEASE_VERSION"',
         "./.github/workflows/container-qualify.yml",
         "./.github/workflows/container-release.yml",
+        "scripts.release.adopt_receipts",
     )
     for required in required_contracts:
         if required not in text:

@@ -99,21 +99,33 @@ repositories.
    before pushing provenance; it does not reuse or persist the publication job's credentials.
 
 After the version pull request is merged, suspend unrelated integrations and monitor the automatic
-release workflow on `main` to a terminal result. If publication succeeds, immediately open the
-follow-up pull request from the resulting evidence: copy the exact `registry_manifest_digest` from
-`registry-publication.json` into the Compose `version@sha256:...` reference, verify it anonymously
-against GHCR, perform any release-owned public command migration, and run the documented
-standalone and distributed quickstarts against that exact digest. The follow-up must restore full
-alignment before unrelated work is integrated. If publication fails, investigate or use the
-bounded recovery path below; never infer a digest or point Compose at an unpublished tag.
+release workflow on `main` to a terminal result. After both publications succeed, the
+`adopt-receipts` job checks the public PyPI version, reads the three registry receipts attached to
+the exact GitHub Release, and checks their bindings in `release-images.json` against the source SHA
+and frontend lockfile. It verifies every tag anonymously against GHCR before updating the backend
+and frontend pins in Compose, both quickstarts, and their test expectations. The reverse-attempt
+receipt is verified and included in the pull request evidence for
+[native-broker deployments](reverse-broker-deployment.md).
 
-For a schema-2 release, verify `release-images.json` binds backend, frontend and reverse-attempt
-receipts to the same version, source SHA and frontend lockfile. Adopt the backend/frontend digests
-in the existing quickstarts and the reverse-attempt digest in the applicable native-broker
-deployment configuration. Verify all three registry manifests anonymously. The ordinary quickstarts
-remain reverse-disabled until the documented external broker is explicitly configured; publication
-does not add a broker container or expose a runtime socket. See the
-[broker deployment guide](reverse-broker-deployment.md) for that boundary.
+Run the `gh pr create` command printed in the job summary to open `chore/adopt-release-<version>`
+against `main`. The branch CI dispatch provides evidence. Opening the pull request triggers normal
+PR CI for the required `CI / gate` check. Complete any release-owned quickstart command migration
+in the same pull request and run the documented standalone and distributed quickstarts against the
+exact pins. Obtain independent review and restore alignment before integrating unrelated work.
+
+A failed or partial publication leaves no adoption branch and reports the publication results in
+the summary. Rerunning the adoption job reuses an identical branch and dispatches CI if its commit
+has no dispatch yet. A differing branch fails without being overwritten. To review the generated
+diff from a clean checkout of the release source, use:
+
+```bash
+uv run --locked python -m scripts.release.adopt_receipts \
+  --version VERSION --source-sha RELEASE_SOURCE_SHA --dry-run
+```
+
+If publication fails, investigate or use the bounded recovery path below. If a separate recovery
+workflow completes publication, use the recovered evidence to prepare the follow-up manually.
+Never pre-pin an unpublished image or infer its registry digest.
 
 If GitHub loses a run before creating any job, first prove that every external release surface is
 absent and attempt the normal, forced, and platform-advised cancellation or rerun paths. Record the
