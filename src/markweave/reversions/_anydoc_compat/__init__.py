@@ -1,4 +1,4 @@
-"""Fail-closed compatibility boundary for firecrawl-anydoc 0.2.4.
+"""Fail-closed compatibility boundary for firecrawl-anydoc 0.2.5.
 
 This private package is the only Markweave code allowed to depend on anydoc's concrete
 ``Document`` shape or to mirror its private Markdown renderer. It consumes one
@@ -27,6 +27,7 @@ import markweave.reversions._anydoc_compat.escaping as _escaping
 import markweave.reversions._anydoc_compat.inlines as _inlines
 import markweave.reversions._anydoc_compat.render_context as _render_context
 import markweave.reversions._anydoc_compat.traversal as _traversal
+from markweave.reversions import ANYDOC_VERSION
 from markweave.reversions.assets import AssetSource
 from markweave.reversions.errors import ReverseErrorCategory, reject
 from markweave.reversions.formats import FormatAdmission, FormatFamily, admit_format
@@ -85,7 +86,7 @@ _format_row = _blocks._format_row
 _render_cell = _blocks._render_cell
 _cell_block_text = _blocks._cell_block_text
 
-PINNED_ANYDOC_VERSION = "0.2.4"
+PINNED_ANYDOC_VERSION = ANYDOC_VERSION
 
 UPSTREAM_ANYDOC_COMMIT = "42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c"
 

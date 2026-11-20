@@ -1108,7 +1108,7 @@ def test_in_process_reverse_repository_rejects_invalid_result_metadata(
             ReversionTraceMetadata(
                 1,
                 "firecrawl-anydoc",
-                "0.2.4",
+                "0.2.5",
                 FormatFamily.WORD,
                 "docx",
                 ReverseOutputMode.MARKDOWN_WITH_ASSETS,
@@ -1122,7 +1122,7 @@ def test_in_process_reverse_repository_rejects_invalid_result_metadata(
             ReversionTraceMetadata(
                 1,
                 "firecrawl-anydoc",
-                "0.2.4",
+                "0.2.5",
                 FormatFamily.CSV,
                 "csv",
                 ReverseOutputMode.MARKDOWN,

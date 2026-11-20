@@ -69,6 +69,12 @@ updates, and surface failures on the default branch.
   Mermaid CLI 12.2.0 rendered the fixture with local Chrome and the strict configuration.
   Final-image builds, supply-chain scans, E2E, and hosted document-engine tests
   remain subject to pull-request CI. The issue-write job is eligible on trusted main runs.
+- 2026-11-20: Pinned the reverse-attempt image to `firecrawl-anydoc==0.2.5` in PR #339.
+  Verified the PyPI wheel, its embedded Cargo SBOM, and the Apache-2.0 election for
+  `constant_time_eq`. The SBOM contains `zip` 9.5.1, which fixes GHSA-m665-v7pm-7grj,
+  and Grype matched no advisories. On Linux, 1,062 targeted tests, the type check, and a
+  corpus parse through the product adapter on the pinned UBI base passed. PR CI qualifies
+  the final images and E2E workflows.
 
 ## Synchronization
 

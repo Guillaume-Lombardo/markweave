@@ -13,6 +13,9 @@ private reporting, and the [support policy](SUPPORT.md) for help with a publishe
 ## [Unreleased]
 
 - Accept UBI RPM version updates within the reviewed package and license baseline, refresh Python and Mermaid dependencies, and track main CI failures in one GitHub issue.
+- Update the reverse-attempt image to `firecrawl-anydoc==0.2.5` and Rust `zip` 9.5.1 to
+  address GHSA-m665-v7pm-7grj. Drain queued and running reverse jobs before switching to the
+  matched release images so jobs complete with the engine version they recorded at submission.
 
 <a id="release-0-7-5"></a>
 

@@ -27,7 +27,7 @@ def test_manifest_has_one_exact_canonical_serialization() -> None:
         ManifestResult("markdown_with_assets", 2, 17, 1),
     )
     assert content == (
-        b'{"schema_version":1,"engine":{"name":"firecrawl-anydoc","version":"0.2.4"},'
+        b'{"schema_version":1,"engine":{"name":"firecrawl-anydoc","version":"0.2.5"},'
         b'"source":{"family":"word","detected_format":"docx"},"result":'
         b'{"mode":"markdown_with_assets","asset_count":2,"asset_bytes":17,'
         b'"unavailable_asset_count":1},"execution":{"local":true,"ocr":false,'

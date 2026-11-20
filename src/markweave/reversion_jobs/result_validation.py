@@ -298,6 +298,7 @@ def validate_reverse_result(
 
     if (
         type(job) is not ReversionJob
+        or ANYDOC_COMPONENT not in job.component_versions
         or type(mode) is not ReverseOutputMode
         or type(content) is not bytes
         or not content

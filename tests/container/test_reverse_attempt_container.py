@@ -25,6 +25,7 @@ from scripts.container.verify_anydoc_cargo_sbom import (
 
 ROOT = Path(__file__).parents[2]
 CONTAINERFILE = ROOT / "containers/reverse-attempt/Containerfile"
+SUPPLY_CHAIN_EVIDENCE = ROOT / "docs/evidence/t70-reverse-attempt-supply-chain.json"
 
 
 @pytest.mark.unit
@@ -37,7 +38,7 @@ def test_reverse_attempt_dependency_is_exact_and_excluded_from_application_all()
     assert extras["reverse-attempt"] == [
         "cairosvg>=2.8,<3",
         "defusedxml>=0.7,<1",
-        "firecrawl-anydoc==0.2.4",
+        "firecrawl-anydoc==0.2.5",
         "pillow>=13,<14",
         "tinycss2>=1.5,<2",
     ]
@@ -47,16 +48,22 @@ def test_reverse_attempt_dependency_is_exact_and_excluded_from_application_all()
 
 @pytest.mark.unit
 def test_reverse_attempt_lock_pins_reviewed_linux_wheel() -> None:
-    lock = (ROOT / "uv.lock").read_text(encoding="utf-8")
+    lock = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
     evidence = json.loads(
         (ROOT / "spikes/anydoc/supply-chain.json").read_text(encoding="utf-8")
-    )
+    )["product_pin"]
     wheel = evidence["linux_x86_64_wheel"]
+    review = json.loads(SUPPLY_CHAIN_EVIDENCE.read_text(encoding="utf-8"))["anydoc"]
 
-    assert 'name = "firecrawl-anydoc"' in lock
-    assert 'version = "0.2.4"' in lock
-    assert wheel["filename"] in lock
-    assert f'hash = "sha256:{wheel["sha256"]}"' in lock
+    package = next(p for p in lock["package"] if p["name"] == "firecrawl-anydoc")
+    assert package["version"] == evidence["version"] == review["version"] == "0.2.5"
+    assert wheel["sha256"] == review["linux_x86_64_wheel_sha256"]
+    assert evidence["source_commit"] == review["source_commit"]
+    assert any(
+        item["url"].endswith("/" + wheel["filename"])
+        and item["hash"] == f"sha256:{wheel['sha256']}"
+        for item in package["wheels"]
+    )
 
 
 @pytest.mark.unit
@@ -244,11 +251,7 @@ def test_reverse_attempt_evidence_profile_binds_the_cargo_scan(tmp_path: Path) -
 
 @pytest.mark.unit
 def test_supply_chain_inventory_tracks_exact_compatibility_surface() -> None:
-    inventory = json.loads(
-        (ROOT / "docs/evidence/t70-reverse-attempt-supply-chain.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    inventory = json.loads(SUPPLY_CHAIN_EVIDENCE.read_text(encoding="utf-8"))
 
     assert inventory["compatibility_adapter"][
         "mirrored_upstream_renderer_behaviors"

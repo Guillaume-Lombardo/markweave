@@ -6,7 +6,7 @@ Markdown of an edited presentation, or promise visual round-trip fidelity.
 
 ## Pinned engine evidence
 
-The local `firecrawl-anydoc==0.2.4` binding was tested with the repository's
+The local `firecrawl-anydoc==0.2.5` binding was tested with the repository's
 `spikes/anydoc/corpus/pptx/pres.pptx` and a deterministic synthetic presentation containing an embedded
 PNG. No external document or hosted service was used.
 

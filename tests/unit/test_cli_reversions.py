@@ -91,7 +91,7 @@ def _job(state: str = "queued", *, step: str | None = None) -> dict[str, object]
         "source_family": "word",
         "source_extension": ".docx",
         "detected_format": "docx",
-        "component_versions": [["firecrawl-anydoc", "0.2.4"]],
+        "component_versions": [["firecrawl-anydoc", "0.2.5"]],
         "correlation_id": CORRELATION_ID,
         "state": state,
         "step": step or ("complete" if state == "succeeded" else state),
