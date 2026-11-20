@@ -765,8 +765,8 @@ decision. The freeze removes no code, and every existing test of a frozen worksp
 - **D16 – Composer freeze (T155).** Composer is frozen under the freeze rule at its delivered
   scope: T89–T91 and the T92 increments merged on main (DOCX and PPTX text edits, model-proposed
   text edits with browser and CLI controls, the permissioned cited library, and paragraph-style,
-  slide-order, and image-replacement structure edits). The remaining T92 scope, T93, and the open
-  T94 acceptance are paused. Composer stays optional and disabled unless an administrator
+  slide-order, and image-replacement structure edits). The remaining T92 scope and the T93
+  real-provider qualification are paused; the 0.8.0 release does not wait for T93. Composer stays optional and disabled unless an administrator
   configures an LLM connection, and ordinary conversion never depends on it.
 
 ## 4. Input contract

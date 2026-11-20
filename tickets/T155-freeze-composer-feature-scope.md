@@ -22,7 +22,7 @@ new ticket with an explicit owner decision. No code is removed, and all Composer
 ## Acceptance criteria
 
 - The product specification (section 3.7, decision D16) and `AGENTS.md` state the freeze.
-- Open Composer feature tickets (T92 remaining scope, T93, T94) are moved out of In Progress with a
+- Open Composer feature tickets (T92 remaining scope, T93) are moved out of In Progress with a
   frozen note; their delivered parts stay documented.
 - Composer remains optional and disabled unless an administrator configures an LLM connection.
 
@@ -39,7 +39,8 @@ new ticket with an explicit owner decision. No code is removed, and all Composer
 - 2026-11-20: Created from the owner decision and mirrored here. Started on
   `docs/T155-freeze-composer-and-2md` together with T108. Specification section 3.7 now records
   the shared freeze rule, amends D15, and adds D16; sections 3.5, 3.6, 13, and 14 point at them.
-  `AGENTS.md` gains a scope-freeze rule. T92, T93, and T94 move to Backlog with a frozen note;
+  `AGENTS.md` gains a scope-freeze rule. T92 and T93 move to Backlog with a frozen note; T94 was delivered by PR #271 on 2026-09-26 and its
+  mirror is synchronized to Done;
   their delivered progress is unchanged. README and `docs/index.md` record both freezes. The
   existing Composer guards are unchanged: the workspace stays disabled until an administrator
   configures an LLM connection. Documentation only; no code or test is removed.
