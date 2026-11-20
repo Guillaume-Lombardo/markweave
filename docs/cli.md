@@ -193,7 +193,7 @@ The advertised extensions and upload limit come from the service. Submission che
 and then relies on server-side scanning and content detection. The workflow uses a local engine,
 without OCR or hosted Firecrawl fallback. PDF text is extracted without its images or layout;
 scanned or image-only PDFs fail with `needs_ocr`. Reverse conversion remains experimental; see the
-[reverse qualification evidence](evidence/t73-reverse-conversion-qualification.md).
+[reverse qualification evidence](archive/evidence/t73-reverse-conversion-qualification.md).
 
 ## Authentication profiles
 

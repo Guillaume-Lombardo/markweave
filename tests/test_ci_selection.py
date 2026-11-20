@@ -180,8 +180,8 @@ def test_t20_asset_changes_select_container_domain(path: str) -> None:
         "packaging/broker/broker-mtls-v2.json.in",
         "packaging/systemd/user/markweave-broker.service",
         "docs/reverse-broker-deployment.md",
-        "spikes/anydoc/LICENSE.anydoc",
-        "spikes/anydoc/corpus/docx/text.docx",
+        "toolchain/anydoc/LICENSE.anydoc",
+        "toolchain/anydoc/corpus/docx/text.docx",
         "LICENSE",
         "README.md",
     ],
@@ -210,7 +210,9 @@ def test_broker_service_deployment_selects_only_container_domain(path: str) -> N
 def test_anydoc_corpus_selects_real_library_integration() -> None:
     """Changes to real anydoc inputs rerun the document-engine integration domain."""
 
-    assert "document-engines" in select_domains(["spikes/anydoc/corpus/docx/text.docx"])
+    assert "document-engines" in select_domains(
+        ["toolchain/anydoc/corpus/docx/text.docx"]
+    )
 
 
 @pytest.mark.unit

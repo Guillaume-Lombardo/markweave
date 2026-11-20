@@ -70,4 +70,4 @@ Conversion responses and history can return `pptx` and `pptx-bundle` in `output`
 exhaustively validate the former `docx|pdf|both` set must regenerate their bindings or accept these
 two values before upgrading from a pre-0.7.0 release. Existing document requests remain supported.
 The approval and narrowly scoped OpenAPI-gate exception are retained in the
-[compatibility record](evidence/release-migration-history.md#powerpoint-070-api-exception).
+[compatibility record](archive/evidence/release-migration-history.md#powerpoint-070-api-exception).

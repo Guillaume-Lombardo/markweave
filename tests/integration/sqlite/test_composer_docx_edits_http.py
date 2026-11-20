@@ -34,10 +34,10 @@ from tests.settings import template_settings
 pytestmark = [pytest.mark.integration, pytest.mark.light_coverage]
 
 _DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-_SOURCE = Path(__file__).resolve().parents[3] / "spikes/anydoc/corpus/docx/text.docx"
+_SOURCE = Path(__file__).resolve().parents[3] / "toolchain/anydoc/corpus/docx/text.docx"
 _MAIN = "word/document.xml"
 _PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-_DECK = Path(__file__).resolve().parents[3] / "spikes/anydoc/corpus/pptx/pres.pptx"
+_DECK = Path(__file__).resolve().parents[3] / "toolchain/anydoc/corpus/pptx/pres.pptx"
 
 
 @dataclass

@@ -657,7 +657,7 @@ def test_composer_browser_mounts_only_checksum_verified_small_corpus(
     stage = runner.split(loop, 1)[1].split("\ndone", 1)[0]
     stage = loop + stage + "\ndone"
     repository = tmp_path / "repository"
-    corpus = repository / "spikes" / "anydoc" / "corpus"
+    corpus = repository / "toolchain" / "anydoc" / "corpus"
     for filename in ("docx/text.docx", "pdf/text.pdf", "pptx/pres.pptx"):
         source = corpus / filename
         source.parent.mkdir(parents=True, exist_ok=True)
@@ -703,15 +703,17 @@ def test_composer_browser_mounts_only_checksum_verified_small_corpus(
     typed = browser.split(
         'elif [[ "$test_file" == /e2e/browser-next-composer-typed.test.mjs ]]; then', 1
     )[1].split("\n  elif", 1)[0]
-    assert '--volume "$composer_corpus_directory:/spikes/anydoc/corpus:ro,z"' in real
-    assert '--volume "$composer_corpus_directory:/spikes/anydoc/corpus:ro,z"' in typed
+    assert '--volume "$composer_corpus_directory:/toolchain/anydoc/corpus:ro,z"' in real
+    assert (
+        '--volume "$composer_corpus_directory:/toolchain/anydoc/corpus:ro,z"' in typed
+    )
     assert "/run/composer-e2e-client.key" not in typed
-    assert browser.count("/spikes/anydoc/corpus:ro,z") == 2
-    assert "$repository/spikes/anydoc/corpus:/spikes/anydoc/corpus" not in browser
+    assert browser.count("/toolchain/anydoc/corpus:ro,z") == 2
+    assert "$repository/toolchain/anydoc/corpus:/toolchain/anydoc/corpus" not in browser
     shared = runner.split("application_volumes=(", 1)[1].split(
         "\napplication_mode=serve", 1
     )[0]
-    assert "/spikes/anydoc/corpus" not in shared
+    assert "/toolchain/anydoc/corpus" not in shared
 
 
 @pytest.mark.unit

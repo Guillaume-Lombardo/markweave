@@ -5,7 +5,7 @@ and retained image evidence. Schema 1 records the historical matched backend/fro
 2 records the backend, frontend, and reverse-attempt images, all bound to the same release version
 and source SHA, plus the frontend lock digest. A schema-1 pair has no reverse-attempt identity and
 must not be treated as a qualified reverse release. Historical candidate and rollback identities remain in
-[release history](evidence/release-migration-history.md#earlier-recovery-identities).
+[release history](archive/evidence/release-migration-history.md#earlier-recovery-identities).
 
 Rollback restores the complete image set and its route manifest as one release-level operation;
 never combine images across releases or add a reverse-attempt image to a historical schema-1 pair.
@@ -159,7 +159,7 @@ do not run workers against an unverified attempt-image digest or mix broker and 
 identities. For public production, restore only a published matched three-image set and its broker
 policy. An approved isolated candidate may instead restore its exact retained candidate receipts,
 native-broker package and configuration, and matching backup; it does not establish a public digest.
-See the [reverse qualification evidence](evidence/t73-reverse-conversion-qualification.md) for
+See the [reverse qualification evidence](archive/evidence/t73-reverse-conversion-qualification.md) for
 candidate history and current validation boundaries.
 
 Run the production restore command with `--report-directory` and `--evidence-id`. This measures the

@@ -187,7 +187,7 @@ The frontend renders no authoritative authenticated state on the server. It load
 from `/api/v1/session`, treats `401` and restricted-session responses as authoritative, and never
 extends a session with a client timer. HTML and authenticated data remain `no-store`. The complete
 login, renewal, expiry, navigation, race, accessibility, and safe-error parity inventory is in
-[the reviewed Next.js migration architecture](nextjs-migration-architecture.md).
+[the reviewed Next.js migration architecture](archive/nextjs-migration-architecture.md).
 
 Session inspection and the user nested in a successful login response include
 `effective_idle_minutes`. FastAPI computes this value from the current effective role and the

@@ -680,7 +680,7 @@ Changed files relative to main:
 - `.github/workflows/ci.yml`
 - `docs/conversion-cli.md`
 - `docs/mermaid.md`
-- `docs/t00-toolchain-validation.md`
+- `docs/archive/t00-toolchain-validation.md`
 - `scripts/ci/validate_ci.py`
 - `scripts/container/smoke.sh`
 - `scripts/generate_t11_pdf_golden.py`

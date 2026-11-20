@@ -54,7 +54,7 @@ RUN uv sync --locked --no-dev --no-editable --extra reverse-attempt --no-cache \
 
 COPY --chmod=0444 LICENSE /opt/markweave/licenses/markweave/LICENSE
 
-COPY --chmod=0444 spikes/anydoc/LICENSE.anydoc \
+COPY --chmod=0444 toolchain/anydoc/LICENSE.anydoc \
     /opt/markweave/licenses/firecrawl-anydoc/LICENSE
 COPY --chmod=0444 src/markweave/reversions/ANYDOC_COMPAT_LICENSE.txt \
     /opt/markweave/licenses/markweave-anydoc-compat/LICENSE

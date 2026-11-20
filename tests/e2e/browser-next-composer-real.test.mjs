@@ -1311,7 +1311,7 @@ test("Composer uses real final-image routing, TLS egress and durable owner revis
     }
     await adminPage.goto(`${baseURL}/composer`, { waitUntil: "networkidle" });
     const docx = await readFile(
-      new URL("../../spikes/anydoc/corpus/docx/text.docx", import.meta.url),
+      new URL("../../toolchain/anydoc/corpus/docx/text.docx", import.meta.url),
     );
     await adminPage.getByLabel("Markdown or Office source").setInputFiles({
       name: "text.docx",
@@ -1334,7 +1334,7 @@ test("Composer uses real final-image routing, TLS egress and durable owner revis
     );
     await adminPage.goto(`${baseURL}/composer`, { waitUntil: "networkidle" });
     const pdf = await readFile(
-      new URL("../../spikes/anydoc/corpus/pdf/text.pdf", import.meta.url),
+      new URL("../../toolchain/anydoc/corpus/pdf/text.pdf", import.meta.url),
     );
     await adminPage.getByLabel("Markdown or Office source").setInputFiles({
       name: "text.pdf",

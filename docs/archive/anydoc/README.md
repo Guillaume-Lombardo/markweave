@@ -50,8 +50,9 @@ renderer hook; a broader fork remains prohibited.
 Silently relying on an asyncio timeout, `Future.cancel()`, a cancellation flag, lease-token
 publication fencing alone, or a process-wide memory ceiling is not an acceptable third option.
 
-`contract.json` records the approved execution, serializer, format, packaging, PDF, authorization,
-and safe-error contract. `docs/product-specification.md` is the normative product source.
+The [reverse conversion contract](../../../toolchain/anydoc/contract.json) records the approved
+execution, serializer, format, packaging, PDF, authorization, and safe-error contract.
+The [product specification](../../product-specification.md) is the normative product source.
 
 ## Pinned artifact and provenance
 
@@ -65,11 +66,12 @@ SHA-256 `5bd7463287a54040d08e26130737a660f733028a2480b880069b6eedb2311041`.
 PyPI identifies the package as MIT and binds this wheel through Trusted Publishing to
 `firecrawl/anydoc`, workflow `release.yml`, tag `v0.2.4`, source commit
 `42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c`, and Sigstore transparency entry `2618684387`.
-The copied upstream fixtures use the MIT text retained as `LICENSE.anydoc`. The seven extension-
-alias fixtures are either byte-identical MIT derivatives of the bounded PowerPoint fixture or
+The copied upstream fixtures use the [upstream MIT license](../../../toolchain/anydoc/LICENSE.anydoc).
+The seven extension alias fixtures are either byte-identical MIT derivatives of the bounded PowerPoint fixture or
 deterministic minimal OOXML files generated under this repository's Apache-2.0 license. Their exact
-provenance and hashes are recorded in `corpus/manifest.json`; the complete 24-file corpus is
-475,234 bytes. `supply-chain.json` carries the machine-readable package inventory. Primary evidence:
+provenance and hashes are recorded in the [corpus manifest](../../../toolchain/anydoc/corpus/manifest.json).
+The complete 24-file corpus is 475,234 bytes. The [supply-chain inventory](../../../toolchain/anydoc/supply-chain.json)
+records the package provenance. Primary evidence:
 
 - <https://pypi.org/project/firecrawl-anydoc/0.2.4/>
 - <https://pypi.org/integrity/firecrawl-anydoc/0.2.4/firecrawl_anydoc-0.2.4-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl/provenance>
@@ -86,26 +88,26 @@ exact wheel plus the upstream `Cargo.lock` before adoption.
 Host probe:
 
 ```bash
-uv sync --project spikes/anydoc --locked
-uv run --project spikes/anydoc python spikes/anydoc/generate_extension_fixtures.py
-uv run --project spikes/anydoc --group dev ruff check \
-  spikes/anydoc/probe.py spikes/anydoc/generate_extension_fixtures.py
-uv run --project spikes/anydoc --group dev ty check \
-  spikes/anydoc/probe.py spikes/anydoc/generate_extension_fixtures.py
-RAYON_NUM_THREADS=1 uv run --project spikes/anydoc --locked \
-  python spikes/anydoc/probe.py --iterations 5 \
-  --output spikes/anydoc/measurements-host.json
+uv sync --project toolchain/anydoc --locked
+uv run --project toolchain/anydoc python toolchain/anydoc/generate_extension_fixtures.py
+uv run --project toolchain/anydoc --group dev ruff check \
+  toolchain/anydoc/probe.py toolchain/anydoc/generate_extension_fixtures.py
+uv run --project toolchain/anydoc --group dev ty check \
+  toolchain/anydoc/probe.py toolchain/anydoc/generate_extension_fixtures.py
+RAYON_NUM_THREADS=1 uv run --project toolchain/anydoc --locked \
+  python toolchain/anydoc/probe.py --iterations 5 \
+  --output docs/archive/anydoc/measurements-host.json
 ```
 
 Exact UBI 9 probe:
 
 ```bash
-podman build --network slirp4netns -f spikes/anydoc/Containerfile \
+podman build --network slirp4netns -f docs/archive/anydoc/Containerfile \
   -t localhost/markweave-anydoc-t69:0.2.4 .
 podman run --rm --network none --read-only --cap-drop all \
   --security-opt no-new-privileges --pids-limit 64 --memory 512m --cpus 1 \
   localhost/markweave-anydoc-t69:0.2.4 --iterations 5 \
-  > spikes/anydoc/measurements-ubi9.json
+  > docs/archive/anydoc/measurements-ubi9.json
 ```
 
 The retained `measurements-host.json` and `measurements-ubi9.json` are observations, not deterministic
@@ -169,8 +171,9 @@ only HTTP implementation; local native parsing itself has no network client depe
 
 ## Format and failure contract
 
-`contract.json` is the exact ordered matrix. Extensions are hints, never authority. The server must
-detect content first, require the extension family to agree, and reject unknown content. CSV is the
+The [reverse conversion contract](../../../toolchain/anydoc/contract.json) is the exact ordered
+matrix. Extensions are hints, never authority. The server must detect content first, require the
+extension family to agree, and reject unknown content. CSV is the
 only exception because it has no signature; `.csv` selects the parser only after bounded text
 validation. The probe confirmed `UnsupportedError`, `MalformedError`, `EncryptedError`,
 `ResourceLimitError`, and `NeedsOcrError`; T70 maps those to the content-free categories in the

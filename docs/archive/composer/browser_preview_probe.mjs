@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright-core");
-const root = resolve(import.meta.dirname, "../..");
+const root = resolve(import.meta.dirname, "../../..");
 const vendor = import.meta.dirname;
 const generated = resolve(process.argv[2] ?? "");
 if (!process.argv[2]) throw new Error("Pass the generated fixture directory");
@@ -63,20 +63,20 @@ const routes = new Map([
   [
     "/fixture/docx",
     [
-      resolve(root, "spikes/anydoc/corpus/docx/text.docx"),
+      resolve(root, "toolchain/anydoc/corpus/docx/text.docx"),
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ],
   ],
   [
     "/fixture/pptx",
     [
-      resolve(root, "spikes/anydoc/corpus/pptx/pres.pptx"),
+      resolve(root, "toolchain/anydoc/corpus/pptx/pres.pptx"),
       "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     ],
   ],
   [
     "/fixture/pdf",
-    [resolve(root, "spikes/anydoc/corpus/pdf/text.pdf"), "application/pdf"],
+    [resolve(root, "toolchain/anydoc/corpus/pdf/text.pdf"), "application/pdf"],
   ],
   [
     "/fixture/long.docx",

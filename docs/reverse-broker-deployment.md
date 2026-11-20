@@ -26,7 +26,7 @@ release. Public deployment requires a published schema-2 manifest. An approved i
 qualification may use the exact local image digest and matched source-build receipts without claiming
 public publication. Use only verified published release receipts for a public reverse-image digest;
 do not infer one from a candidate. See the
-[reverse qualification evidence](evidence/t73-reverse-conversion-qualification.md) for candidate
+[reverse qualification evidence](archive/evidence/t73-reverse-conversion-qualification.md) for candidate
 history and validation boundaries.
 
 An administrator can enable lingering with `loginctl enable-linger <broker-account>`. Verify the

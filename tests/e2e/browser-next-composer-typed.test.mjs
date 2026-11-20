@@ -8,10 +8,10 @@ import { chromium } from "playwright-core";
 
 const baseURL = process.env.MARKWEAVE_E2E_BASE_URL || "http://localhost:3100";
 const profile = process.env.MARKWEAVE_E2E_PROFILE || "standalone";
-const typedDocx = "/spikes/anydoc/corpus/docx/typed.docx";
-const typedSchema = "/spikes/anydoc/corpus/docx/typed-schema.json";
-const editableDocx = "/spikes/anydoc/corpus/docx/text.docx";
-const editablePptx = "/spikes/anydoc/corpus/pptx/pres.pptx";
+const typedDocx = "/toolchain/anydoc/corpus/docx/typed.docx";
+const typedSchema = "/toolchain/anydoc/corpus/docx/typed-schema.json";
+const editableDocx = "/toolchain/anydoc/corpus/docx/text.docx";
+const editablePptx = "/toolchain/anydoc/corpus/pptx/pres.pptx";
 const pptxMediaType =
   "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 const docxMediaType =

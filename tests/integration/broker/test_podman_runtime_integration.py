@@ -386,7 +386,7 @@ def _policy(image_digest: str, wall_time_millis: int = 10_000) -> BrokerPolicy:
 
 
 def _request(attempt_id: UUID) -> ReverseAttemptRequest:
-    source = (ROOT / "spikes/anydoc/corpus/pdf/text.pdf").read_bytes()
+    source = (ROOT / "toolchain/anydoc/corpus/pdf/text.pdf").read_bytes()
     return ReverseAttemptRequest(
         attempt_id,
         ".pdf",

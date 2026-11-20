@@ -177,10 +177,10 @@ const trace = {
   servedEtag: servedResponse.headers.get("etag"),
 };
 const docx = await readFile(
-  resolve(root, "spikes/anydoc/corpus/docx/text.docx"),
+  resolve(root, "toolchain/anydoc/corpus/docx/text.docx"),
 );
 const pptx = await readFile(
-  resolve(root, "spikes/anydoc/corpus/pptx/pres.pptx"),
+  resolve(root, "toolchain/anydoc/corpus/pptx/pres.pptx"),
 );
 trace.fixtureHashes = { docx: sha256(docx), pptx: sha256(pptx) };
 const externalPackage = await JSZip.loadAsync(docx);

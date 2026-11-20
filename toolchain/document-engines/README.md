@@ -17,4 +17,4 @@ npm ci --prefix toolchain/document-engines --omit=dev --ignore-scripts
 
 Keep the sandbox enabled and preserve the reviewed hashes, font/license inventory and independent
 lockfile. Validation scripts in this directory resolve their own location; run them according to
-[the engine validation guide](../../docs/t00-toolchain-validation.md).
+[the engine validation guide](../../docs/archive/t00-toolchain-validation.md).

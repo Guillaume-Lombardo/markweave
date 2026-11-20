@@ -89,7 +89,7 @@ from markweave.reversions.models import ReverseAttemptRequest, ReverseContentLim
 
 workspace = Path(sys.argv[1])
 workspace.mkdir(mode=0o770)
-fixture = Path("spikes/anydoc/corpus/docx/text.docx").read_bytes()
+fixture = Path("toolchain/anydoc/corpus/docx/text.docx").read_bytes()
 rebuilt = io.BytesIO()
 with zipfile.ZipFile(io.BytesIO(fixture)) as source_archive, zipfile.ZipFile(
     rebuilt, "w"
@@ -215,8 +215,8 @@ if [[ -n "$measurement_receipt" ]]; then
     --security-opt no-new-privileges \
     --pids-limit 16 --memory 256m --cpus 1 --user 12345:0 \
     --tmpfs /work:rw,noexec,nosuid,nodev,size=32m,mode=0770 \
-    --volume "$PWD/spikes/anydoc/probe.py:/probe.py:ro" \
-    --volume "$PWD/spikes/anydoc/corpus:/corpus:ro" \
+    --volume "$PWD/toolchain/anydoc/probe.py:/probe.py:ro" \
+    --volume "$PWD/toolchain/anydoc/corpus:/corpus:ro" \
     --entrypoint python "$image" -c '
 import contextlib
 import importlib.util

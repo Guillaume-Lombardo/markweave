@@ -141,7 +141,7 @@ backend, frontend, and reverse-attempt images in both storage profiles.
   candidate image set; each profile exited 0. The tracked runner hash, exact local image IDs and
   digests, independent E2E/resource review, 21-case resource measurements, CI-mode image scan
   counts, and complete bundle inventory hashes are recorded in
-  [T73 qualification evidence](../docs/evidence/t73-reverse-conversion-qualification.md). These are
+  [T73 qualification evidence](../docs/archive/evidence/t73-reverse-conversion-qualification.md). These are
   local candidate identities; no public third image, version, or release was selected. At the
   earlier canonical run `5f90757`, 4,520 tests passed but one stale harness-order assertion failed;
   56 engine-marked tests were deselected and 11 warnings were reported. Its corrected 44 focused

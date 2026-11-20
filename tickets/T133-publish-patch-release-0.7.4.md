@@ -91,7 +91,7 @@ a corrective 0.7.5 release:
   staging retention and any registry mutation; the run retained only artifact 11718675473
   (`python-release-v0.7.4`), and GHCR has no `0.7.4` tag in any of the three repositories. The
   container-only recovery path is impossible. The incident is recorded in
-  `docs/evidence/release-migration-history.md`.
+  `docs/archive/evidence/release-migration-history.md`.
 - 2026-10-12: Owner decision: corrective release 0.7.5 in one pull request. Branch
   `fix/T133-release-0.7.5` upgrades `next` and `eslint-config-next` to 16.3.8 and moves `sharp`,
   `undici`, `brace-expansion`, `js-yaml` and `source-map-js` to fixed releases (a scoped

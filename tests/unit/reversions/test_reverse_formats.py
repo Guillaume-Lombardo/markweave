@@ -53,7 +53,7 @@ def test_approved_matrix_is_ordered_and_contains_all_twenty_one_extensions() -> 
 
 def test_typed_policy_matches_the_approved_evidence_contract() -> None:
     contract = json.loads(
-        (Path(__file__).parents[3] / "spikes/anydoc/contract.json").read_text()
+        (Path(__file__).parents[3] / "toolchain/anydoc/contract.json").read_text()
     )
     policy = REVERSE_ADMISSION_POLICY
 

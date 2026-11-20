@@ -78,7 +78,7 @@ gates suffice for T88; production viewer/workflow and each Office edit family re
   claim renderer fidelity; exact-CSP and real-file qualification remain open.
 - 2026-09-23: Independent contract review approved the specification and the scan-before-persist,
   browser connection-setup, and `/composer` routing clarifications. The reproducible
-  [qualification report](../spikes/composer/README.md) records bounded real-file probes, not
+  [qualification report](../docs/archive/composer/README.md) records bounded real-file probes, not
   production acceptance: high-level saves changed 8/14 DOCX and 21/25 PPTX package entries,
   while one validated text-node edit changed only its target part in each; whole-paragraph DOCX
   replacement lost run styling. Under the exact production CSP, native DOCX/PPTX viewers rendered
@@ -89,7 +89,7 @@ gates suffice for T88; production viewer/workflow and each Office edit family re
   establish visual fidelity, hostile-document safety, long-file budgets, or support for the other
   Office edit families. T88 remains In Progress pending the explicit security decision and further
   qualification; T89 production work has not begun.
-- 2026-09-23: Independent review reproduced the final [bounded native-preview spike](../spikes/composer/README.md):
+- 2026-09-23: Independent review reproduced the final [bounded native-preview spike](../docs/archive/composer/README.md):
   a classic bundle rendered real DOCX and PPTX inside an opaque sandbox without relaxing CORS.
   The child could not access the parent DOM or fetch its own/external documents; zero external
   requests were observed. The proposed Composer-only parent `frame-src 'self'` allowance and
@@ -110,7 +110,7 @@ gates suffice for T88; production viewer/workflow and each Office edit family re
   qualify production security, fidelity, or T88 completion. Hostile-document containment,
   message/revision races, representative visual comparisons, and media-heavy long-document
   memory/virtualization/cancellation still require evidence. T88 remains In Progress.
-- 2026-09-23: The expanded [T88 qualification report](../spikes/composer/README.md) covers one
+- 2026-09-23: The expanded [T88 qualification report](../docs/archive/composer/README.md) covers one
   narrow text replacement in each Office format plus eight additional representative family
   operations: DOCX table, section, image and style; PPTX table, slide order, shape/object and note.
   Each surgical fixture edit
@@ -128,7 +128,7 @@ gates suffice for T88; production viewer/workflow and each Office edit family re
   and preservation proof for each edit family. T88 remains In Progress until reviewed on `main`.
 - 2026-09-23: The qualification agent reported exit 0 for the exact `uv run --with
   python-docx==1.2.0 --with python-pptx==1.0.2 --with pypdf==6.1.1 python
-  spikes/composer/office_family_probe.py` command (eight successful family cases), the isolated
+  docs/archive/composer/office_family_probe.py` command (eight successful family cases), the isolated
   Chromium preview probe, the strict-CSP baseline probe, scoped Ruff lint/format checks, Prettier
   check, and frozen pnpm installation using the repository's reviewed bootstrap. An initial bare
   `pnpm install` invocation failed because the ambient mise shim lacked the expected version; the

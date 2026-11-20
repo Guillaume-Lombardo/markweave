@@ -69,7 +69,7 @@ fixture staging through tar stdin, the approved final helper passed without chan
 earlier backup-creation UID failure stopped safely and restored the old healthy service before the
 independently approved default-image-user correction. This deployment is distinct from pending PR,
 `main` integration, and public-release decisions; T83 remains In Progress. See
-[final-image evidence](../docs/evidence/t83-structured-pptx-final-images.md).
+[final-image evidence](../docs/archive/evidence/t83-structured-pptx-final-images.md).
 
 2026-09-22: A subsequent local validation snapshot at clean `984da696d0ad2c8b0810414037a19bd65f967bb4`
 merged the reviewed normal T73 result and was independently approved. Its only application
@@ -91,7 +91,7 @@ cancellation/expiry/unavailable, worker/broker crash, outage, and recovery check
 measurements contain 21 cases and the existing T69 concurrency comparison without an approved
 production numerical threshold. CI-mode scans completed with zero Critical and High counts 133
 backend, 39 frontend, and 134 reverse; complete bundle evidence is retained. See
-[final-image evidence](../docs/evidence/t83-structured-pptx-final-images.md). This does not claim
+[final-image evidence](../docs/archive/evidence/t83-structured-pptx-final-images.md). This does not claim
 publication, deployment, `main` integration, or completion; engine-marked CI, exact-head/main
 checks, and T73 stacked integration remain separate boundaries.
 

@@ -15,7 +15,7 @@ from markweave.composer.pptx_edits import apply_pptx_text_edits, inspect_pptx_te
 from markweave.composer.typed_templates import TypedDocxLimits
 
 _ROOT = Path(__file__).resolve().parents[3]
-_SOURCE = _ROOT / "spikes/anydoc/corpus/pptx/pres.pptx"
+_SOURCE = _ROOT / "toolchain/anydoc/corpus/pptx/pres.pptx"
 
 
 def _limits() -> TypedDocxLimits:

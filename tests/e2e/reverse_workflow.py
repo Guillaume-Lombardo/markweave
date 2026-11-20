@@ -41,7 +41,7 @@ def exercise_primary(base_url: str, profile: str) -> None:
     assert owner.request("GET", capabilities_path).body == capability_response.body
     capability_digest = hashlib.sha256(capability_response.body).hexdigest()
     print(f"T73 {profile} capabilities SHA-256: {capability_digest}")
-    source = Path("spikes/anydoc/corpus/csv/sheet.csv").read_bytes()
+    source = Path("toolchain/anydoc/corpus/csv/sheet.csv").read_bytes()
     body, content_type = multipart([], [("source", "sheet.csv", source)])
     submitted = owner.request(
         "POST",

@@ -7,7 +7,7 @@ authority.
 
 Markweave uses a separate Next.js browser interface with durable asynchronous conversion workers.
 FastAPI and the worker/storage architecture remain authoritative. The
-[reviewed Next.js design](nextjs-migration-architecture.md) records the T58/T64 migration and parity
+[reviewed Next.js design](archive/nextjs-migration-architecture.md) records the T58/T64 migration and parity
 contract. Markweave accepts Markdown, local resources, and validated Word or PowerPoint reference
 templates; Pandoc creates DOCX or editable PPTX, local Mermaid CLI and sandboxed Chromium render diagrams,
 and headless LibreOffice creates PDF.

@@ -22,11 +22,11 @@
     "version": "0.2.5",
     "purl": "pkg:pypi/firecrawl-anydoc@0.2.5",
     "license_expression": "MIT",
-    "license_path": "spikes/anydoc/LICENSE.anydoc",
+    "license_path": "toolchain/anydoc/LICENSE.anydoc",
     "license_sha256": "03a9e7657aac6536fb6458bd220347c4e7f85bd0a51d8d9e8528530b7a682ade",
     "linux_x86_64_wheel_sha256": "30e1c466f81851e0807c6e87b1e0e17d5e53ec8f4c4c6f166ef2e619f601bfe7",
     "source_commit": "0a6a4fd29e5c0315972de348fa63de8e767f632e",
-    "provenance_evidence": "spikes/anydoc/supply-chain.json#/product_pin",
+    "provenance_evidence": "toolchain/anydoc/supply-chain.json#/product_pin",
     "embedded_cargo_sbom": {
       "wheel_path": "firecrawl_anydoc-0.2.5.dist-info/sboms/anydoc-python.cyclonedx.json",
       "image_path": "/opt/markweave/sbom/anydoc-cargo.cdx.json",
