@@ -11,6 +11,13 @@ slide-oriented Markdown or Marp from edited PPTX files. It requires a separately
 [external broker](docs/reverse-broker-deployment.md). See the
 [capability matrix](docs/index.md#conversion-capabilities) for inputs, outputs, limits and guides.
 
+The core product is Markdown to DOCX, PDF and editable PowerPoint. The optional Composer workspace
+and experimental **2md** are feature-frozen: they receive only bug fixes, security fixes, dependency
+updates, regression fixes and removals, and any new capability needs a new owner decision. Composer
+assistance needs a configured, enabled, and authorized LLM connection; retained drafts, revisions,
+and exports stay accessible without one. See the
+[scope freeze](docs/index.md#scope-freeze).
+
 The project is licensed under [Apache-2.0](LICENSE). The source package version is `0.7.5`.
 The default public quickstart pins the matched published `0.7.5` backend and Next.js frontend
 images by their verified registry digests. Do not substitute candidate or inferred digests;

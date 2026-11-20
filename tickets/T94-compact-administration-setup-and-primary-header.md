@@ -2,7 +2,7 @@
 ticket: T94
 linear_id: G1L-593
 linear_url: https://linear.app/g1lom/issue/G1L-593/t94-compact-administration-setup-and-primary-header
-status: In Progress
+status: Done
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -78,6 +78,8 @@ all user-management and conversion/Composer workflows.
   or lazy-content races are retained as failed attempts, not counted as passing evidence.
   Receipt and checksummed full logs are under `/home/g1lom/dev/scratch/t94-validation/`.
   Hosted CI, publication, and verification on main remain pending; T94 stays In Progress.
+- 2026-11-20: Mirror synchronized with Linear: Done since PR #271 merged on 2026-09-26
+  (`6a98d98`), with exact-source CI 36270580157 green.
 
 ## Synchronization
 

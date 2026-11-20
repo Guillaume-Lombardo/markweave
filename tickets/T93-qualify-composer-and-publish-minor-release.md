@@ -41,6 +41,8 @@ T92.
 
 - 2026-09-22: Created in Linear and mirrored before implementation. No release or deployment is
   claimed.
+- 2026-11-20: Frozen by owner decision (T155); delivered parts remain; remaining scope needs a new
+  owner decision.
 
 ## Synchronization
 

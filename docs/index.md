@@ -19,6 +19,29 @@ reverse-attempt image. Installing the Python package alone does not provide that
 All conversions use bounded uploads, asynchronous jobs, and expiring results; deployment-specific
 limits are documented in the [configuration reference](configuration.md).
 
+## Scope freeze
+
+The core product is Markdown to DOCX, PDF, and editable PowerPoint. On 2026-11-20 the owner froze
+the two optional workspaces (specification section 3.7, decisions D15 and D16). Both keep their
+delivered features and tests; they receive only bug fixes, security fixes, dependency updates,
+regression fixes, and removals. Any new capability needs a new ticket with an explicit owner
+decision.
+
+- **Composer** stays optional; its model-assisted operations need a configured, enabled, and
+  authorized LLM connection, and authorized users keep access to retained drafts,
+  revisions, and exports without one.
+  Delivered: guided drafts, reviewed proposals, revisions, private previews, author knowledge,
+  typed templates, DOCX and PPTX text edits, model-proposed text edits, the permissioned cited
+  reference library, and paragraph-style, slide-order, and image-replacement structure edits.
+  Paused: the remaining T92 edit families (DOCX tables and sections; PPTX tables, styles, and
+  objects; model tools for structural edits) and the T93 real-provider Composer qualification.
+  The 0.8.0 release ships the core simplification without waiting for T93.
+- **2md** stays experimental and requires the external isolation broker. Paused: OCR for scanned
+  or image-only inputs, Firecrawl's hosted Parse fallback, formats beyond the approved matrix,
+  PDF images and layout, original-source recovery and a full visual round trip for edited PPTX,
+  and the T74 Kubernetes isolation backend, archived by T107 under the tag
+  `archive/t74-kubernetes-backend`.
+
 ## Guides by role
 
 Start with the guide for your role:
