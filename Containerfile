@@ -14,7 +14,7 @@ ARG UV_SHA256=90b2f223fb69d19db49e117da601f64978593417988530aa733d456141b4bcbb
 ARG GOOGLE_RPM_KEY_SHA256=54dea5f6c2a26091578cf52a999cebc6b64df478d37ad4dce96376b711e3b27c
 ARG APPLICATION_VERSION
 
-RUN dnf upgrade -y ca-certificates \
+RUN dnf upgrade -y ca-certificates mod_http2 \
     && dnf install -y \
         alsa-lib at-spi2-atk at-spi2-core atk cups-libs curl-minimal findutils \
         fontconfig libXcomposite libXdamage libXfixes libXinerama libXrandr \

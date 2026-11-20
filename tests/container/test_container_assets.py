@@ -253,7 +253,7 @@ def test_final_image_pins_all_downloaded_artifacts() -> None:
         "        /tmp/container-policy/rpm-package-licenses.txt "
         "/opt/md-converter/rpm-inventory.txt" in containerfile
     )
-    assert "dnf upgrade -y ca-certificates" in containerfile
+    assert "dnf upgrade -y ca-certificates mod_http2 \\\n" in containerfile
     assert "uv sync --locked --no-dev --no-editable --extra all" in containerfile
 
 

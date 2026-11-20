@@ -89,7 +89,7 @@ def test_reverse_attempt_image_has_fixed_minimal_runtime_contract() -> None:
     assert "MARKWEAVE_REVERSE_MAX_INPUT_BYTES" not in containerfile
     assert "MARKWEAVE_REVERSE_MAX_OUTPUT_BYTES" not in containerfile
     assert "dnf install" not in containerfile
-    assert "dnf upgrade -y ca-certificates" in containerfile
+    assert "dnf upgrade -y ca-certificates mod_http2 \\\n" in containerfile
     assert "CAIRO_NEVRA=cairo-1.17.4-7.el9.x86_64" in containerfile
     assert "ANYDOC_CARGO_SBOM_SHA256=" in containerfile
     assert "/opt/markweave/sbom/anydoc-cargo.cdx.json" in containerfile

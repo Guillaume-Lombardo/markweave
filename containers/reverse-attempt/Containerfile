@@ -10,7 +10,7 @@ ARG ANYDOC_CARGO_SBOM_SHA256=ccc492d3014d12a0b5e5cb0a256e130444e6ca910f6c696d538
 
 RUN test "$(rpm -q --qf '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}' cairo)" = \
         "${CAIRO_NEVRA}" \
-    && dnf upgrade -y ca-certificates \
+    && dnf upgrade -y ca-certificates mod_http2 \
     && dnf clean all \
     && rm -rf /var/cache/dnf \
     && curl --fail --location --silent --show-error --proto '=https' --tlsv1.2 \
