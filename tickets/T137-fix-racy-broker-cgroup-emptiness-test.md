@@ -77,8 +77,8 @@ and `confirm_empty` back to back, with only a few Podman inspections in between.
 broker readiness for every principal. The unit stayed durably `EXIT_CONFIRMED` and a later
 reconciliation completed it, so the defect was fail-closed. It was still a real availability defect:
 the worker discarded a successful conversion and the broker refused all requests until the next
-reconciliation sweep. The Kubernetes backend already retries bounded `not_ready` emptiness
-observations (`docs/kubernetes-reverse-isolation.md`). The Podman backend did not.
+reconciliation sweep. The [T74 prototype](T74-kubernetes-reverse-isolation.md) already retried
+bounded `not_ready` emptiness observations. The Podman backend did not.
 
 Fix: `confirm_empty` still checks the Podman runtime state once. It then re-reads the slice's
 `populated` flag through `CgroupEmptinessWait`, a frozen, validated bound of five seconds with

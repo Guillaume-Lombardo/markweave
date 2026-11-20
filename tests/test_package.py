@@ -36,7 +36,6 @@ def test_package_declares_the_markweave_console_entry_point() -> None:
     assert metadata["project"]["scripts"] == {
         "markweave": "markweave.cli.main:main",
         "markweave-broker": "markweave.broker_process:main",
-        "markweave-kubernetes-attester": "markweave.kubernetes_attester_process:main",
     }
 
 
@@ -48,6 +47,14 @@ def test_distribution_metadata_declares_the_supported_dependency_matrix() -> Non
     extras = project["optional-dependencies"]
 
     assert project["dependencies"] == []
+    assert set(extras) == {
+        "all",
+        "distributed",
+        "packaging",
+        "reverse-attempt",
+        "server",
+        "standalone",
+    }
     assert extras["packaging"] == [
         "markdown-it-py>=4,<5",
         "mdit-py-plugins>=0.5,<0.8",
@@ -71,17 +78,9 @@ def test_distribution_metadata_declares_the_supported_dependency_matrix() -> Non
         "pillow>=13,<14",
         "tinycss2>=1.5,<2",
     ]
-    assert extras["kubernetes"] == [
-        "grpcio>=1.76,<2",
-        "kubernetes==37.0.1",
-        "protobuf>=6.33,<7",
-    ]
     assert "boto3>=1.43.82,<2" not in extras["server"]
     assert "psycopg[binary]>=3.3.4,<4" not in extras["server"]
-    assert (
-        "markweave[all,kubernetes,reverse-attempt]"
-        in metadata["dependency-groups"]["dev"]
-    )
+    assert "markweave[all,reverse-attempt]" in metadata["dependency-groups"]["dev"]
 
 
 @pytest.mark.unit

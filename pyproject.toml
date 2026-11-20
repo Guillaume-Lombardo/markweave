@@ -66,16 +66,10 @@ reverse-attempt = [
     "pillow>=13,<14",
     "tinycss2>=1.5,<2",
 ]
-kubernetes = [
-    "grpcio>=1.76,<2",
-    "kubernetes==37.0.1",
-    "protobuf>=6.33,<7",
-]
 
 [project.scripts]
 markweave = "markweave.cli.main:main"
 markweave-broker = "markweave.broker_process:main"
-markweave-kubernetes-attester = "markweave.kubernetes_attester_process:main"
 
 [project.urls]
 Documentation = "https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/blob/main/docs/index.md"
@@ -87,9 +81,8 @@ Support = "https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/dis
 [dependency-groups]
 build = ["hatchling==1.33.0"]
 dev = [
-    "grpcio-tools==1.76.0",
     "httpx>=0.28,<1",
-    "markweave[all,kubernetes,reverse-attempt]",
+    "markweave[all,reverse-attempt]",
     "mutmut==3.8.1",
     "pypdfium2>=5.13,<6",
     "pytest>=9.0,<10",
@@ -198,7 +191,6 @@ branch = true
 source = ["src/markweave"]
 
 [tool.coverage.report]
-exclude_also = ['if not _descriptor\._USE_C_DESCRIPTORS:']
 fail_under = 90
 show_missing = true
 

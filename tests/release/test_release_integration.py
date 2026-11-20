@@ -52,7 +52,6 @@ def test_real_build_validation_clean_install_and_tamper_failure(
             "[console_scripts]\n"
             "markweave = markweave.cli.main:main\n"
             "markweave-broker = markweave.broker_process:main\n"
-            "markweave-kubernetes-attester = markweave.kubernetes_attester_process:main\n"
         )
         assert not any(name.startswith("md_converter/") for name in names)
         assert "md_converter.py" not in names
@@ -69,7 +68,6 @@ def test_real_build_validation_clean_install_and_tamper_failure(
         assert metadata.get_all("Provides-Extra") == [
             "all",
             "distributed",
-            "kubernetes",
             "packaging",
             "reverse-attempt",
             "server",
@@ -80,9 +78,6 @@ def test_real_build_validation_clean_install_and_tamper_failure(
         assert "psycopg[binary]<4,>=3.3.4; extra == 'distributed'" in requirements
         assert "firecrawl-anydoc==0.2.5; extra == 'reverse-attempt'" in requirements
         assert "markdown-it-py<5,>=4; extra == 'packaging'" in requirements
-        assert "grpcio<2,>=1.76; extra == 'kubernetes'" in requirements
-        assert "kubernetes==37.0.1; extra == 'kubernetes'" in requirements
-        assert "protobuf<7,>=6.33; extra == 'kubernetes'" in requirements
         assert not any(
             "boto3" in requirement and "extra == 'server'" in requirement
             for requirement in requirements

@@ -80,8 +80,6 @@ Start with the guide for your role:
 - [Support policy](../SUPPORT.md): help channels, safe diagnostic information, and support scope.
 - [Reverse-conversion broker](reverse-broker-deployment.md): experimental document-to-Markdown
   isolation, worker transport, and operational boundaries.
-- [Optional Kubernetes reverse isolation](kubernetes-reverse-isolation.md): dedicated-node policy,
-  runtime attestation, deployment assets, and the remaining production-acceptance requirement.
 
 Format-specific and security details are documented in [conversion jobs](jobs.md),
 [authentication](authentication.md), [resource policy](resource-policy.md),

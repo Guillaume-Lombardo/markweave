@@ -3,7 +3,7 @@
 T79 introduced bounded extractions; T84 continues the decomposition of the eight remaining
 application modules above 1,000 lines. Public imports, SQL boundaries, broker messages and the
 pinned anydoc implementation remain unchanged. Tests and scripts are not subject to this size
-inventory. The T70, T71 and T74 contracts in the product specification remain authoritative.
+inventory. The T70 and T71 contracts in the product specification remain authoritative.
 
 ## Broker inventory
 
@@ -24,17 +24,11 @@ The v2 migration remains one authenticated atomic rewrite.
 | `broker/podman_contract.py` | Runtime-unit identity, immutable labels, bounded inspection decoding, fixed create arguments and realized-specification validation. |
 | `broker/podman_cgroups.py` | Rootless systemd slice removal, bounded kernel evidence and filesystem validation. |
 | `broker/podman_workspace.py` | Deterministic request TAR generation and bounded single-file response TAR validation. |
-| `broker/kubernetes_runtime.py` | Control-plane/attester orchestration, attempt lifecycle and proof sequencing. |
-| `broker/kubernetes_contracts.py` | Identity/configuration types and control-plane/attester ports. |
-| `broker/kubernetes_pod_contract.py` | Fixed Pod construction, canonical projection, approved API defaults and realized-specification digests. |
-| `broker/kubernetes_recovery.py` | Closed canonical codecs for prepared and attested restart bindings. |
 
-Runtime classes remain available through their original modules. Manifest and Podman command
-construction receive their former instance configuration as explicit parameters; their operation
-bodies are unchanged. These functions acquire no workload authority. Recovery codecs neither
-contact the control plane nor accept incomplete termination evidence.
+Podman command construction and realized-specification validation receive configuration as
+explicit parameters. These functions acquire no workload authority.
 
-## Broker and node-attester transports
+## Broker transports
 
 | Module | Responsibility |
 | --- | --- |
@@ -43,13 +37,9 @@ contact the control plane nor accept incomplete termination evidence.
 | `broker/mtls_control.py` | Canonical control JSON/framing, closed schemas, exchange identifiers and digests. |
 | `broker/unix_transport.py` | Unix peer authentication, bounded framing, lifecycle lock, socket identity and dispatch. |
 | `broker/response_binding.py` | Transport-independent request/response identity and principal correlation for Unix and mTLS clients. |
-| `broker/kubernetes_attester_transport.py` | Bounded HTTPS client/server, mutual TLS, request admission and readiness polling. |
-| `broker/kubernetes_attester_service.py` | Node lifecycle operations, durable ledger reconciliation and proof generation. |
-| `broker/kubernetes_attester_protocol.py` | Closed canonical request/response payloads and runtime identity comparison. |
 
-Existing public imports and codec aliases remain available. Node ledger transitions remain under
-one service lock. Unix socket lifecycle protections and mTLS paired-channel reservation ownership
-stay in their respective transports. Extracted codecs do not authenticate or dispatch requests.
+Unix socket lifecycle protections and mTLS paired-channel reservation ownership stay in their
+respective transports. Extracted codecs do not authenticate or dispatch requests.
 
 ## Durable reverse jobs
 
@@ -95,7 +85,7 @@ package tests cover the moves. Test doubles follow the extracted cgroup boundary
 license assertion follows the package layout while retaining the original license file.
 
 T84 also compares the original function ASTs with the extracted implementations: transaction and
-security bodies stay intact, with only explicit configuration parameters substituted in the three
-extracted Pod/Podman construction and validation functions. Ticket progress records actual local
+security bodies stay intact, with explicit configuration parameters substituted in the extracted
+Podman command construction and validation functions. Ticket progress records actual local
 checks and any unavailable final-image or document-engine validation; unit results do not replace
 those boundaries.

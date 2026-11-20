@@ -93,9 +93,7 @@ def test_committed_quality_configuration_enforces_required_tools() -> None:
         "source": ["src/markweave"],
     }
     assert config["tool"]["coverage"]["report"]["fail_under"] == 90
-    assert config["tool"]["coverage"]["report"]["exclude_also"] == [
-        r"if not _descriptor\._USE_C_DESCRIPTORS:"
-    ]
+    assert "exclude_also" not in config["tool"]["coverage"]["report"]
     assert config["tool"]["ruff"]["target-version"] == "py314"
     assert "TID" in config["tool"]["ruff"]["lint"]["select"]
     assert (
