@@ -240,6 +240,8 @@ jobs:
         with:
           version: "0.12.1"
           enable-cache: false
+      - name: Synchronize locked dependencies without repository credentials
+        run: uv sync --locked
       - name: Verify receipts, prepare the adoption branch, and dispatch CI
         env:
           GH_TOKEN: ${{ github.token }}
@@ -249,7 +251,7 @@ jobs:
           GIT_CONFIG_KEY_0: credential.https://github.com.helper
           GIT_CONFIG_VALUE_0: "!gh auth git-credential"
         run: >-
-          uv run --locked python -m scripts.release.adopt_receipts
+          uv run --no-sync python -m scripts.release.adopt_receipts
           --version "$RELEASE_VERSION" --source-sha "$SOURCE_SHA"
 
   report-incomplete-publication:

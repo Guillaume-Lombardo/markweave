@@ -18,8 +18,8 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 ## Acceptance criteria
 
 - After a successful PyPI and GHCR publication, the workflow generates the Compose and quickstart pin changes only from the verified registry receipts; it never infers or pre-pins an unpublished digest.
-- It opens a pull request with the evidence attached; the PR still passes the normal required checks and independent review before squash merge.
-- Failure or partial publication produces no PR and a clear workflow summary.
+- It pushes a `chore/adopt-release-<version>` branch, dispatches CI on it, and prints the single `gh pr create` command a maintainer runs; the PR still passes the normal required checks and independent review before squash merge. Opening the PR automatically is a follow-up that needs a GitHub App or token owner decision.
+- Failure or partial publication produces no branch and a clear workflow summary.
 - Update `docs/releasing.md` and the AGENTS.md release rule accordingly.
 - Test the generation logic with unit tests and a dry-run workflow path.
 
