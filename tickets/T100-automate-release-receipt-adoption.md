@@ -11,7 +11,7 @@ project: Markdown to DOCX and PDF Converter
 
 ## Objective
 
-Remove the manual follow-up pull request that adopts the published GHCR receipt digests after each release by having the release workflow open it automatically from verified publication evidence.
+Remove the hand-edited follow-up that adopts the published GHCR receipt digests after each release: the release workflow prepares the adoption branch from verified publication evidence and dispatches CI on it, and a maintainer opens the pull request with one printed command.
 
 Created from the repository analysis accepted by the owner on 2026-10-09 (section: what to change, item 6).
 
