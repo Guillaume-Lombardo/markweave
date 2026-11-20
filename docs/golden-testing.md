@@ -68,7 +68,7 @@ font manifest, Pandoc, LibreOffice, PDFium, DPI, dimensions, and PNG digest. Reg
 the approved rootless toolchain with:
 
 ```bash
-uv run python -m scripts.generate_t11_pdf_golden OUTPUT_DIRECTORY WORKSPACE_DIRECTORY
+uv run python -m scripts.generate_pdf_golden OUTPUT_DIRECTORY WORKSPACE_DIRECTORY
 ```
 
 The T103 math golden uses the same generator and toolchain with

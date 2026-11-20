@@ -145,7 +145,7 @@ def test_postgresql_s3_author_grants_and_typed_versions_survive_restart() -> Non
         objects.close()
 
 
-def test_postgresql_t91_audit_is_visible_guarded_and_bounded() -> None:
+def test_postgresql_author_and_template_audit_is_visible_guarded_and_bounded() -> None:
     engine = create_database_engine(os.environ["MARKWEAVE_TEST_POSTGRES_URL"])
     upgrade_database(engine)
     owner, reader = uuid4(), uuid4()

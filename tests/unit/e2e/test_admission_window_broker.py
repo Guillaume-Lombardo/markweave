@@ -1,4 +1,4 @@
-"""Validate the harness-side admission-window broker launcher of T141."""
+"""Validate the harness-side admission-window broker launcher."""
 
 from __future__ import annotations
 

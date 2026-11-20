@@ -1,4 +1,4 @@
-"""Actual ephemeral certificate and owner-only fixture preparation for T73."""
+"""Ephemeral certificates and owner-only fixtures for the reverse broker harness."""
 
 import contextlib
 import json

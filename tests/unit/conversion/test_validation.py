@@ -254,7 +254,7 @@ def test_safe_or_literal_markdown_is_accepted_unchanged(markdown: str) -> None:
         "![fragment](#local-image)",
     ],
 )
-def test_local_images_are_rejected_until_t08_materializes_approved_assets(
+def test_local_images_are_rejected_until_normalized_assets_are_available(
     mocker, image: str
 ) -> None:
     converter = mocker.Mock()

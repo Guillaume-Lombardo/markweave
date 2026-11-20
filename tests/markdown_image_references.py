@@ -1,4 +1,4 @@
-"""Service-generated parity corpus for Markdown image references (T104).
+"""Service-generated parity corpus for Markdown image references.
 
 The service parser in ``markweave.conversion.image_references`` is authoritative.
 This module builds the checked-in fixture from it; a Python test requires the file

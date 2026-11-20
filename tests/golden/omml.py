@@ -1,4 +1,4 @@
-"""Canonical OMML equation observations for DOCX and PPTX golden tests (T103)."""
+"""Canonical OMML equation observations for DOCX and PPTX golden tests."""
 
 from __future__ import annotations
 

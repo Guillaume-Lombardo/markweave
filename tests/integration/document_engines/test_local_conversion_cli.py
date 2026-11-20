@@ -1,4 +1,4 @@
-"""Real-process coverage of ``markweave convert --local`` (T106, D1).
+"""Real-process coverage of ``markweave convert --local``.
 
 The installed console executable runs the real isolation launcher, version
 probes, validation, and document engines. Tests that need an engine carry its

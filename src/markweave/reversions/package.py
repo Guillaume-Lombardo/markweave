@@ -25,7 +25,7 @@ _ZIP_MEDIA_TYPE = "application/zip"
 
 @dataclass(frozen=True)
 class PackageLimits:
-    """Caller-supplied result bounds whose production values are owned by T71."""
+    """Caller-supplied size limits for packaged reverse-conversion results."""
 
     max_markdown_bytes: int
     max_package_bytes: int

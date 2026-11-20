@@ -1,4 +1,4 @@
-"""Drive the final-image worker through a broker at admission limit one (T141).
+"""Drive the final-image worker through a broker at admission limit one.
 
 The harness replaces the fixture broker with the same broker at admission limit
 one whose connection, pending-exchange and handler slots release only after a

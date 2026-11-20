@@ -1,4 +1,4 @@
-"""Unit tests for the serverless local conversion pipeline (T106, D1)."""
+"""Unit tests for the serverless local conversion pipeline."""
 
 from __future__ import annotations
 

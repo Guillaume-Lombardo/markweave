@@ -1,4 +1,4 @@
-"""Generate the locked T11 PDF raster golden inside the approved toolchain."""
+"""Generate the locked PDF raster golden inside the approved toolchain."""
 
 from __future__ import annotations
 

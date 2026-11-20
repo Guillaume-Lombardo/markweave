@@ -1,4 +1,4 @@
-"""Static wiring checks for the T36 final-image runtime CLI smoke."""
+"""Static wiring checks for the final-image runtime CLI smoke."""
 
 from __future__ import annotations
 

@@ -45,7 +45,7 @@ from markweave.templates.validation import TemplateFontDeclaration, ValidatedTem
 
 
 class TemplateOperation(StrEnum):
-    """Sensitive operations T15 can persist through its audit adapter."""
+    """Template operations recorded by the audit adapter."""
 
     MUTATE = "mutate"
     SET_SYSTEM_FALLBACK = "set_system_fallback"
@@ -72,7 +72,7 @@ class TemplateAuthorization:
 
 @dataclass(frozen=True, slots=True)
 class TemplateRecoveryPolicy:
-    """Caller-owned publication lease duration assigned to T18 configuration."""
+    """Configured lease duration for template publication."""
 
     pending_publication_stale_seconds: float
 
@@ -86,7 +86,7 @@ class TemplateRecoveryPolicy:
 
 
 class TemplateService:
-    """Application service without T15 content or version mutation behavior."""
+    """Authorize template access and manage metadata, content versions, and preferences."""
 
     def __init__(  # noqa: PLR0913 - explicit application ports
         self,

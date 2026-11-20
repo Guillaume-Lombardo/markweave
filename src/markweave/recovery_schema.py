@@ -21,9 +21,8 @@ from markweave.persistence.migrations import migration_lineage, upgrade_database
 from markweave.persistence.sql import create_database_engine
 from markweave.recovery_manifest import RecoveryError
 
-# Owner decision (2026-10-11, T128): the minimum supported recovery-set revision is the
-# migration head of release 0.5.0, which introduced `markweave backup` and the
-# `markweave-recovery-set-v1` manifest. Earlier revisions are refused.
+# Recovery sets are supported from the migration head of release 0.5.0,
+# which introduced `markweave backup` and the `markweave-recovery-set-v1` manifest.
 OLDEST_RECOVERY_SET_REVISION = "20260829_14"
 # Migration-owned tables that are never part of the application model metadata.
 AUXILIARY_TABLES = frozenset({"alembic_version", "audit_cleanup_guards"})

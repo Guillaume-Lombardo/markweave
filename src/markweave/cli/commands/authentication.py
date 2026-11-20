@@ -30,7 +30,7 @@ _DEFAULT_SESSION_COOKIE_NAME = "md_converter_session"
 
 @dataclass
 class _Request:
-    """Parser-local authentication options passed through T31's stable handler seam."""
+    """Authentication options passed from the command parser to its handler."""
 
     command: str
     values: dict[str, str] = field(default_factory=dict)

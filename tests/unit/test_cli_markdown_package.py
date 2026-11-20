@@ -1,4 +1,4 @@
-"""Unit coverage for client-side Markdown and local-image packaging (T104)."""
+"""Unit coverage for client-side packaging of Markdown and local images."""
 
 from __future__ import annotations
 

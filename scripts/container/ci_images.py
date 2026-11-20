@@ -54,13 +54,13 @@ CPUSTATS = Path("/proc/stat")
 CPU_IDLE_FIELDS = (3, 4)  # idle and iowait in the aggregate `cpu` line
 CPU_IOWAIT_FIELD = 4
 # Run-scoped CI archives may carry zstd layers: in a same-runner comparison the
-# backend loaded alone in 31.4 s from zstd against 48.5 s from gzip (T147).
+# backend loaded alone in 31.4 s from zstd against 48.5 s from gzip.
 # Release archives keep Podman's default gzip layers for client compatibility.
 LAYER_COMPRESSIONS = ("gzip", "zstd")
 # Each `podman load` extracts its oci-archive and stages the layer blobs in the
 # image-copy directory before committing layers, so this directory receives about
 # twice the archive bytes. A memory-backed directory, when it has room, removes
-# those disk writes (T147).
+# those disk writes.
 MEMORY_TMP_ROOT = Path("/dev/shm")  # noqa: S108 - holds a private mkdtemp subdirectory
 MEMORY_TMP_FACTOR = 2
 MEMORY_TMP_MARGIN_BYTES = 512 * 1024 * 1024
@@ -321,7 +321,7 @@ def _storage_report(
 ) -> tuple[str, ...]:
     """Print the Podman store layout and return the devices worth measuring.
 
-    These facts only explain load throughput (T147); they never gate a load.
+    These facts are diagnostic and do not gate a load.
     """
     info: Any = json.loads(_run(runner, ["podman", "info", "--format", "json"]))
     store = info.get("store", {})
@@ -440,7 +440,7 @@ def load(  # noqa: PLR0913 - explicit expected-identity and test seams
 
     Every role passes its preconditions before any archive is loaded. The
     `podman load` commands then run concurrently, with their image-copy
-    directory in memory when it has room (T147), and every loaded ID is checked
+    directory in memory when it has room, and every loaded ID is checked
     before its tag.
     """
     try:

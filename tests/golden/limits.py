@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class ArchiveLimits:
-    """Test-harness ZIP bounds; these are not T18 production limits."""
+    """ZIP bounds used by the golden test harness."""
 
     max_entries: int
     max_member_uncompressed_bytes: int

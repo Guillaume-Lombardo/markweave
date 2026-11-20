@@ -73,7 +73,7 @@ class MermaidRenderer(Protocol):
 
 @dataclass(frozen=True)
 class MermaidLimits:
-    """Explicit diagram bounds whose production values remain owned by T18."""
+    """Configured limits on diagram input and rendered output."""
 
     max_diagrams: int
     max_source_bytes: int

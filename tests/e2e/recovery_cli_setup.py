@@ -349,7 +349,7 @@ def distributed_cleanup_verify() -> None:
         raise RuntimeError("distributed restore rollback cleanup is invalid")
 
 
-# The last schema before T91 added `composer_fill_plans` in migration 20260924_25.
+# The last schema before migration 20260924_25 added `composer_fill_plans`.
 PRE_FILL_PLAN_REVISION = "20260923_24"
 
 

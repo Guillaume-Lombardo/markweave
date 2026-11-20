@@ -1,4 +1,4 @@
-"""Unit coverage for all-or-nothing local output publication (T106, D1)."""
+"""Unit coverage for all-or-nothing local output publication."""
 
 from __future__ import annotations
 

@@ -7,8 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
+from markweave.http.composer_author_fill_schemas import AuthorReference
 from markweave.http.composer_library_schemas import LibraryCitationReference
-from markweave.http.composer_t91_schemas import AuthorReference
 from markweave.presentations.models import PresentationDialect
 
 

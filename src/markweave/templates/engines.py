@@ -35,7 +35,7 @@ from markweave.templates.validation import (
 
 @dataclass(frozen=True)
 class TemplateEngineConfig:
-    """Explicit engine paths and bounds without T18 production defaults."""
+    """Executable paths and execution limits for template validation."""
 
     pandoc_executable: str
     libreoffice_executable: str

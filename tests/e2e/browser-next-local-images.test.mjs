@@ -6,7 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { chromium } from "playwright-core";
 
-// T104: the 2docx and 2pptx workspaces package Markdown with its local images
+// The 2docx and 2pptx workspaces package Markdown with its local images
 // in the browser; the unchanged API and final-image worker validate the result.
 const baseURL = "http://localhost:3100";
 const missing = "Markdown image is missing or unapproved.";

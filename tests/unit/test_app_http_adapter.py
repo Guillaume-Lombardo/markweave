@@ -72,7 +72,7 @@ from markweave.templates.service import TemplateService
 from tests.settings import template_settings
 from tests.unit.jobs.test_job_models import job
 
-_HTTP_CONTRACT_FIXTURES = Path(__file__).parents[1] / "fixtures" / "t41_http_contract"
+_HTTP_CONTRACT_FIXTURES = Path(__file__).parents[1] / "fixtures" / "http_contract"
 
 
 def _assert_template_download_response(

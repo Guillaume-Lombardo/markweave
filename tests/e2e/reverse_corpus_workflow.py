@@ -43,7 +43,7 @@ _REMOTE_SVG = Path("tests/corpus/security/remote-xlink.svg")
 
 @dataclass(frozen=True, slots=True)
 class CorpusCase:
-    """One reviewed T69 family representative and its structural expectations."""
+    """One reference document for a format family and its structural expectations."""
 
     label: str
     relative_path: str
@@ -197,7 +197,7 @@ def _raster_bytes(format_name: str, *, animated: bool = False) -> bytes:
 
 
 def asset_boundary_cases(original_png: bytes) -> tuple[AssetBoundaryCase, ...]:
-    """Build the representative T70 image-boundary mutations."""
+    """Build representative mutations for image validation."""
 
     try:
         hostile_svg = _REMOTE_SVG.read_bytes()

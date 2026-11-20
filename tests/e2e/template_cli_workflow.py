@@ -1,4 +1,4 @@
-"""Final-image workflow for the T34 template CLI family."""
+"""Final-image workflow for the template commands."""
 
 from __future__ import annotations
 

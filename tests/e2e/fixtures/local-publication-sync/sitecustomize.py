@@ -1,4 +1,4 @@
-"""Test-only publication synchronization for the T106 final-image E2E.
+"""Test-only publication synchronization for local conversion in the final image.
 
 This file is never packaged or installed. The E2E script mounts it read-only and
 puts it on ``PYTHONPATH`` for a single container, so production images and

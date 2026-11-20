@@ -29,7 +29,7 @@ test "$(podman image inspect "$image" --format '{{json .Config.Entrypoint}}')" =
 test "$(podman image inspect "$image" --format '{{json .Config.Cmd}}')" = 'null'
 test "$(podman image inspect "$image" --format '{{json .Config.ExposedPorts}}')" = 'null'
 
-# These are bounded smoke-harness ceilings, not the T71-owned production budgets.
+# These ceilings bound execution in the smoke harness.
 podman run --rm \
   --network none \
   --read-only \
@@ -208,8 +208,8 @@ with zipfile.ZipFile(io.BytesIO(result)) as archive:
 '
 
 if [[ -n "$measurement_receipt" ]]; then
-  # Reuse T69 instrumentation inside the exact final image. These are smoke
-  # containment ceilings, not approved production performance thresholds.
+  # Run the anydoc engine probe inside the exact final image with smoke-test
+  # containment ceilings.
   podman run --rm --timeout 60 \
     --network none --read-only --cap-drop all \
     --security-opt no-new-privileges \

@@ -1,4 +1,4 @@
-"""Unit tests for isolated document-engine version probes (T106, D1)."""
+"""Unit tests for isolated document-engine version probes."""
 
 from __future__ import annotations
 

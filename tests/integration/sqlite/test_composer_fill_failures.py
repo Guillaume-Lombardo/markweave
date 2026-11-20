@@ -20,7 +20,7 @@ from tests.integration.composer.test_typed_docx_fill import (
     _sdt,
     _template,
 )
-from tests.integration.sqlite.test_composer_t91_http import _client
+from tests.integration.sqlite.test_composer_typed_fill_http import _client
 
 pytestmark = [pytest.mark.integration, pytest.mark.light_coverage]
 

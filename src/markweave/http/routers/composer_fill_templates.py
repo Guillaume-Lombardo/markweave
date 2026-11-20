@@ -14,17 +14,17 @@ from markweave.composer.typed_templates import (
     TypedDocxLimits,
     TypedTemplateError,
 )
+from markweave.http.composer_author_fill_schemas import (
+    TypedTemplateListResponse,
+    TypedTemplateResponse,
+    TypedTemplateVersionListResponse,
+    TypedTemplateVersionResponse,
+)
 from markweave.http.composer_errors import (
     ComposerPreconditionRequiredError,
     ComposerRequestError,
     ComposerRequestTooLargeError,
     ComposerUnavailableError,
-)
-from markweave.http.composer_t91_schemas import (
-    TypedTemplateListResponse,
-    TypedTemplateResponse,
-    TypedTemplateVersionListResponse,
-    TypedTemplateVersionResponse,
 )
 from markweave.http.dependencies import HttpDependencies
 from markweave.http.errors import error_responses

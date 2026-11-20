@@ -1,4 +1,4 @@
-"""All-or-nothing publication of local conversion outputs (T106, D1).
+"""All-or-nothing publication of local conversion outputs.
 
 Every output is first staged and synchronized in a private temporary file. The
 commit then publishes the complete set: new names are hard-linked so concurrent

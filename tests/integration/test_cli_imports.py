@@ -11,7 +11,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.light_coverage]
 
 
 def test_cli_help_and_version_do_not_import_server_or_optional_backends() -> None:
-    """The lightweight console surface remains compatible with future T40 extras."""
+    """The lightweight console surface leaves optional dependencies unloaded."""
     script = """
 import sys
 import markweave

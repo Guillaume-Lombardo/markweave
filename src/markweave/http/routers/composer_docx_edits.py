@@ -163,7 +163,7 @@ def published_response(
 
 
 def build_router(dependencies: HttpDependencies) -> APIRouter:
-    """Expose the qualified T92 Office text edit families: DOCX body and PPTX slides."""
+    """Expose text edits for DOCX body text and PPTX slides."""
     router = APIRouter()
 
     @router.get(

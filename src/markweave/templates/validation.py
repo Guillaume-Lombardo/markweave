@@ -62,7 +62,7 @@ _PROHIBITED_CONTENT_TYPE_MARKERS = (
 
 @dataclass(frozen=True)
 class TemplateLimits:
-    """Explicit validation bounds whose production values remain owned by T18."""
+    """Configured bounds for template upload validation."""
 
     max_archive_bytes: int
     max_entries: int

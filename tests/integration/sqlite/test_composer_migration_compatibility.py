@@ -1,4 +1,4 @@
-"""T90 schema upgrades and rollback use supported SQLite 3.34 grammar."""
+"""Composer schema upgrades and rollback use supported SQLite 3.34 grammar."""
 
 from pathlib import Path
 

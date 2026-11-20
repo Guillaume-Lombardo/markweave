@@ -77,7 +77,7 @@ _MEMBER_PRE_EXIT_STATES = frozenset(
 )
 _MEMBER_BROKER_FAULT_CODES = ("termination_unproven", "transport_failure")
 _MAX_METRICS_BYTES = 1_048_576
-# T142: rootless Podman 4.9 on the hosted runner can stall the container-to-host
+# Rootless Podman 4.9 on the hosted runner can stall the container-to-host
 # broker path for about 70 seconds after a container stop or restart. The gate
 # bound covers that observed stall with margin; it is a harness bound, not a
 # product default.
@@ -981,7 +981,7 @@ def signal_broker(
 ) -> None:
     """Signal the exact owned broker child, never its uv supervisor wrapper.
 
-    With an admission report, the child is the T141 admission-window launcher
+    With an admission report, the child is the admission-window launcher
     that runs the same broker entry point at admission limit one.
     """
     if not root.is_absolute() or parent_pid <= 0 or signal_name not in {"TERM", "KILL"}:

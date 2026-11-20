@@ -87,7 +87,7 @@ _PPTX_LIMIT_FIELDS = frozenset(
 
 @dataclass(frozen=True, slots=True)
 class AttemptChannelLimits:
-    """T71-owned document ceilings enforced before allocating file contents."""
+    """Document size limits checked before allocating memory for file contents."""
 
     max_input_bytes: int
     max_output_bytes: int

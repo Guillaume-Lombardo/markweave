@@ -1,4 +1,4 @@
-"""Deterministic contracts for the T21 RustFS snapshot helper."""
+"""Deterministic contracts for the RustFS snapshot helper."""
 
 from __future__ import annotations
 

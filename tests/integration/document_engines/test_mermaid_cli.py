@@ -306,7 +306,7 @@ def test_pandoc_preserves_ratio_and_physical_dimension_caps(
     assert (int(extent.attrib["cx"]), int(extent.attrib["cy"])) == expected_extent
 
 
-def test_real_mermaid_versions_match_t00_artifacts() -> None:
+def test_real_mermaid_versions_match_qualified_artifacts() -> None:
     mmdc = subprocess.run(
         [os.environ.get("MARKWEAVE_TEST_MMDC", "mmdc"), "--version"],
         check=True,

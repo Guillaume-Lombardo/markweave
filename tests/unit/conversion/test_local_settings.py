@@ -1,4 +1,4 @@
-"""Unit tests for local conversion configuration (T106, D1)."""
+"""Unit tests for local conversion configuration."""
 
 from __future__ import annotations
 

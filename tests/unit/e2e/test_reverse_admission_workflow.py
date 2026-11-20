@@ -1,4 +1,4 @@
-"""Validate the T141 admission-limit scenario evidence of the reverse driver."""
+"""Validate the reverse driver evidence for broker admission at limit one."""
 
 from __future__ import annotations
 

@@ -2708,7 +2708,7 @@ def validate_production_release_workflow_text(  # noqa: PLR0912, PLR0915
     }
     if set(jobs) != expected_jobs:
         errors.append("automatic release jobs do not match the exact contract")
-    # Tag, Release, PyPI and GHCR mutations wait for the qualified image set (T134).
+    # Tag, Release, PyPI and GHCR mutations wait for the qualified image set.
     # A status function would run a job despite a failed qualification.
     for name in ("create-release", "publish", "container"):
         job = _mapping(jobs.get(name)) or {}

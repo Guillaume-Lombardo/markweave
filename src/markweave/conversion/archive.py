@@ -26,7 +26,7 @@ _SUPPORTED_COMPRESSION = frozenset({zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED})
 
 @dataclass(frozen=True)
 class ArchiveLimits:
-    """Explicit archive bounds whose production values remain owned by T18."""
+    """Configured bounds for archive admission and extraction."""
 
     max_archive_bytes: int
     max_entries: int

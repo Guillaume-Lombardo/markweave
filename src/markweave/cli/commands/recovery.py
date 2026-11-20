@@ -29,7 +29,7 @@ CONTROL_CHARACTER_LIMIT = 32
 
 
 class _Invocation:
-    """Argument values bound to the handler without changing T31's root contract."""
+    """Parsed arguments passed to the recovery command handler."""
 
     def __init__(self, operation: str) -> None:
         self.operation = operation
