@@ -831,6 +831,29 @@ def test_url_lib_transport_retries_only_transient_http_or_network_failures(
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    (
+        (f"{public_alignment.GITHUB_API}/releases/tags/v1.0.0", "Bearer job-token"),
+        (public_alignment.PYPI_URL, None),
+        ("https://github.com/owner/repo/releases/download/v1/a.json", None),
+    ),
+)
+def test_url_lib_transport_authenticates_only_github_api_requests(
+    mocker, url: str, expected: str | None
+) -> None:
+    transport = public_alignment.UrlLibTransport(github_token="job-token")  # noqa: S106 - test value
+    opener = mocker.Mock()
+    opener.open.return_value = _UrlLibResponse()
+    transport._opener = opener
+
+    transport.request(url, headers={"Accept": "application/json"})
+
+    (request,), _ = opener.open.call_args
+    assert request.get_header("Authorization") == expected
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize("status", (401, 404))
 def test_url_lib_transport_does_not_retry_auth_or_not_found_response(
     mocker, status: int
