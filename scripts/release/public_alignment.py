@@ -121,8 +121,13 @@ class _TrustedRedirect(urllib.request.HTTPRedirectHandler):
 class UrlLibTransport:
     """Bounded HTTPS-only transport for the fixed public endpoints."""
 
-    def __init__(self, *, maximum_bytes: int = MAX_JSON_BYTES) -> None:
+    def __init__(
+        self, *, maximum_bytes: int = MAX_JSON_BYTES, github_token: str | None = None
+    ) -> None:
         self._maximum_bytes = maximum_bytes
+        # Hosted runners share egress addresses, so anonymous GitHub API calls hit
+        # the shared rate limit intermittently. Only api.github.com gets the token.
+        self._github_token = github_token
         self._opener = urllib.request.build_opener(_TrustedRedirect)
 
     def request(self, url: str, *, headers: Mapping[str, str]) -> HttpResponse:
@@ -158,8 +163,15 @@ class UrlLibTransport:
     def _request_once(self, url: str, *, headers: Mapping[str, str]) -> HttpResponse:
         if not url.startswith("https://"):
             raise AlignmentError("public release checks require HTTPS")
+        request_headers = dict(headers)
+        if (
+            self._github_token is not None
+            and urllib.parse.urlsplit(url).hostname == "api.github.com"
+            and "Authorization" not in request_headers
+        ):
+            request_headers["Authorization"] = f"Bearer {self._github_token}"
         request = urllib.request.Request(  # noqa: S310 - HTTPS checked above
-            url, headers=dict(headers)
+            url, headers=request_headers
         )
         try:
             with self._opener.open(request, timeout=HTTP_TIMEOUT_SECONDS) as response:
@@ -931,7 +943,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
             project_version=project_version,
             compose=compose,
             event_name=options.event_name,
-            transport=UrlLibTransport(),
+            transport=UrlLibTransport(github_token=token),
             base=base,
             registry_credentials=registry_credentials,
             frontend=frontend,

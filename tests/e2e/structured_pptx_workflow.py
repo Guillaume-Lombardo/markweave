@@ -204,7 +204,7 @@ def _download(client: ServiceClient, job: dict[str, Any], label: str) -> HttpRes
 def _canonical_manifest(asset: bytes) -> dict[str, Any]:
     return {
         "schema_version": 1,
-        "engine": {"name": "firecrawl-anydoc", "version": "0.2.4"},
+        "engine": {"name": "firecrawl-anydoc", "version": "0.2.5"},
         "source": {"family": "powerpoint", "detected_format": "pptx"},
         "result": {
             "mode": "markdown_with_assets",

@@ -1,0 +1,545 @@
+acl|x86_64|GPLv2+
+alsa-lib|x86_64|LGPL-2.1-or-later
+alternatives|x86_64|GPL-2.0-only
+annobin|x86_64|GPL-3.0-or-later AND LGPL-2.0-or-later AND (GPL-2.0-or-later WITH GCC-exception-2.0) AND (LGPL-2.0-or-later WITH GCC-exception-2.0) AND GFDL-1.3-or-later
+apr-devel|x86_64|ASL 2.0 and BSD with advertising and ISC and BSD
+apr-util-bdb|x86_64|ASL 2.0
+apr-util-devel|x86_64|ASL 2.0
+apr-util-ldap|x86_64|ASL 2.0
+apr-util-openssl|x86_64|ASL 2.0
+apr-util|x86_64|ASL 2.0
+apr|x86_64|ASL 2.0 and BSD with advertising and ISC and BSD
+at-spi2-atk|x86_64|LGPLv2+
+at-spi2-core|x86_64|LGPLv2+
+atk|x86_64|LGPLv2+
+atlas-devel|x86_64|BSD
+atlas|x86_64|BSD
+attr|x86_64|GPLv2+
+audit-libs|x86_64|LGPLv2+
+autoconf|noarch|GPLv2+ and GFDL
+automake|noarch|GPLv2+ and GFDL and Public Domain and MIT
+avahi-libs|x86_64|LGPLv2+
+basesystem|noarch|Public Domain
+bash|x86_64|GPLv3+
+binutils-gold|x86_64|GPLv3+
+binutils|x86_64|GPLv3+
+boost-regex|x86_64|Boost and MIT and Python
+brotli-devel|x86_64|MIT
+brotli|x86_64|MIT
+bsdtar|x86_64|BSD
+bzip2-devel|x86_64|BSD
+bzip2-libs|x86_64|BSD
+bzip2|x86_64|BSD
+ca-certificates|noarch|MIT AND GPL-2.0-or-later
+cairo|x86_64|LGPLv2 or MPLv1.1
+cmake-filesystem|x86_64|BSD-3-Clause AND MIT-open-group AND Zlib AND Apache-2.0
+coreutils-single|x86_64|GPLv3+
+cpp|x86_64|GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
+cracklib-dicts|x86_64|LGPLv2+
+cracklib|x86_64|LGPLv2+
+crypto-policies-scripts|noarch|LGPL-2.1-or-later
+crypto-policies|noarch|LGPL-2.1-or-later
+cups-libs|x86_64|LGPLv2 and zlib
+curl-minimal|x86_64|MIT
+cyrus-sasl-devel|x86_64|BSD with advertising
+cyrus-sasl-lib|x86_64|BSD with advertising
+cyrus-sasl|x86_64|BSD with advertising
+dbus-broker|x86_64|ASL 2.0
+dbus-common|noarch|(GPLv2+ or AFL) and GPLv2+
+dbus-libs|x86_64|(GPLv2+ or AFL) and GPLv2+
+dbus|x86_64|(GPLv2+ or AFL) and GPLv2+
+dejavu-sans-fonts|noarch|Bitstream Vera and Public Domain
+dmidecode|x86_64|GPLv2+
+dnf-data|noarch|GPLv2+
+dnf|noarch|GPLv2+
+dwz|x86_64|GPLv2+ and GPLv3+
+ed|x86_64|GPLv3+ and GFDL
+efi-srpm-macros|noarch|GPLv3+
+elfutils-debuginfod-client|x86_64|GPL-3.0-or-later AND (GPL-2.0-or-later OR LGPL-3.0-or-later)
+elfutils-default-yama-scope|noarch|GPL-2.0-or-later OR LGPL-3.0-or-later
+elfutils-libelf|x86_64|GPL-2.0-or-later OR LGPL-3.0-or-later
+elfutils-libs|x86_64|GPL-2.0-or-later OR LGPL-3.0-or-later
+emacs-filesystem|noarch|GPLv3+ and CC0-1.0
+enchant|x86_64|LGPLv2+
+environment-modules|x86_64|GPLv2+
+expat-devel|x86_64|MIT
+expat|x86_64|MIT
+file-libs|x86_64|BSD
+filesystem|x86_64|Public Domain
+file|x86_64|BSD
+findutils|x86_64|GPLv3+
+fontconfig-devel|x86_64|MIT and Public Domain and UCD
+fontconfig|x86_64|MIT and Public Domain and UCD
+fonts-filesystem|noarch|MIT
+fonts-srpm-macros|noarch|GPLv3+
+freetype-devel|x86_64|(FTL or GPLv2+) and BSD and MIT and Public Domain and zlib with acknowledgement
+freetype|x86_64|(FTL or GPLv2+) and BSD and MIT and Public Domain and zlib with acknowledgement
+fribidi|x86_64|LGPLv2+ and UCD
+gawk|x86_64|GPLv3+ and GPLv2+ and LGPLv2+ and BSD
+gcc-c++|x86_64|GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
+gcc-gfortran|x86_64|GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
+gcc-plugin-annobin|x86_64|GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
+gcc|x86_64|GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
+gd-devel|x86_64|MIT
+gdb-gdbserver|x86_64|GPL-3.0-or-later AND BSD-3-Clause AND FSFAP AND LGPL-2.1-or-later AND GPL-2.0-or-later AND LGPL-2.0-or-later AND LicenseRef-Fedora-Public-Domain AND GFDL-1.3-or-later AND LGPL-2.0-or-later WITH GCC-exception-2.0 AND GPL-3.0-or-later WITH GCC-exception-3.1 AND GPL-2.0-or-later WITH GNU-compiler-exception AND MIT
+gdb-headless|x86_64|GPL-3.0-or-later AND BSD-3-Clause AND FSFAP AND LGPL-2.1-or-later AND GPL-2.0-or-later AND LGPL-2.0-or-later AND LicenseRef-Fedora-Public-Domain AND GFDL-1.3-or-later AND LGPL-2.0-or-later WITH GCC-exception-2.0 AND GPL-3.0-or-later WITH GCC-exception-3.1 AND GPL-2.0-or-later WITH GNU-compiler-exception AND MIT
+gdbm-libs|x86_64|GPLv3+
+gdb|x86_64|GPL-3.0-or-later AND BSD-3-Clause AND FSFAP AND LGPL-2.1-or-later AND GPL-2.0-or-later AND LGPL-2.0-or-later AND LicenseRef-Fedora-Public-Domain AND GFDL-1.3-or-later AND LGPL-2.0-or-later WITH GCC-exception-2.0 AND GPL-3.0-or-later WITH GCC-exception-3.1 AND GPL-2.0-or-later WITH GNU-compiler-exception AND MIT
+gd|x86_64|MIT
+gettext-libs|x86_64|LGPLv2+ and GPLv3+
+gettext|x86_64|GPLv3+ and LGPLv2+ and GFDL
+ghc-srpm-macros|noarch|GPLv2+
+git-core-doc|noarch|GPLv2
+git-core|x86_64|GPLv2
+git|x86_64|GPLv2
+glib2-devel|x86_64|LGPLv2+
+glib2|x86_64|LGPLv2+
+glibc-common|x86_64|LGPL-2.1-or-later AND SunPro AND LGPL-2.1-or-later WITH GCC-exception-2.0 AND BSD-3-Clause AND GPL-2.0-or-later AND LGPL-2.1-or-later WITH GNU-compiler-exception AND GPL-2.0-only AND ISC AND LicenseRef-Fedora-Public-Domain AND HPND AND CMU-Mach AND LGPL-2.0-or-later AND Unicode-3.0 AND GFDL-1.1-or-later AND GPL-1.0-or-later AND FSFUL AND MIT AND Inner-Net-2.0 AND X11 AND GPL-2.0-or-later WITH GCC-exception-2.0 AND GFDL-1.3-only AND GFDL-1.1-only AND GPL-3.0-or-later AND GPL-3.0-or-later WITH Autoconf-exception-generic-3.0 AND GPL-3.0-or-later WITH Texinfo-exception
+glibc-devel|x86_64|LGPL-2.1-or-later AND SunPro AND LGPL-2.1-or-later WITH GCC-exception-2.0 AND BSD-3-Clause AND GPL-2.0-or-later AND LGPL-2.1-or-later WITH GNU-compiler-exception AND GPL-2.0-only AND ISC AND LicenseRef-Fedora-Public-Domain AND HPND AND CMU-Mach AND LGPL-2.0-or-later AND Unicode-3.0 AND GFDL-1.1-or-later AND GPL-1.0-or-later AND FSFUL AND MIT AND Inner-Net-2.0 AND X11 AND GPL-2.0-or-later WITH GCC-exception-2.0 AND GFDL-1.3-only AND GFDL-1.1-only AND GPL-3.0-or-later AND GPL-3.0-or-later WITH Autoconf-exception-generic-3.0 AND GPL-3.0-or-later WITH Texinfo-exception
+glibc-gconv-extra|x86_64|LGPL-2.1-or-later AND SunPro AND LGPL-2.1-or-later WITH GCC-exception-2.0 AND BSD-3-Clause AND GPL-2.0-or-later AND LGPL-2.1-or-later WITH GNU-compiler-exception AND GPL-2.0-only AND ISC AND LicenseRef-Fedora-Public-Domain AND HPND AND CMU-Mach AND LGPL-2.0-or-later AND Unicode-3.0 AND GFDL-1.1-or-later AND GPL-1.0-or-later AND FSFUL AND MIT AND Inner-Net-2.0 AND X11 AND GPL-2.0-or-later WITH GCC-exception-2.0 AND GFDL-1.3-only AND GFDL-1.1-only AND GPL-3.0-or-later AND GPL-3.0-or-later WITH Autoconf-exception-generic-3.0 AND GPL-3.0-or-later WITH Texinfo-exception
+glibc-headers|x86_64|LGPL-2.1-or-later AND SunPro AND LGPL-2.1-or-later WITH GCC-exception-2.0 AND BSD-3-Clause AND GPL-2.0-or-later AND LGPL-2.1-or-later WITH GNU-compiler-exception AND GPL-2.0-only AND ISC AND LicenseRef-Fedora-Public-Domain AND HPND AND CMU-Mach AND LGPL-2.0-or-later AND Unicode-3.0 AND GFDL-1.1-or-later AND GPL-1.0-or-later AND FSFUL AND MIT AND Inner-Net-2.0 AND X11 AND GPL-2.0-or-later WITH GCC-exception-2.0 AND GFDL-1.3-only AND GFDL-1.1-only AND GPL-3.0-or-later AND GPL-3.0-or-later WITH Autoconf-exception-generic-3.0 AND GPL-3.0-or-later WITH Texinfo-exception
+glibc-langpack-en|x86_64|LGPL-2.1-or-later AND SunPro AND LGPL-2.1-or-later WITH GCC-exception-2.0 AND BSD-3-Clause AND GPL-2.0-or-later AND LGPL-2.1-or-later WITH GNU-compiler-exception AND GPL-2.0-only AND ISC AND LicenseRef-Fedora-Public-Domain AND HPND AND CMU-Mach AND LGPL-2.0-or-later AND Unicode-3.0 AND GFDL-1.1-or-later AND GPL-1.0-or-later AND FSFUL AND MIT AND Inner-Net-2.0 AND X11 AND GPL-2.0-or-later WITH GCC-exception-2.0 AND GFDL-1.3-only AND GFDL-1.1-only AND GPL-3.0-or-later AND GPL-3.0-or-later WITH Autoconf-exception-generic-3.0 AND GPL-3.0-or-later WITH Texinfo-exception
+glibc-locale-source|x86_64|LGPL-2.1-or-later AND SunPro AND LGPL-2.1-or-later WITH GCC-exception-2.0 AND BSD-3-Clause AND GPL-2.0-or-later AND LGPL-2.1-or-later WITH GNU-compiler-exception AND GPL-2.0-only AND ISC AND LicenseRef-Fedora-Public-Domain AND HPND AND CMU-Mach AND LGPL-2.0-or-later AND Unicode-3.0 AND GFDL-1.1-or-later AND GPL-1.0-or-later AND FSFUL AND MIT AND Inner-Net-2.0 AND X11 AND GPL-2.0-or-later WITH GCC-exception-2.0 AND GFDL-1.3-only AND GFDL-1.1-only AND GPL-3.0-or-later AND GPL-3.0-or-later WITH Autoconf-exception-generic-3.0 AND GPL-3.0-or-later WITH Texinfo-exception
+glibc-minimal-langpack|x86_64|LGPL-2.1-or-later AND SunPro AND LGPL-2.1-or-later WITH GCC-exception-2.0 AND BSD-3-Clause AND GPL-2.0-or-later AND LGPL-2.1-or-later WITH GNU-compiler-exception AND GPL-2.0-only AND ISC AND LicenseRef-Fedora-Public-Domain AND HPND AND CMU-Mach AND LGPL-2.0-or-later AND Unicode-3.0 AND GFDL-1.1-or-later AND GPL-1.0-or-later AND FSFUL AND MIT AND Inner-Net-2.0 AND X11 AND GPL-2.0-or-later WITH GCC-exception-2.0 AND GFDL-1.3-only AND GFDL-1.1-only AND GPL-3.0-or-later AND GPL-3.0-or-later WITH Autoconf-exception-generic-3.0 AND GPL-3.0-or-later WITH Texinfo-exception
+glibc|x86_64|LGPL-2.1-or-later AND SunPro AND LGPL-2.1-or-later WITH GCC-exception-2.0 AND BSD-3-Clause AND GPL-2.0-or-later AND LGPL-2.1-or-later WITH GNU-compiler-exception AND GPL-2.0-only AND ISC AND LicenseRef-Fedora-Public-Domain AND HPND AND CMU-Mach AND LGPL-2.0-or-later AND Unicode-3.0 AND GFDL-1.1-or-later AND GPL-1.0-or-later AND FSFUL AND MIT AND Inner-Net-2.0 AND X11 AND GPL-2.0-or-later WITH GCC-exception-2.0 AND GFDL-1.3-only AND GFDL-1.1-only AND GPL-3.0-or-later AND GPL-3.0-or-later WITH Autoconf-exception-generic-3.0 AND GPL-3.0-or-later WITH Texinfo-exception
+gmp|x86_64|LGPLv3+ or GPLv2+
+gnupg2|x86_64|GPLv3+
+gnutls|x86_64|GPLv3+ and LGPLv2+
+go-srpm-macros|noarch|GPLv3+
+gobject-introspection|x86_64|GPLv2+ and LGPLv2+ and MIT
+google-chrome-stable|x86_64|Multiple, see https://chrome.google.com/
+gpg-pubkey|(none)|pubkey
+gpg-pubkey|(none)|pubkey
+gpg-pubkey|(none)|pubkey
+gpgme|x86_64|LGPLv2+ and GPLv3+
+graphite2-devel|x86_64|(LGPLv2+ or GPLv2+ or MPLv1.1) and (Netscape or GPLv2+ or LGPLv2+)
+graphite2|x86_64|(LGPLv2+ or GPLv2+ or MPLv1.1) and (Netscape or GPLv2+ or LGPLv2+)
+grep|x86_64|GPLv3+
+groff-base|x86_64|GPLv3+ and GFDL and BSD and MIT
+gzip|x86_64|GPLv3+ and GFDL
+harfbuzz-devel|x86_64|MIT
+harfbuzz-icu|x86_64|MIT
+harfbuzz|x86_64|MIT
+hostname|x86_64|GPLv2+
+httpd-core|x86_64|ASL 2.0
+httpd-devel|x86_64|ASL 2.0
+httpd-filesystem|noarch|ASL 2.0
+httpd-tools|x86_64|ASL 2.0
+httpd|x86_64|ASL 2.0
+hunspell-en-GB|noarch|LGPLv2+ and LGPLv2 and BSD
+hunspell-en-US|noarch|LGPLv2+ and LGPLv2 and BSD
+hunspell-en|noarch|LGPLv2+ and LGPLv2 and BSD
+hunspell-filesystem|x86_64|LGPLv2+ or GPLv2+ or MPLv1.1
+hunspell|x86_64|LGPLv2+ or GPLv2+ or MPLv1.1
+hwdata|noarch|GPLv2+
+ima-evm-utils|x86_64|GPLv2
+info|x86_64|GPLv3+
+iproute|x86_64|GPL-2.0-or-later AND NIST-PD
+jbigkit-libs|x86_64|GPLv2+
+json-c|x86_64|MIT
+json-glib|x86_64|LGPLv2+
+kernel-headers|x86_64|((GPL-2.0-only WITH Linux-syscall-note) OR BSD-2-Clause) AND ((GPL-2.0-only WITH Linux-syscall-note) OR BSD-3-Clause) AND ((GPL-2.0-only WITH Linux-syscall-note) OR CDDL-1.0) AND ((GPL-2.0-only WITH Linux-syscall-note) OR Linux-OpenIB) AND ((GPL-2.0-only WITH Linux-syscall-note) OR MIT) AND ((GPL-2.0-or-later WITH Linux-syscall-note) OR BSD-3-Clause) AND ((GPL-2.0-or-later WITH Linux-syscall-note) OR MIT) AND Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND BSD-3-Clause-Clear AND GFDL-1.1-no-invariants-or-later AND GPL-1.0-or-later AND (GPL-1.0-or-later OR BSD-3-Clause) AND (GPL-1.0-or-later WITH Linux-syscall-note) AND GPL-2.0-only AND (GPL-2.0-only OR Apache-2.0) AND (GPL-2.0-only OR BSD-2-Clause) AND (GPL-2.0-only OR BSD-3-Clause) AND (GPL-2.0-only OR CDDL-1.0) AND (GPL-2.0-only OR GFDL-1.1-no-invariants-or-later) AND (GPL-2.0-only OR GFDL-1.2-no-invariants-only) AND (GPL-2.0-only WITH Linux-syscall-note) AND GPL-2.0-or-later AND (GPL-2.0-or-later OR BSD-2-Clause) AND (GPL-2.0-or-later OR BSD-3-Clause) AND (GPL-2.0-or-later OR CC-BY-4.0) AND (GPL-2.0-or-later WITH GCC-exception-2.0) AND (GPL-2.0-or-later WITH Linux-syscall-note) AND ISC AND LGPL-2.0-or-later AND (LGPL-2.0-or-later OR BSD-2-Clause) AND (LGPL-2.0-or-later WITH Linux-syscall-note) AND LGPL-2.1-only AND (LGPL-2.1-only OR BSD-2-Clause) AND (LGPL-2.1-only WITH Linux-syscall-note) AND LGPL-2.1-or-later AND (LGPL-2.1-or-later WITH Linux-syscall-note) AND (Linux-OpenIB OR GPL-2.0-only) AND (Linux-OpenIB OR GPL-2.0-only OR BSD-2-Clause) AND Linux-man-pages-copyleft AND MIT AND (MIT OR GPL-2.0-only) AND (MIT OR GPL-2.0-or-later) AND (MIT OR LGPL-2.1-only) AND (MPL-1.1 OR GPL-2.0-only) AND (X11 OR GPL-2.0-only) AND (X11 OR GPL-2.0-or-later) AND Zlib AND (copyleft-next-0.3.1 OR GPL-2.0-or-later)
+kernel-srpm-macros|noarch|MIT
+keyutils-libs-devel|x86_64|GPLv2+ and LGPLv2+
+keyutils-libs|x86_64|GPLv2+ and LGPLv2+
+keyutils|x86_64|GPLv2+ and LGPLv2+
+kmod-libs|x86_64|LGPLv2+
+krb5-devel|x86_64|MIT
+krb5-libs|x86_64|MIT
+langpacks-core-en|noarch|GPLv2+
+langpacks-core-font-en|noarch|GPLv2+
+langpacks-en|noarch|GPLv2+
+less|x86_64|GPLv3+ or BSD
+libICE|x86_64|MIT
+libSM|x86_64|MIT
+libX11-common|noarch|MIT AND X11
+libX11-devel|x86_64|MIT AND X11
+libX11-xcb|x86_64|MIT AND X11
+libX11|x86_64|MIT AND X11
+libXau-devel|x86_64|MIT
+libXau|x86_64|MIT
+libXcomposite|x86_64|MIT
+libXdamage|x86_64|MIT
+libXext|x86_64|MIT
+libXfixes|x86_64|MIT
+libXft|x86_64|MIT
+libXinerama|x86_64|MIT
+libXi|x86_64|MIT
+libXpm-devel|x86_64|MIT
+libXpm|x86_64|MIT
+libXrandr|x86_64|MIT
+libXrender|x86_64|MIT
+libXtst|x86_64|MIT
+libXt|x86_64|MIT
+libacl|x86_64|LGPLv2+
+libarchive|x86_64|BSD
+libassuan|x86_64|LGPLv2+ and GPLv3+
+libattr|x86_64|LGPLv2+
+libbabeltrace|x86_64|MIT and GPLv2
+libblkid-devel|x86_64|LGPLv2+
+libblkid|x86_64|LGPLv2+
+libbpf|x86_64|LGPLv2 or BSD
+libbrotli|x86_64|MIT
+libcap-ng|x86_64|LGPLv2+
+libcap|x86_64|BSD or GPLv2
+libcbor|x86_64|MIT
+libcom_err-devel|x86_64|MIT
+libcom_err|x86_64|MIT
+libcomps|x86_64|GPLv2+
+libcurl-devel|x86_64|MIT
+libcurl-minimal|x86_64|MIT
+libdatrie|x86_64|LGPLv2+
+libdb-devel|x86_64|BSD and LGPLv2 and Sleepycat and MIT
+libdb|x86_64|BSD and LGPLv2 and Sleepycat and MIT
+libdnf-plugin-subscription-manager|x86_64|GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.1-or-later
+libdnf|x86_64|LGPLv2+
+libdrm|x86_64|MIT
+libeconf|x86_64|MIT
+libedit|x86_64|BSD
+libevent|x86_64|BSD and ISC
+libfdisk|x86_64|LGPLv2+
+libffi-devel|x86_64|MIT
+libffi|x86_64|MIT
+libfido2|x86_64|BSD
+libgcc|x86_64|GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
+libgcrypt|x86_64|LGPLv2+
+libgfortran|x86_64|GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
+libgomp|x86_64|GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
+libgpg-error-devel|x86_64|LGPLv2+
+libgpg-error|x86_64|LGPLv2+
+libicu-devel|x86_64|Unicode-DFS-2016 AND BSD-2-Clause AND BSD-3-Clause AND LicenseRef-Fedora-Public-Domain
+libicu|x86_64|Unicode-DFS-2016 AND BSD-2-Clause AND BSD-3-Clause AND LicenseRef-Fedora-Public-Domain
+libidn2|x86_64|(GPLv2+ or LGPLv3+) and GPLv3+
+libipt|x86_64|BSD
+libjpeg-turbo-devel|x86_64|IJG
+libjpeg-turbo|x86_64|IJG
+libkadm5|x86_64|MIT
+libksba|x86_64|(LGPLv3+ or GPLv2+) and GPLv3+
+libmnl|x86_64|LGPLv2+
+libmodulemd|x86_64|MIT
+libmount-devel|x86_64|LGPLv2+
+libmount|x86_64|LGPLv2+
+libmpc|x86_64|LGPLv3+
+libnghttp2|x86_64|MIT
+libobasis26.2-base|x86_64|LGPL
+libobasis26.2-calc|x86_64|LGPL
+libobasis26.2-core|x86_64|LGPL
+libobasis26.2-draw|x86_64|LGPL
+libobasis26.2-en-US|x86_64|LGPL
+libobasis26.2-extension-beanshell-script-provider|x86_64|LGPL
+libobasis26.2-extension-javascript-script-provider|x86_64|LGPL
+libobasis26.2-extension-mediawiki-publisher|x86_64|LGPL
+libobasis26.2-extension-nlpsolver|x86_64|LGPL
+libobasis26.2-extension-pdf-import|x86_64|LGPL
+libobasis26.2-extension-report-builder|x86_64|LGPL
+libobasis26.2-firebird|x86_64|LGPL
+libobasis26.2-gnome-integration|x86_64|LGPL
+libobasis26.2-graphicfilter|x86_64|LGPL
+libobasis26.2-images|x86_64|LGPL
+libobasis26.2-impress|x86_64|LGPL
+libobasis26.2-kde-integration|x86_64|LGPL
+libobasis26.2-librelogo|x86_64|LGPL
+libobasis26.2-libreofficekit-data|x86_64|LGPL
+libobasis26.2-math|x86_64|LGPL
+libobasis26.2-ogltrans|x86_64|LGPL
+libobasis26.2-onlineupdate|x86_64|LGPL
+libobasis26.2-ooofonts|x86_64|LGPL
+libobasis26.2-ooolinguistic|x86_64|LGPL
+libobasis26.2-postgresql-sdbc|x86_64|LGPL
+libobasis26.2-python-script-provider|x86_64|LGPL
+libobasis26.2-pyuno|x86_64|LGPL
+libobasis26.2-writer|x86_64|LGPL
+libobasis26.2-xsltfilter|x86_64|LGPL
+libpciaccess|x86_64|MIT
+libpipeline|x86_64|GPLv3+
+libpkgconf|x86_64|ISC
+libpng-devel|x86_64|zlib
+libpng|x86_64|zlib
+libpq-devel|x86_64|PostgreSQL
+libpq|x86_64|PostgreSQL
+libpsl|x86_64|MIT
+libpwquality|x86_64|BSD or GPLv2+
+libquadmath-devel|x86_64|GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
+libquadmath|x86_64|GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
+libreoffice26.2-base|x86_64|LGPL
+libreoffice26.2-calc|x86_64|LGPL
+libreoffice26.2-dict-en|x86_64|LGPL
+libreoffice26.2-dict-es|x86_64|LGPL
+libreoffice26.2-dict-fr|x86_64|LGPL
+libreoffice26.2-draw|x86_64|LGPL
+libreoffice26.2-en-US|x86_64|LGPL
+libreoffice26.2-freedesktop-menus|noarch|LGPLv3 with MPLv2, ALv2 and others
+libreoffice26.2-impress|x86_64|LGPL
+libreoffice26.2-math|x86_64|LGPL
+libreoffice26.2-ure|x86_64|LGPL
+libreoffice26.2-writer|x86_64|LGPL
+libreoffice26.2|x86_64|LGPL
+libreport-filesystem|noarch|GPLv2+
+librepo|x86_64|LGPL-2.1-or-later
+librhsm|x86_64|LGPLv2+
+libseccomp|x86_64|LGPLv2
+libselinux-devel|x86_64|Public Domain
+libselinux|x86_64|Public Domain
+libsemanage|x86_64|LGPLv2+
+libsepol-devel|x86_64|LGPLv2+
+libsepol|x86_64|LGPLv2+
+libsigsegv|x86_64|GPLv2+
+libsmartcols|x86_64|LGPLv2+
+libsolv|x86_64|BSD
+libstdc++-devel|x86_64|GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
+libstdc++|x86_64|GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
+libtalloc|x86_64|LGPL-3.0-or-later
+libtasn1|x86_64|GPLv3+ and LGPLv2+
+libthai|x86_64|LGPLv2+
+libtiff-devel|x86_64|libtiff
+libtiff|x86_64|libtiff
+libtirpc|x86_64|SISSL and BSD
+libtool-ltdl|x86_64|LGPLv2+
+libunistring|x86_64|GPLv2+ or LGPLv3+
+libuser|x86_64|LGPLv2+
+libutempter|x86_64|LGPLv2+
+libuuid|x86_64|BSD
+libverto-devel|x86_64|MIT
+libverto|x86_64|MIT
+libwebp-devel|x86_64|BSD
+libwebp|x86_64|BSD
+libxcb-devel|x86_64|MIT
+libxcb|x86_64|MIT
+libxcrypt-devel|x86_64|LGPLv2+ and BSD and Public Domain
+libxcrypt|x86_64|LGPLv2+ and BSD and Public Domain
+libxkbcommon|x86_64|MIT
+libxml2-devel|x86_64|MIT
+libxml2|x86_64|MIT
+libxslt-devel|x86_64|MIT
+libxslt|x86_64|MIT
+libyaml|x86_64|MIT
+libzstd|x86_64|BSD and GPLv2
+llvm-filesystem|x86_64|Apache-2.0 WITH LLVM-exception OR NCSA
+llvm-libs|x86_64|Apache-2.0 WITH LLVM-exception OR NCSA
+lsof|x86_64|zlib and Sendmail and LGPLv2+
+lua-libs|x86_64|MIT
+lua-srpm-macros|noarch|MIT
+lz4-libs|x86_64|GPLv2+ and BSD
+m4|x86_64|GPLv3+
+mailcap|noarch|Public Domain and MIT
+make|x86_64|GPLv3+
+man-db|x86_64|GPLv2+ and GPLv3+
+mariadb-connector-c-config|noarch|LGPLv2+
+mariadb-connector-c-devel|x86_64|LGPLv2+
+mariadb-connector-c|x86_64|LGPLv2+
+mesa-libgbm|x86_64|MIT AND BSD-3-Clause AND SGI-B-2.0
+mod_auth_gssapi|x86_64|MIT
+mod_http2|x86_64|ASL 2.0
+mod_ldap|x86_64|ASL 2.0
+mod_lua|x86_64|ASL 2.0
+mod_session|x86_64|ASL 2.0
+mod_ssl|x86_64|ASL 2.0
+mpdecimal|x86_64|BSD
+mpfr|x86_64|LGPLv3+
+ncurses-base|noarch|MIT
+ncurses-libs|x86_64|MIT
+ncurses|x86_64|MIT
+nettle|x86_64|LGPLv3+ or GPLv2+
+nodejs-docs|noarch|Apache-2.0 AND Artistic-2.0 AND BSD-2-Clause AND BSD-3-Clause AND BlueOak-1.0.0 AND CC-BY-3.0 AND CC0-1.0 AND ISC AND MIT
+nodejs-full-i18n|x86_64|Apache-2.0 AND Artistic-2.0 AND BSD-2-Clause AND BSD-3-Clause AND BlueOak-1.0.0 AND CC-BY-3.0 AND CC0-1.0 AND ISC AND MIT
+nodejs-libs|x86_64|Apache-2.0 AND Artistic-2.0 AND BSD-2-Clause AND BSD-3-Clause AND BlueOak-1.0.0 AND CC-BY-3.0 AND CC0-1.0 AND ISC AND MIT
+nodejs|x86_64|Apache-2.0 AND Artistic-2.0 AND BSD-2-Clause AND BSD-3-Clause AND BlueOak-1.0.0 AND CC-BY-3.0 AND CC0-1.0 AND ISC AND MIT
+npm|x86_64|Apache-2.0 AND Artistic-2.0 AND BSD-2-Clause AND BSD-3-Clause AND BlueOak-1.0.0 AND CC-BY-3.0 AND CC0-1.0 AND ISC AND MIT
+npth|x86_64|LGPLv2+
+nspr|x86_64|MPLv2.0
+nss-softokn-freebl|x86_64|MPLv2.0
+nss-softokn|x86_64|MPLv2.0
+nss-sysinit|x86_64|MPLv2.0
+nss-util|x86_64|MPLv2.0
+nss_wrapper-libs|x86_64|BSD
+nss|x86_64|MPLv2.0
+ocaml-srpm-macros|noarch|GPLv2+
+openblas-srpm-macros|noarch|MIT
+openldap-devel|x86_64|OLDAP-2.8
+openldap|x86_64|OLDAP-2.8
+openssh-clients|x86_64|BSD
+openssh|x86_64|BSD
+openssl-devel|x86_64|Apache-2.0
+openssl-fips-provider-so|x86_64|ASL 2.0
+openssl-fips-provider|x86_64|ASL 2.0
+openssl-libs|x86_64|Apache-2.0
+openssl|x86_64|Apache-2.0
+p11-kit-trust|x86_64|BSD-3-Clause
+p11-kit|x86_64|BSD-3-Clause
+pam|x86_64|BSD and GPLv2+
+pango|x86_64|LGPLv2+
+passwd|x86_64|BSD or GPL+
+patch|x86_64|GPLv3+
+pcre-cpp|x86_64|BSD
+pcre-devel|x86_64|BSD
+pcre-utf16|x86_64|BSD
+pcre-utf32|x86_64|BSD
+pcre2-devel|x86_64|BSD
+pcre2-syntax|noarch|BSD
+pcre2-utf16|x86_64|BSD
+pcre2-utf32|x86_64|BSD
+pcre2|x86_64|BSD
+pcre|x86_64|BSD
+perl-AutoLoader|noarch|GPL+ or Artistic
+perl-B|x86_64|GPL+ or Artistic
+perl-Carp|noarch|GPL+ or Artistic
+perl-Class-Struct|noarch|GPL+ or Artistic
+perl-Data-Dumper|x86_64|GPL+ or Artistic
+perl-Digest-MD5|x86_64|(GPL+ or Artistic) and RSA
+perl-Digest|noarch|GPL+ or Artistic
+perl-DynaLoader|x86_64|GPL+ or Artistic
+perl-Encode|x86_64|(GPL+ or Artistic) and Artistic 2.0 and UCD
+perl-Errno|x86_64|GPL+ or Artistic
+perl-Error|noarch|(GPL+ or Artistic) and MIT
+perl-Exporter|noarch|GPL+ or Artistic
+perl-Fcntl|x86_64|GPL+ or Artistic
+perl-File-Basename|noarch|GPL+ or Artistic
+perl-File-Compare|noarch|GPL+ or Artistic
+perl-File-Copy|noarch|GPL+ or Artistic
+perl-File-Find|noarch|GPL+ or Artistic
+perl-File-Path|noarch|GPL+ or Artistic
+perl-File-Temp|noarch|GPL+ or Artistic
+perl-File-stat|noarch|GPL+ or Artistic
+perl-FileHandle|noarch|GPL+ or Artistic
+perl-Getopt-Long|noarch|GPLv2+ or Artistic
+perl-Getopt-Std|noarch|GPL+ or Artistic
+perl-Git|noarch|GPLv2
+perl-HTTP-Tiny|noarch|GPL+ or Artistic
+perl-IO-Socket-IP|noarch|GPL+ or Artistic
+perl-IO-Socket-SSL|noarch|(GPL+ or Artistic) and MPLv2.0
+perl-IO|x86_64|GPL+ or Artistic
+perl-IPC-Open3|noarch|GPL+ or Artistic
+perl-MIME-Base64|x86_64|(GPL+ or Artistic) and MIT
+perl-Mozilla-CA|noarch|MPLv2.0
+perl-NDBM_File|x86_64|GPL+ or Artistic
+perl-Net-SSLeay|x86_64|Artistic-2.0
+perl-POSIX|x86_64|GPL+ or Artistic
+perl-PathTools|x86_64|(GPL+ or Artistic) and BSD
+perl-Pod-Escapes|noarch|GPL+ or Artistic
+perl-Pod-Perldoc|noarch|GPL+ or Artistic
+perl-Pod-Simple|noarch|GPL+ or Artistic
+perl-Pod-Usage|noarch|GPL+ or Artistic
+perl-Scalar-List-Utils|x86_64|GPL+ or Artistic
+perl-SelectSaver|noarch|GPL+ or Artistic
+perl-Socket|x86_64|GPL+ or Artistic
+perl-Storable|x86_64|GPL+ or Artistic
+perl-Symbol|noarch|GPL+ or Artistic
+perl-Term-ANSIColor|noarch|GPL+ or Artistic
+perl-Term-Cap|noarch|GPL+ or Artistic
+perl-TermReadKey|x86_64|(Copyright only) and (Artistic or GPL+)
+perl-Text-ParseWords|noarch|GPL+ or Artistic
+perl-Text-Tabs+Wrap|noarch|TTWL
+perl-Thread-Queue|noarch|GPL+ or Artistic
+perl-Time-Local|noarch|GPL+ or Artistic
+perl-URI|noarch|GPL+ or Artistic
+perl-base|noarch|GPL+ or Artistic
+perl-constant|noarch|GPL+ or Artistic
+perl-if|noarch|GPL+ or Artistic
+perl-interpreter|x86_64|GPL+ or Artistic
+perl-libnet|noarch|GPL+ or Artistic
+perl-libs|x86_64|(GPL+ or Artistic) and BSD and HSRL and MIT and UCD and Public domain
+perl-lib|x86_64|GPL+ or Artistic
+perl-mro|x86_64|GPL+ or Artistic
+perl-overloading|noarch|GPL+ or Artistic
+perl-overload|noarch|GPL+ or Artistic
+perl-parent|noarch|GPL+ or Artistic
+perl-podlators|noarch|(GPL+ or Artistic) and FSFAP
+perl-srpm-macros|noarch|GPLv3+
+perl-subs|noarch|GPL+ or Artistic
+perl-threads-shared|x86_64|GPL+ or Artistic
+perl-threads|x86_64|GPL+ or Artistic
+perl-vars|noarch|GPL+ or Artistic
+pixman|x86_64|MIT
+pkgconf-m4|noarch|GPLv2+ with exceptions
+pkgconf-pkg-config|x86_64|ISC
+pkgconf|x86_64|ISC
+popt|x86_64|MIT
+procps-ng|x86_64|GPL+ and GPLv2 and GPLv2+ and GPLv3+ and LGPLv2+
+psmisc|x86_64|GPLv2+
+publicsuffix-list-dafsa|noarch|MPLv2.0
+pyproject-srpm-macros|noarch|MIT
+python-srpm-macros|noarch|MIT and Python
+python3-chardet|noarch|LGPLv2
+python3-cloud-what|x86_64|GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.1-or-later
+python3-dateutil|noarch|(Apache-2.0 AND BSD-3-Clause) OR BSD-3-Clause
+python3-dbus|x86_64|MIT
+python3-decorator|noarch|BSD
+python3-dnf-plugins-core|noarch|GPLv2+
+python3-dnf|noarch|GPLv2+
+python3-gobject-base-noarch|noarch|LGPLv2+ and MIT
+python3-gobject-base|x86_64|LGPLv2+ and MIT
+python3-gpg|x86_64|LGPLv2+ and GPLv3+
+python3-hawkey|x86_64|LGPLv2+
+python3-idna|noarch|BSD and Python and Unicode
+python3-iniparse|noarch|MIT and Python
+python3-inotify|noarch|MIT
+python3-libcomps|x86_64|GPLv2+
+python3-libdnf|x86_64|LGPLv2+
+python3-librepo|x86_64|LGPL-2.1-or-later
+python3-libs|x86_64|Python
+python3-pip-wheel|noarch|MIT and Python and ASL 2.0 and BSD and ISC and LGPLv2 and MPLv2.0 and (ASL 2.0 or BSD)
+python3-pysocks|noarch|BSD
+python3-requests|noarch|ASL 2.0
+python3-rpm|x86_64|GPLv2+
+python3-setuptools-wheel|noarch|MIT and (BSD or ASL 2.0)
+python3-setuptools|noarch|MIT and (BSD or ASL 2.0)
+python3-six|noarch|MIT
+python3-subscription-manager-rhsm|x86_64|GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.1-or-later
+python3-systemd|x86_64|LGPLv2+
+python3-urllib3|noarch|MIT
+python3.14-devel|x86_64|Python-2.0.1 AND MIT
+python3.14-libs|x86_64|Python-2.0.1 AND MIT AND BSD-3-Clause AND MIT-CMU AND HPND-SMC AND BSD-2-Clause AND dtoa
+python3.14-pip-wheel|noarch|MIT AND Python-2.0.1 AND Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND ISC AND MPL-2.0 AND (Apache-2.0 OR BSD-2-Clause)
+python3.14-pip|noarch|MIT AND Python-2.0.1 AND Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND ISC AND MPL-2.0 AND (Apache-2.0 OR BSD-2-Clause)
+python3.14|x86_64|Python-2.0.1
+python3|x86_64|Python
+qt5-srpm-macros|noarch|GPLv3
+readline|x86_64|GPLv3+
+redhat-release|x86_64|GPLv2
+redhat-rpm-config|noarch|GPL+
+rootfiles|noarch|Public Domain
+rpm-build-libs|x86_64|GPLv2+ and LGPLv2+ with exceptions
+rpm-libs|x86_64|GPLv2+ and LGPLv2+ with exceptions
+rpm-sign-libs|x86_64|GPLv2+ and LGPLv2+ with exceptions
+rpm|x86_64|GPLv2+
+rsync|x86_64|GPLv3+
+rust-srpm-macros|noarch|MIT
+scl-utils|x86_64|GPLv2+
+sed|x86_64|GPLv3+
+setup|noarch|Public Domain
+shadow-utils|x86_64|BSD and GPLv2+
+source-highlight|x86_64|GPLv3+
+sqlite-devel|x86_64|Public Domain
+sqlite-libs|x86_64|Public Domain
+sqlite|x86_64|Public Domain
+sscg|x86_64|GPL-3.0-or-later WITH cryptsetup-OpenSSL-exception
+subscription-manager-rhsm-certificates|noarch|GPLv2
+subscription-manager|x86_64|GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.1-or-later
+sysprof-capture-devel|x86_64|BSD-2-Clause-Patent
+systemd-libs|x86_64|LGPLv2+ and MIT
+systemd-pam|x86_64|LGPLv2+ and MIT and GPLv2+
+systemd-rpm-macros|noarch|LGPLv2+ and MIT and GPLv2+
+systemd|x86_64|LGPLv2+ and MIT and GPLv2+
+tar|x86_64|GPLv3+
+tcl|x86_64|TCL
+tpm2-tss|x86_64|BSD
+tzdata|noarch|Public Domain
+unzip|x86_64|BSD
+usermode|x86_64|GPLv2+
+util-linux-core|x86_64|GPLv2 and GPLv2+ and LGPLv2+ and BSD with advertising and Public Domain
+util-linux|x86_64|GPLv2 and GPLv2+ and LGPLv2+ and BSD with advertising and Public Domain
+vim-filesystem|noarch|Vim and MIT
+vim-minimal|x86_64|Vim and MIT
+virt-what|x86_64|GPL-2.0-or-later
+wget|x86_64|GPLv3+
+which|x86_64|GPLv3
+xkeyboard-config|noarch|MIT
+xml-common|noarch|GPL+
+xorg-x11-proto-devel|noarch|MIT
+xz-devel|x86_64|Public Domain
+xz-libs|x86_64|Public Domain
+xz|x86_64|GPLv2+ and Public Domain
+yum|noarch|GPLv2+
+zip|x86_64|BSD
+zlib-devel|x86_64|zlib and Boost
+zlib|x86_64|zlib and Boost

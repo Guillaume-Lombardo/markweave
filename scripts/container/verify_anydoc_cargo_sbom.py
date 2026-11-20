@@ -8,9 +8,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-EXPECTED_SHA256 = "ccc492d3014d12a0b5e5cb0a256e130444e6ca910f6c696d53886971ee56f747"
-EXPECTED_COMPONENT_COUNT = 113
-EXPECTED_DEPENDENCY_COUNT = 114
+EXPECTED_SHA256 = "9f53b69716ae227bdc67e30b177ced3c855d9f28e451e65bfc3752a595e5899a"
+EXPECTED_COMPONENT_COUNT = 117
+EXPECTED_DEPENDENCY_COUNT = 118
 
 
 class AnydocSbomError(ValueError):
@@ -18,7 +18,7 @@ class AnydocSbomError(ValueError):
 
 
 def verify_anydoc_cargo_sbom(path: Path) -> None:
-    """Require the reviewed anydoc 0.2.4 Cargo graph and license inventory."""
+    """Require the reviewed anydoc 0.2.5 Cargo graph and license inventory."""
 
     if path.is_symlink() or not path.is_file():
         raise AnydocSbomError("anydoc Cargo SBOM is unsafe")
@@ -35,7 +35,7 @@ def verify_anydoc_cargo_sbom(path: Path) -> None:
     if (
         not isinstance(metadata_component, dict)
         or metadata_component.get("name") != "anydoc-python"
-        or metadata_component.get("version") != "0.2.4"
+        or metadata_component.get("version") != "0.2.5"
         or not isinstance(components, list)
         or len(components) != EXPECTED_COMPONENT_COUNT
         or not isinstance(dependencies, list)

@@ -67,7 +67,7 @@ def _job(
         or FormatAdmission(FormatFamily.WORD, ".docx", "docx", "docx"),
         source_sha256="a" * 64,
         source_size=100,
-        component_versions=(("firecrawl-anydoc", "0.2.4"),),
+        component_versions=(("firecrawl-anydoc", "0.2.5"),),
         request_digest="b" * 64,
         idempotency_digest=None,
         correlation_id="12345678-1234-4234-8234-123456789abc",
@@ -77,6 +77,15 @@ def _job(
         updated_at=NOW,
         options=options or ReversionOptions(),
     )
+
+
+def test_previous_engine_job_cannot_publish_a_new_engine_result() -> None:
+    job = replace(_job(), component_versions=(("firecrawl-anydoc", "0.2.4"),))
+
+    with pytest.raises(ReverseConversionError) as captured:
+        validate_reverse_result(job, ReverseOutputMode.MARKDOWN, b"Result\n", LIMITS)
+
+    assert captured.value.category is ReverseErrorCategory.PROTOCOL_ERROR
 
 
 def _png() -> bytes:

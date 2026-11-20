@@ -13,6 +13,7 @@ from markweave.broker.models import (
     TerminationProof,
 )
 from markweave.observability import require_correlation_id
+from markweave.reversions import ANYDOC_VERSION
 from markweave.reversions.formats import FormatAdmission, FormatFamily
 from markweave.reversions.models import ReverseOutputMode
 from markweave.reversions.options import (
@@ -29,7 +30,8 @@ MAX_FAILURE_CODE_CHARACTERS = 128
 MAX_FAILURE_MESSAGE_CHARACTERS = 1024
 FIRST_CONTROL_CODEPOINT = 32
 DELETE_CODEPOINT = 127
-ANYDOC_COMPONENT = ("firecrawl-anydoc", "0.2.4")
+ANYDOC_COMPONENT = ("firecrawl-anydoc", ANYDOC_VERSION)
+_PREVIOUS_ANYDOC_COMPONENT = ("firecrawl-anydoc", "0.2.4")
 RESULT_OBJECT_NAME_PREFIX = "reversion-result-attempt:"
 
 
@@ -61,10 +63,15 @@ def _source_stem(value: str) -> None:
         raise ValueError("Reverse source filename stem is invalid")
 
 
-def _component_versions(values: tuple[tuple[str, str], ...]) -> None:
-    if not values or tuple(sorted(values)) != values or ANYDOC_COMPONENT not in values:
+def _component_versions(
+    values: tuple[tuple[str, str], ...], *, allow_previous: bool = False
+) -> None:
+    has_anydoc = ANYDOC_COMPONENT in values or (
+        allow_previous and _PREVIOUS_ANYDOC_COMPONENT in values
+    )
+    if tuple(sorted(values)) != values or not has_anydoc:
         raise ValueError(
-            "Reverse component versions must include firecrawl-anydoc 0.2.4"
+            "Reverse component versions must include an approved firecrawl-anydoc version"
         )
     names = [name for name, _version in values]
     if len(set(names)) != len(names) or any(
@@ -139,7 +146,8 @@ class ReversionTraceMetadata:
         if (
             self.schema_version != 1
             or self.engine_name != ANYDOC_COMPONENT[0]
-            or self.engine_version != ANYDOC_COMPONENT[1]
+            or self.engine_version
+            not in {ANYDOC_COMPONENT[1], _PREVIOUS_ANYDOC_COMPONENT[1]}
             or type(self.source_family) is not FormatFamily
             or type(self.detected_format) is not str
             or not self.detected_format
@@ -397,7 +405,7 @@ class ReversionJob:
         _sha256(self.source_sha256, "Reverse source digest")
         if type(self.source_size) is not int or self.source_size <= 0:
             raise ValueError("Reverse source size must be positive")
-        _component_versions(self.component_versions)
+        _component_versions(self.component_versions, allow_previous=True)
         _sha256(self.request_digest, "Reverse request digest")
         if self.idempotency_digest is not None:
             _sha256(self.idempotency_digest, "Reverse idempotency digest")

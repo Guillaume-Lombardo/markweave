@@ -85,7 +85,7 @@ def test_actual_attempt_preserves_slide_order_notes_and_deterministic_safe_image
         manifest = json.loads(package.read("manifest.json"))
         assert manifest["schema_version"] == 1
         assert manifest["extractor"] == PPTX_EXTRACTOR
-        assert manifest["engine"] == {"name": "firecrawl-anydoc", "version": "0.2.4"}
+        assert manifest["engine"] == {"name": "firecrawl-anydoc", "version": "0.2.5"}
         assert manifest["result"]["asset_count"] == 1
         with Image.open(io.BytesIO(package.read("assets/image-0001.png"))) as image:
             assert image.size == (3, 2)

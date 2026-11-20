@@ -42,7 +42,7 @@ Actions workflows, and an autonomous development workflow.
 | Markdown to PPTX | Pandoc with editable slides, a documented Marp subset, and optional immutable PowerPoint reference templates; omitted templates use Pandoc defaults |
 | Mermaid | Local Mermaid CLI and Chromium |
 | DOCX to PDF | LibreOffice headless |
-| Documents to Markdown | Local `firecrawl-anydoc==0.2.4` with no hosted fallback; the exact x86-64 ABI3 wheel, source commit, format matrix, and limitations are pinned by T69 |
+| Documents to Markdown | Local `firecrawl-anydoc==0.2.5` with no hosted fallback; T70 records the exact x86-64 ABI3 wheel and source commit, and T69 defines the format matrix and limitations |
 | Reverse-conversion output | Structured UTF-8 Markdown with deterministic safe relative image links; plain Markdown only when no embedded or unavailable image position exists, otherwise a deterministic ZIP carries Markdown, normalized referenced assets when available, and the content-free manifest |
 | Reverse-conversion OCR | No OCR; scanned or image-only documents fail locally with a stable safe error, and adding an OCR service requires separately approved future scope |
 | Reverse-conversion compute | CPU-only and low-compute with bounded threads and concurrency; do not use a GPU, ML model, browser, Pandoc, LibreOffice, or another document engine |

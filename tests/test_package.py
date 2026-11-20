@@ -50,11 +50,12 @@ def test_distribution_metadata_declares_the_supported_dependency_matrix() -> Non
     assert project["dependencies"] == []
     assert extras["packaging"] == [
         "markdown-it-py>=4,<5",
-        "mdit-py-plugins>=0.5,<0.7",
+        "mdit-py-plugins>=0.5,<0.8",
         "pyyaml>=6,<7",
     ]
     # The CLI packager and the service share one parser and one set of pins.
     assert extras["server"][0] == "markweave[packaging]"
+    assert "pypdf>=6.21.1,<8" in extras["server"]
     assert not set(extras["packaging"]) & set(extras["server"])
     assert extras["standalone"] == ["markweave[server]"]
     assert extras["distributed"] == [
@@ -66,7 +67,7 @@ def test_distribution_metadata_declares_the_supported_dependency_matrix() -> Non
     assert extras["reverse-attempt"] == [
         "cairosvg>=2.8,<3",
         "defusedxml>=0.7,<1",
-        "firecrawl-anydoc==0.2.4",
+        "firecrawl-anydoc==0.2.5",
         "pillow>=13,<14",
         "tinycss2>=1.5,<2",
     ]

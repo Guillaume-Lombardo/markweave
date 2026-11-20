@@ -432,7 +432,7 @@ def _expected_manifest(
 ) -> dict[str, Any]:
     return {
         "schema_version": 1,
-        "engine": {"name": "firecrawl-anydoc", "version": "0.2.4"},
+        "engine": {"name": "firecrawl-anydoc", "version": "0.2.5"},
         "source": {"family": case.family, "detected_format": case.detected_format},
         "result": {
             "mode": mode,

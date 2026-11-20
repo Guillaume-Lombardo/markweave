@@ -28,10 +28,12 @@ run_hardened --env "EXPECTED_APPLICATION_VERSION=$application_version" \
   --entrypoint /bin/bash "$image" -ceu '
   md-converter-preflight
   test "$(id -u)" = "'"$runtime_uid"'"
+  test -s /opt/md-converter/rpm-inventory.txt
+  LC_ALL=C sort --check /opt/md-converter/rpm-inventory.txt
   /opt/md-converter/venv/bin/python -c \
     "import markweave, os; assert markweave.__version__ == os.environ[\"EXPECTED_APPLICATION_VERSION\"]"
   test "$(pandoc --version | head -1)" = "pandoc 3.10.2"
-  test "$(mmdc --version)" = "12.0.0"
+  test "$(mmdc --version)" = "12.2.0"
   test "$(google-chrome-stable --version | awk "{\$1=\$1; print}")" = "Google Chrome 151.0.7922.173"
   test "$(soffice --version | awk "{\$1=\$1; print}")" = "LibreOffice 26.2.5.2 cd7284b4cbbfeb507e630c1aac019f4157393acb"
   /opt/md-converter/venv/bin/python - <<"PYTHON"

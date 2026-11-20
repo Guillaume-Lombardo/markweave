@@ -12,9 +12,15 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
-from pypdf import PdfWriter
+from pypdf import PdfWriter, get_configuration
+from pypdf import filters as pypdf_filters
 from pypdf.errors import LimitReachedError, PyPdfError
-from pypdf.generic import DictionaryObject, NameObject, TextStringObject
+from pypdf.generic import (
+    ContentStream,
+    DictionaryObject,
+    NameObject,
+    TextStringObject,
+)
 from pytest_mock import MockerFixture
 
 from markweave.conversion import libreoffice
@@ -660,6 +666,43 @@ def test_malformed_page_tree_is_normalized_to_invalid_pdf() -> None:
     assert captured.value.code is ConversionErrorCode.INVALID_PDF
 
 
+def test_pdf_parser_enforces_the_declared_stream_length() -> None:
+    output = io.BytesIO()
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=612, height=792)
+    stream = ContentStream(None, None)
+    stream.set_data(b"q Q\n" * 25)
+    page.replace_contents(stream)
+    writer.write(output)
+
+    assert libreoffice._validate_pdf(output.getvalue(), LIMITS)
+    with pytest.raises(ConversionError) as captured:
+        libreoffice._validate_pdf(
+            output.getvalue(), replace(LIMITS, max_pdf_decoded_stream_bytes=99)
+        )
+    assert captured.value.code is ConversionErrorCode.PDF_LIMIT_EXCEEDED
+
+
+def test_pdf_stream_limit_ignores_legacy_pypdf_constants(
+    mocker: MockerFixture,
+) -> None:
+    output = io.BytesIO()
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=612, height=792)
+    stream = ContentStream(None, None)
+    stream.set_data(b"q Q\n" * 25)
+    page.replace_contents(stream)
+    writer.write(output)
+    mocker.patch.object(pypdf_filters, "ZLIB_MAX_OUTPUT_LENGTH", 10**12)
+
+    assert libreoffice._validate_pdf(output.getvalue(), LIMITS)
+    with pytest.raises(ConversionError) as captured:
+        libreoffice._validate_pdf(
+            output.getvalue(), replace(LIMITS, max_pdf_decoded_stream_bytes=99)
+        )
+    assert captured.value.code is ConversionErrorCode.PDF_LIMIT_EXCEEDED
+
+
 @pytest.mark.parametrize(
     ("parser_error", "expected"),
     (
@@ -672,12 +715,21 @@ def test_pdf_parser_errors_are_stable_and_filter_limits_are_restored(
     parser_error: PyPdfError,
     expected: ConversionErrorCode,
 ) -> None:
-    original = libreoffice.pypdf_filters.ZLIB_MAX_OUTPUT_LENGTH
-    mocker.patch.object(libreoffice, "PdfReader", side_effect=parser_error)
+    original = get_configuration()
+
+    def failing_reader(*args: object, **kwargs: object) -> None:
+        configuration = get_configuration()
+        assert (
+            configuration.zlib_maximum_output_length
+            == LIMITS.max_pdf_decoded_stream_bytes
+        )
+        raise parser_error
+
+    mocker.patch.object(libreoffice, "PdfReader", side_effect=failing_reader)
     with pytest.raises(ConversionError) as captured:
         libreoffice._validate_pdf(_pdf(), LIMITS)
     assert captured.value.code is expected
-    assert original == libreoffice.pypdf_filters.ZLIB_MAX_OUTPUT_LENGTH
+    assert get_configuration() is original
 
 
 def test_process_group_termination_checks_descendants(

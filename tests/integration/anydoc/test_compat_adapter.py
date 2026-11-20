@@ -185,7 +185,7 @@ def test_real_document_model_interoperates_with_asset_normalization() -> None:
 
 def test_rejects_unpinned_version_before_native_parse(mocker: Any) -> None:
     native = mocker.patch.object(anydoc, "to_document")
-    mocker.patch.object(compat.importlib.metadata, "version", return_value="0.2.5")
+    mocker.patch.object(compat.importlib.metadata, "version", return_value="0.2.4")
 
     with pytest.raises(ReverseConversionError) as caught:
         compat.parse_document(b"source", "docx")
@@ -376,7 +376,7 @@ def test_unavailable_empty_alt_image_is_not_retained() -> None:
 def test_inventory_and_license_bind_the_exact_upstream_surface() -> None:
     license_path = Path(compat.__file__).parent.parent / "ANYDOC_COMPAT_LICENSE.txt"
 
-    assert compat.PINNED_ANYDOC_VERSION == "0.2.4"
+    assert compat.PINNED_ANYDOC_VERSION == "0.2.5"
     assert compat.UPSTREAM_ANYDOC_COMMIT == "42bf1c5ecdde9eb0d96d6bd75a9e6698cf93b14c"
     assert len(compat.UPSTREAM_RENDERER_SURFACES) == 21
     assert len(set(compat.UPSTREAM_RENDERER_SURFACES)) == 21

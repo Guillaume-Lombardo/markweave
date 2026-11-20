@@ -56,7 +56,7 @@ def test_trace_metadata_is_closed_and_content_free() -> None:
     trace = ReversionTraceMetadata(
         1,
         "firecrawl-anydoc",
-        "0.2.4",
+        "0.2.5",
         FormatFamily.WORD,
         "docx",
         ReverseOutputMode.MARKDOWN,
@@ -65,8 +65,9 @@ def test_trace_metadata_is_closed_and_content_free() -> None:
         0,
     )
     assert trace.local and not trace.ocr and not trace.hosted_fallback
+    assert replace(trace, engine_version="0.2.4").engine_version == "0.2.4"
     with pytest.raises(ValueError):
-        replace(trace, engine_version="0.2.5")
+        replace(trace, engine_version="0.2.6")
     with pytest.raises(ValueError):
         replace(trace, asset_count=1)
     with pytest.raises(TypeError):

@@ -40,6 +40,12 @@ ASCII_DELETE = 127
 TRUSTED_REPOSITORY = "Guillaume-Lombardo/simple-md-to-docx-converter"
 TRUSTED_REPOSITORY_CONDITION = f"github.repository == '{TRUSTED_REPOSITORY}'"
 TRUSTED_REPOSITORY_GUARD = f"${{{{ {TRUSTED_REPOSITORY_CONDITION} }}}}"
+MAIN_CI_ALERT_CONDITION = (
+    f"${{{{ !cancelled() && {TRUSTED_REPOSITORY_CONDITION} && "
+    "github.ref == 'refs/heads/main' && "
+    "(github.event_name == 'schedule' || github.event_name == 'push') && "
+    "(needs.gate.result == 'failure' || needs.gate.result == 'success') }}"
+)
 TRUSTED_CACHE_WRITE = (
     "save-cache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' "
     "&& github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' }}"
@@ -149,6 +155,7 @@ READ_ONLY_ENV_STEPS = frozenset(
         ("python-coverage", "Enforce changed application line coverage"),
         ("light", "Validate the canonical OpenAPI contract"),
         ("light", "Verify public release alignment"),
+        ("main-ci-alert", "Reconcile the main CI tracking issue"),
         ("domain-plan", "Report runnable and explicitly planned suites"),
         ("heavy", "Prepare verified LibreOffice DEB archive"),
         ("build-images", "Prepare verified LibreOffice RPM archive"),
@@ -213,17 +220,17 @@ class ReleaseWorkflowPolicy:
 
 
 CONTAINER_RELEASE_CANONICAL_DIGEST = (
-    "fa1bd343ccb60f1133d7ca7bada3fc7dc73e67082ee0907ce9a3b65ff584dd6a"
+    "0840ebd22f1d37cbdd717c0aeab4a69c02c8c8262d36cc321ba7ba566b954b7a"
 )
 CONTAINER_QUALIFY_CANONICAL_DIGEST = (
-    "9777aeffcf09320e58592a904534b536f678f25cff1eddbaada698091b92666d"
+    "24c733843b406d45a01b8e0802f5ce6cb0036526b29497d9eeef5c4163f79edb"
 )
 CONTAINER_PAIR_PUBLISHER_CANONICAL_DIGEST = (
     "3a61c6bd75e47afe761ead42b77f73ae46cc0da2e8430f09e5dce0f74a7d6fdc"
 )
 RELEASE_IMAGE_ROLES = ("backend", "frontend", "reverse_attempt")
 PRODUCTION_RELEASE_CANONICAL_DIGEST = (
-    "50da2beef208fdec6bb7a5b9d8433803a84223f3f4ab916bf923b4f841e593ba"
+    "6b06c62e79b3c8599ea4c5e94faa68f559ba4c81aa5d795a5d92ae70128a5ab4"
 )
 
 
@@ -251,6 +258,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
             "final-image": FINAL_IMAGE_TIMEOUT_MINUTES,
             "mutation": 30,
             "gate": 5,
+            "main-ci-alert": 5,
         },
         actions=frozenset(
             {
@@ -333,12 +341,24 @@ READ_ONLY_WORKFLOW_POLICIES = {
             "gate": frozenset(
                 {"if", "name", "needs", "runs-on", "steps", "timeout-minutes"}
             ),
+            "main-ci-alert": frozenset(
+                {
+                    "if",
+                    "name",
+                    "needs",
+                    "permissions",
+                    "runs-on",
+                    "steps",
+                    "timeout-minutes",
+                }
+            ),
         },
         job_conditions={
             "heavy": "${{ needs.detect.outputs.heavy-domains != '[]' }}",
             "build-images": "${{ needs.detect.outputs.image-domains != '[]' }}",
             "final-image": "${{ needs.detect.outputs.image-domains != '[]' }}",
             "gate": "${{ always() }}",
+            "main-ci-alert": MAIN_CI_ALERT_CONDITION,
         },
         step_conditions={
             (
@@ -460,7 +480,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
             ),
             ("mutation", "Retain mutation evidence"): "${{ always() }}",
         },
-        canonical_digest="e54c0a1f1367745b6c8425b5945cea01821dee6a4db1be781389d7414f3c835a",
+        canonical_digest="b276a8f8f097a400c8a76c7737d0d1121e48af288c7d994d3d739458e10ae0cc",
     ),
     "mutation.yml": WorkflowPolicy(
         triggers=frozenset({"schedule", "workflow_dispatch"}),
@@ -480,7 +500,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
         },
         job_conditions={"mutation": TRUSTED_REPOSITORY_GUARD},
         step_conditions={("mutation", "Retain mutation evidence"): "${{ always() }}"},
-        canonical_digest="82d77c22d9d93ce9814ae99c564f26983ef060a98c338273ff6c2eeeae21d1f7",
+        canonical_digest="de975f63a966f3f482f5d5ae9ab42fbddd0788b562f880b797cce16d7cff245e",
     ),
 }
 
@@ -698,6 +718,7 @@ def _validate_read_only_job_permissions(
         "heavy": {"contents": "read"},
         "build-images": {"contents": "read"},
         "final-image": {"contents": "read"},
+        "main-ci-alert": {"contents": "read", "issues": "write"},
     }.get(job_name)
     if expected is not None and job.get("permissions") != expected:
         return [
@@ -1481,11 +1502,7 @@ def _validate_ci_contract(workflow: Mapping[str, Any]) -> list[str]:
 
 def validate_workflow_text(text: str, *, workflow_name: str = "ci.yml") -> list[str]:
     """Return actionable errors for an allowlisted committed workflow."""
-    errors: list[str] = []
-    if re.search(r"^\s+[a-z][a-z-]*:\s+write(?:\s|$)", text, re.MULTILINE):
-        errors.append("write permission is forbidden in the CI workflow")
-    workflow, loading_errors = _load_workflow(text)
-    errors.extend(loading_errors)
+    workflow, errors = _load_workflow(text)
     policy = READ_ONLY_WORKFLOW_POLICIES.get(workflow_name)
     if policy is None:
         errors.append(f"workflow has no explicit security policy: {workflow_name}")

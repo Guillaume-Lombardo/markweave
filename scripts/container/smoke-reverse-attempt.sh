@@ -46,7 +46,7 @@ podman run --rm \
 from importlib.metadata import version
 from pathlib import Path, PurePosixPath
 from markweave.conversion.images import ImageLimits, normalize_image
-assert version("firecrawl-anydoc") == "0.2.4"
+assert version("firecrawl-anydoc") == "0.2.5"
 assert hashlib.sha256(Path("/opt/markweave/licenses/markweave/LICENSE").read_bytes()).hexdigest() == "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 assert importlib.util.find_spec("fastapi") is None
 assert importlib.util.find_spec("uvicorn") is None

@@ -57,7 +57,7 @@ def submission(  # noqa: PLR0913 - explicit durable submission fixture
         source_sha256="1" * 64,
         source_size=128,
         component_versions=(
-            ("firecrawl-anydoc", "0.2.4"),
+            ("firecrawl-anydoc", "0.2.5"),
             ("markweave", "0.6.1"),
         ),
         request_digest=request_digest,
@@ -89,7 +89,7 @@ def trace() -> ReversionTraceMetadata:
     return ReversionTraceMetadata(
         1,
         "firecrawl-anydoc",
-        "0.2.4",
+        "0.2.5",
         FormatFamily.WORD,
         "docx",
         ReverseOutputMode.MARKDOWN,

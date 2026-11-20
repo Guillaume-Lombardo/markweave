@@ -64,6 +64,6 @@ final-image installation selects the `all` union. See [the release process](rele
 publication and evidence requirements.
 
 The experimental reverse-conversion attempt is intentionally outside that union. Its disposable
-image installs the `reverse-attempt` extra, which pins `firecrawl-anydoc==0.2.4` and the bounded T08
+image installs the `reverse-attempt` extra, which pins `firecrawl-anydoc==0.2.5` and the bounded T08
 image-normalization dependencies. The ordinary server, standalone, distributed, and `all` extras
 do not install anydoc. See [the reverse-attempt image contract](reverse-attempt-image.md).

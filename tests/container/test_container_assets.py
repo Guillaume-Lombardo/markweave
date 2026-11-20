@@ -221,6 +221,7 @@ def test_container_workflow_rejects_structured_capability_drift(
 @pytest.mark.parametrize(
     "script",
     [
+        "container/check-rpm-inventory.sh",
         "container/entrypoint.sh",
         "container/preflight.sh",
         "scripts/container/build.sh",
@@ -248,15 +249,86 @@ def test_final_image_pins_all_downloaded_artifacts() -> None:
         assert f"ARG {artifact}_SHA256=" in containerfile
     assert "rpm --checksig /tmp/google-chrome.rpm" in containerfile
     assert (
-        "ARG RPM_INVENTORY_SHA256="
-        "92063803ffaf534054d2d198abd814d08f22626a4238cb126e03376fb102a99e"
-        in containerfile
+        "/bin/bash /tmp/container-policy/check-rpm-inventory.sh \\\n"
+        "        /tmp/container-policy/rpm-package-licenses.txt "
+        "/opt/md-converter/rpm-inventory.txt" in containerfile
     )
-    assert (
-        'echo "${RPM_INVENTORY_SHA256}  /opt/md-converter/rpm-inventory.txt" \\\n'
-        "        | sha256sum --check --strict" in containerfile
-    )
+    assert "dnf upgrade -y ca-certificates mod_http2 \\\n" in containerfile
     assert "uv sync --locked --no-dev --no-editable --extra all" in containerfile
+
+
+@pytest.mark.parametrize(
+    ("installed", "rpm_status", "expected_status"),
+    [
+        ("tool|2:9.0-2|x86_64|MIT", 0, 0),
+        ("other|2:9.0-2|x86_64|MIT", 0, 1),
+        ("tool|2:9.0-2|aarch64|MIT", 0, 1),
+        ("tool|2:9.0-2|x86_64|BSD", 0, 1),
+        ("tool|2:9.0-2|x86_64|MIT\nextra|0:1-1|noarch|MIT", 0, 1),
+        ("tool|2:9.0-2|x86_64|MIT\ntool|2:9.0-3|x86_64|MIT", 0, 1),
+        ("", 0, 1),
+        ("tool|2:9.0-2|x86_64|MIT", 2, 2),
+    ],
+)
+def test_rpm_inventory_policy_accepts_only_version_drift(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    installed: str,
+    rpm_status: int,
+    expected_status: int,
+) -> None:
+    baseline = tmp_path / "expected"
+    baseline.write_text("tool|x86_64|MIT\n", encoding="utf-8")
+    inventory = tmp_path / "inventory"
+    rpm = tmp_path / "rpm"
+    rpm.write_text(
+        '#!/bin/sh\nprintf "%s\\n" "$INSTALLED"\nexit "$RPM_STATUS"\n',
+        encoding="utf-8",
+    )
+    rpm.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path), prepend=os.pathsep)
+    monkeypatch.setenv("INSTALLED", installed)
+    monkeypatch.setenv("RPM_STATUS", str(rpm_status))
+
+    result = subprocess.run(
+        ["bash", "container/check-rpm-inventory.sh", str(baseline), str(inventory)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == expected_status, result.stderr
+    assert inventory.read_text(encoding="utf-8").splitlines() == sorted(
+        installed.split("\n")
+    )
+    if expected_status == 1:
+        assert "RPM package or license differs" in result.stderr
+
+
+def test_rpm_inventory_policy_rejects_an_empty_baseline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    baseline = tmp_path / "expected"
+    baseline.write_text("", encoding="utf-8")
+    rpm = tmp_path / "rpm"
+    rpm.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    rpm.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path), prepend=os.pathsep)
+
+    result = subprocess.run(
+        [
+            "bash",
+            "container/check-rpm-inventory.sh",
+            str(baseline),
+            str(tmp_path / "inventory"),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+    assert "inventory is empty" in result.stderr
 
 
 def test_recovery_smoke_is_a_required_ci_and_release_final_image_gate() -> None:

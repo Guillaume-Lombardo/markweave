@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass
 from typing import Literal
 
+from markweave.reversions import ANYDOC_VERSION
 from markweave.reversions.errors import ReverseErrorCategory, reject
 from markweave.reversions.options import PPTX_EXTRACTOR
 
@@ -95,7 +96,7 @@ def canonical_manifest_bytes(
         reject(ReverseErrorCategory.PROTOCOL_ERROR)
     manifest = {
         "schema_version": 1,
-        "engine": {"name": "firecrawl-anydoc", "version": "0.2.4"},
+        "engine": {"name": "firecrawl-anydoc", "version": ANYDOC_VERSION},
         "source": {
             "family": source.family,
             "detected_format": source.detected_format,
