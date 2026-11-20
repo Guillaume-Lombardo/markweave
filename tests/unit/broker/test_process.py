@@ -6,6 +6,7 @@ import json
 import os
 import pwd
 import shutil
+import sys
 from collections.abc import Callable, Iterator
 from dataclasses import replace
 from pathlib import Path
@@ -561,7 +562,9 @@ def test_rejects_nonempty_hooks_directory(tmp_path: Path) -> None:
 
 
 @pytest.fixture
-def private_authority_directory(monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
+def private_authority_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[Path]:
     """Take the real authority lock under a per-test name in the runtime root.
 
     The production name is shared by every broker of this user, so a running
@@ -569,12 +572,17 @@ def private_authority_directory(monkeypatch: pytest.MonkeyPatch) -> Iterator[Pat
     """
     name = f"markweave-broker-test-{uuid4().hex}"
     monkeypatch.setattr(broker_process, "_AUTHORITY_DIRECTORY_NAME", name)
-    directory = Path(f"/run/user/{os.geteuid()}") / name
+    root = Path(f"/run/user/{os.geteuid()}")
+    if sys.platform != "linux":
+        root = tmp_path
+        monkeypatch.setattr(broker_process, "_runtime_root", lambda: root)
+    directory = root / name
     yield directory
     shutil.rmtree(directory, ignore_errors=True)
 
 
 @pytest.mark.unit
+@pytest.mark.requires_linux
 def test_factory_uses_derived_identity_capacity_and_hermetic_commands(
     tmp_path: Path, mocker: MockerFixture, private_authority_directory: Path
 ) -> None:
@@ -700,6 +708,7 @@ def test_factory_selects_mtls_with_exact_loaded_identity_and_workspace_limits(
 
 
 @pytest.mark.unit
+@pytest.mark.requires_linux
 def test_factory_rejects_invalid_mtls_pem_before_inventory_mutation(
     tmp_path: Path, mocker: MockerFixture
 ) -> None:
@@ -848,8 +857,8 @@ def test_factory_rejects_non_bytes_key_and_releases_authority_lock(
         os.fstat(descriptor)
 
 
-def _server(tmp_path: Path, mocker: MockerFixture) -> UnixBrokerServer:
-    parent = _directory(tmp_path / "socket")
+def _server(short_socket_directory: Path, mocker: MockerFixture) -> UnixBrokerServer:
+    parent = _directory(short_socket_directory / "socket")
     dispatcher = mocker.Mock(spec=BrokerDispatcher)
     return UnixBrokerServer(
         parent / "broker.sock",
@@ -872,13 +881,17 @@ def _server(tmp_path: Path, mocker: MockerFixture) -> UnixBrokerServer:
     ],
 )
 def test_process_rejects_invalid_constructor_arguments(
-    tmp_path: Path,
+    short_socket_directory: Path,
     mocker: MockerFixture,
     server_value: object,
     timeout: object,
     hard_exit: object,
 ) -> None:
-    server = _server(tmp_path, mocker) if server_value is None else server_value
+    server = (
+        _server(short_socket_directory, mocker)
+        if server_value is None
+        else server_value
+    )
 
     with pytest.raises(ValueError, match="Broker process is invalid"):
         BrokerProcess(
@@ -890,9 +903,9 @@ def test_process_rejects_invalid_constructor_arguments(
 
 @pytest.mark.unit
 def test_process_returns_nonzero_for_internal_fatal(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    server = _server(tmp_path, mocker)
+    server = _server(short_socket_directory, mocker)
     hard_exit = mocker.Mock()
     mocker.patch.object(
         server, "start", side_effect=lambda: server._record_fatal(ValueError())
@@ -911,9 +924,9 @@ def test_process_returns_nonzero_for_internal_fatal(
 
 @pytest.mark.unit
 def test_repeated_signal_escalates_without_reopening_admission(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    server = _server(tmp_path, mocker)
+    server = _server(short_socket_directory, mocker)
     hard_exit = mocker.Mock()
     process = BrokerProcess(
         server, hard_shutdown_timeout_seconds=1, hard_exit=hard_exit
@@ -931,9 +944,9 @@ def test_repeated_signal_escalates_without_reopening_admission(
 
 @pytest.mark.unit
 def test_signal_during_reconciliation_is_reapplied_before_waiting(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    server = _server(tmp_path, mocker)
+    server = _server(short_socket_directory, mocker)
     process = BrokerProcess(server, hard_shutdown_timeout_seconds=1)
     start = mocker.patch.object(
         server, "start", side_effect=lambda: process._handle_signal(15, None)
@@ -949,9 +962,9 @@ def test_signal_during_reconciliation_is_reapplied_before_waiting(
 
 @pytest.mark.unit
 def test_independent_watchdog_hard_exits_when_shutdown_never_completes(
-    tmp_path: Path, mocker: MockerFixture
+    short_socket_directory: Path, mocker: MockerFixture
 ) -> None:
-    server = _server(tmp_path, mocker)
+    server = _server(short_socket_directory, mocker)
     hard_exit = mocker.Mock()
     process = BrokerProcess(
         server, hard_shutdown_timeout_seconds=0.001, hard_exit=hard_exit

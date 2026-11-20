@@ -15,6 +15,7 @@ from scripts.ci import engine_userns_gate as gate
 pytestmark = pytest.mark.unit
 
 
+@pytest.mark.requires_linux
 def test_preflight_confirms_same_identity_and_two_new_namespaces(
     mocker: MockerFixture,
 ) -> None:
@@ -32,6 +33,7 @@ def test_preflight_confirms_same_identity_and_two_new_namespaces(
 
 
 @pytest.mark.parametrize("stage", ("seccomp", "unshare"))
+@pytest.mark.requires_linux
 def test_preflight_never_allows_seccomp_or_unshare_failure(
     mocker: MockerFixture, stage: str
 ) -> None:
@@ -46,6 +48,7 @@ def test_preflight_never_allows_seccomp_or_unshare_failure(
 
 
 @pytest.mark.parametrize("stage_index", (0, 1, 2))
+@pytest.mark.requires_linux
 def test_exact_mapping_stage_allows_verified_hosted_apparmor_denial(
     mocker: MockerFixture, capsys: pytest.CaptureFixture[str], stage_index: int
 ) -> None:
@@ -84,6 +87,7 @@ def test_exact_mapping_stage_allows_verified_hosted_apparmor_denial(
         ("unprivileged_userns (enforce)", "1", True, errno.EACCES),
     ),
 )
+@pytest.mark.requires_linux
 def test_other_mapping_failures_cannot_toggle_apparmor(
     mocker: MockerFixture,
     after_label: str | None,

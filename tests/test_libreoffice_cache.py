@@ -50,6 +50,7 @@ def _fake_tools(tmp_path: Path) -> tuple[Path, Path]:
 @pytest.mark.parametrize(
     ("variant", "filename"), [("rpm", RPM_NAME), ("deb", DEB_NAME)]
 )
+@pytest.mark.requires_linux
 def test_fetcher_downloads_once_and_reverifies_cache_hits(
     tmp_path: Path, variant: str, filename: str
 ) -> None:
@@ -82,6 +83,7 @@ def test_fetcher_rejects_unknown_variants(tmp_path: Path) -> None:
     assert "LibreOffice archive variant must be rpm or deb" in rejected.stderr
 
 
+@pytest.mark.requires_linux
 def test_fetcher_rejects_a_corrupt_cache_hit_without_downloading(
     tmp_path: Path,
 ) -> None:

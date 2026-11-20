@@ -17,7 +17,7 @@ from markweave.templates.errors import (
     TemplateValidationErrorCode,
 )
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.requires_linux]
 
 
 def test_engine_descendants_keep_unix_ipc_but_cannot_open_ip_or_io_uring() -> None:

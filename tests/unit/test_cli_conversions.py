@@ -919,7 +919,7 @@ def test_conversion_http_error_download_is_bounded_and_does_not_create_file(
 def test_download_closes_parent_fd_when_response_close_repeatedly_fails(
     tmp_path: Path, mocker
 ) -> None:
-    descriptor_directory = Path("/proc/self/fd")
+    descriptor_directory = Path("/dev/fd")
     assert descriptor_directory.is_dir()
     opener = mocker.Mock()
     opener.open.side_effect = lambda *_args, **_kwargs: _FakeHttpResponse(

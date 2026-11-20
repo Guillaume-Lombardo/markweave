@@ -139,6 +139,7 @@ def test_publication_race_preserves_target_and_cleans_staging(
     assert list(tmp_path.glob(".dist-staging-*")) == []
 
 
+@pytest.mark.requires_linux
 def test_atomic_no_replace_primitive_preserves_existing_target(tmp_path: Path) -> None:
     """The real publication syscall never replaces even an empty target."""
     staged = tmp_path / "staged"

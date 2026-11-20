@@ -1777,17 +1777,19 @@ def test_command_runner_is_hermetic_and_reaps_after_unexpected_read_error(
 ) -> None:
     executable = tmp_path / "environment"
     executable.write_text(
-        "#!/bin/sh\nprintf '%s' \"${CONTAINER_HOST-unset}\"\nsleep 30\n",
+        "#!/bin/sh\nprintf '%s' \"${CONTAINER_HOST-unset}\"\n"
+        'if [ "$1" = block ]; then sleep 30; fi\n',
         encoding="utf-8",
     )
     executable.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
     monkeypatch.setenv("CONTAINER_HOST", "tcp://attacker.invalid")
-    _, environment_output = BoundedCommandRunner(
-        Path("/usr/bin/env"),
+    runner = BoundedCommandRunner(
+        executable,
         PodmanCommandLimits(1),
         environment={"PATH": "/usr/bin:/bin"},
-    )(("--null",))
-    assert b"CONTAINER_HOST" not in environment_output
+    )
+    _, environment_output = runner(("inspect",))
+    assert environment_output == b"unset"
     original_popen = command_runner.subprocess.Popen
     spawned: list[Any] = []
 
@@ -1798,18 +1800,13 @@ def test_command_runner_is_hermetic_and_reaps_after_unexpected_read_error(
 
     mocker.patch.object(command_runner.subprocess, "Popen", side_effect=capture)
     mocker.patch.object(
-        command_runner.selectors.EpollSelector,
+        command_runner.selectors.DefaultSelector,
         "select",
         side_effect=OSError("secret"),
     )
-    runner = BoundedCommandRunner(
-        executable,
-        PodmanCommandLimits(1),
-        environment={"PATH": "/usr/bin:/bin"},
-    )
 
     with pytest.raises(PodmanRuntimeError, match="failed") as raised:
-        runner(("fixed",))
+        runner(("block",))
 
     assert "secret" not in str(raised.value)
     assert spawned and spawned[0].poll() is not None

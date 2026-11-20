@@ -88,7 +88,11 @@ from tests.unit.reversions.test_reversion_worker_runtime import (
     POLICY,
 )
 
-pytestmark = [pytest.mark.integration, pytest.mark.light_coverage]
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.light_coverage,
+    pytest.mark.usefixtures("broker_peer_identity"),
+]
 
 
 class _SuccessfulRuntime(FakeIsolationRuntime):
@@ -230,16 +234,16 @@ def _queue(
 
 
 def _server(
-    tmp_path: Path,
+    short_socket_directory: Path,
 ) -> tuple[
     UnixBrokerServer, UnixBrokerClient, IsolationBrokerService, _SuccessfulRuntime
 ]:
-    parent = tmp_path / "broker"
+    parent = short_socket_directory / "broker"
     parent.mkdir(mode=0o700)
     parent.chmod(0o700)
     path = parent / "broker.sock"
     inventory = SQLiteBrokerInventory(
-        tmp_path / "inventory.sqlite3",
+        short_socket_directory / "inventory.sqlite3",
         b"integration-inventory-key-32bytes",
         max_records=32,
     )
@@ -306,12 +310,12 @@ def _runtime(
     ],
 )
 def test_real_unix_supervisor_publishes_and_retires_exact_proof(
-    tmp_path: Path,
+    short_socket_directory: Path,
     options: ReversionOptions,
 ) -> None:
     repository, owner, engine = _repository()
-    objects = FilesystemObjectStore(tmp_path / "objects")
-    server, client, _service, _broker_runtime = _server(tmp_path)
+    objects = FilesystemObjectStore(short_socket_directory / "objects")
+    server, client, _service, _broker_runtime = _server(short_socket_directory)
     clock = [NOW]
     runtime = _runtime(repository, objects, client, clock)
     job = _queue(repository, objects, owner, options)
@@ -327,10 +331,12 @@ def test_real_unix_supervisor_publishes_and_retires_exact_proof(
         engine.dispose()
 
 
-def test_real_reconciler_unblocks_crash_before_create_replay(tmp_path: Path) -> None:
+def test_real_reconciler_unblocks_crash_before_create_replay(
+    short_socket_directory: Path,
+) -> None:
     repository, owner, engine = _repository()
-    objects = FilesystemObjectStore(tmp_path / "objects")
-    server, client, _service, _broker_runtime = _server(tmp_path)
+    objects = FilesystemObjectStore(short_socket_directory / "objects")
+    server, client, _service, _broker_runtime = _server(short_socket_directory)
     clock = [NOW]
     runtime = _runtime(repository, objects, client, clock)
     job = _queue(repository, objects, owner)
@@ -364,11 +370,11 @@ def test_real_reconciler_unblocks_crash_before_create_replay(tmp_path: Path) -> 
 
 
 def test_real_unix_reconciliation_restores_ready_before_draining_durable_ack(
-    tmp_path: Path,
+    short_socket_directory: Path,
 ) -> None:
     repository, owner, engine = _repository()
-    objects = FilesystemObjectStore(tmp_path / "objects")
-    server, client, service, broker_runtime = _server(tmp_path)
+    objects = FilesystemObjectStore(short_socket_directory / "objects")
+    server, client, service, broker_runtime = _server(short_socket_directory)
     clock = [NOW]
     acknowledged_job = _queue(repository, objects, owner)
     losing_runtime = _runtime(
@@ -437,12 +443,14 @@ def test_real_unix_reconciliation_restores_ready_before_draining_durable_ack(
 
 
 def test_production_components_keep_forward_live_across_unix_broker_reconnect(
-    tmp_path: Path,
+    short_socket_directory: Path,
 ) -> None:
-    server, _client, _service, _broker_runtime = _server(tmp_path)
+    server, _client, _service, _broker_runtime = _server(short_socket_directory)
     settings = _settings(
-        tmp_path,
-        reversion_broker_socket_path=(tmp_path / "broker" / "broker.sock").resolve(),
+        short_socket_directory,
+        reversion_broker_socket_path=(
+            short_socket_directory / "broker" / "broker.sock"
+        ).resolve(),
         reversion_broker_principal_id=PRINCIPAL.principal_id,
         reversion_broker_policy_revision=BROKER_POLICY.revision,
         reversion_broker_image_digest=BROKER_POLICY.image_digest,

@@ -7,6 +7,7 @@ import ssl
 import time
 from collections.abc import Iterator
 from contextlib import suppress
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from ipaddress import ip_network
@@ -31,6 +32,8 @@ from markweave.composer.egress import (
 from markweave.composer.secrets import PlainCredentials
 
 pytestmark = [pytest.mark.integration, pytest.mark.light_coverage]
+MTLS = pytest.param(True, id="mtls", marks=pytest.mark.requires_linux)
+HTTPS = pytest.param(False, id="tls")
 
 
 class ProviderServer(HTTPServer):
@@ -148,13 +151,22 @@ def _certificate(root: Path) -> tuple[Path, Path, bytes]:
     return cert_path, key_path, cert_pem
 
 
-@pytest.fixture
-def provider(tmp_path: Path) -> Iterator[tuple[ProviderServer, bytes, bytes]]:
+@pytest.fixture(params=[MTLS, HTTPS])
+def provider(
+    tmp_path: Path, request: pytest.FixtureRequest
+) -> Iterator[tuple[ProviderServer, PlainCredentials]]:
     cert_path, key_path, cert_pem = _certificate(tmp_path)
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(cert_path, key_path)
-    context.verify_mode = ssl.CERT_REQUIRED
-    context.load_verify_locations(cadata=cert_pem.decode("ascii"))
+    credentials = PlainCredentials(api_key=b"private", ca_bundle=cert_pem)
+    if request.param:
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.load_verify_locations(cadata=cert_pem.decode("ascii"))
+        credentials = replace(
+            credentials,
+            client_certificate=cert_pem,
+            client_private_key=key_path.read_bytes(),
+        )
     server = ProviderServer(("127.0.0.1", 0), ProviderHandler)
     server.delayed_request_started = Event()
     server.release_delayed_response = Event()
@@ -162,7 +174,7 @@ def provider(tmp_path: Path) -> Iterator[tuple[ProviderServer, bytes, bytes]]:
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-        yield server, cert_pem, key_path.read_bytes()
+        yield server, credentials
     finally:
         server.shutdown()
         server.server_close()
@@ -189,22 +201,13 @@ def _egress(
     return ConnectionEgress(policy, lambda _host, _port: ("127.0.0.1",))
 
 
-def _credentials(cert: bytes, key: bytes) -> PlainCredentials:
-    return PlainCredentials(
-        api_key=b"private",
-        client_certificate=cert,
-        client_private_key=key,
-        ca_bundle=cert,
-    )
-
-
+@pytest.mark.parametrize("provider", [MTLS], indirect=True)
 def test_real_https_mtls_models_and_chat(
-    provider: tuple[ProviderServer, bytes, bytes],
+    provider: tuple[ProviderServer, PlainCredentials],
 ) -> None:
-    server, cert, key = provider
+    server, credentials = provider
     egress = _egress(server)
     endpoint = f"https://localhost:{server.server_port}/v1"
-    credentials = _credentials(cert, key)
     assert egress.discover_models(endpoint, credentials) == ("model-1",)
     assert server.received_authorization == "Bearer private"
     assert egress.chat(
@@ -216,28 +219,24 @@ def test_real_https_mtls_models_and_chat(
     )["choices"]
 
 
+@pytest.mark.parametrize("provider", [MTLS], indirect=True)
 def test_real_https_mtls_without_api_key_omits_authorization_header(
-    provider: tuple[ProviderServer, bytes, bytes],
+    provider: tuple[ProviderServer, PlainCredentials],
 ) -> None:
-    server, cert, key = provider
+    server, credentials = provider
     endpoint = f"https://localhost:{server.server_port}/v1"
-    credentials = PlainCredentials(
-        client_certificate=cert,
-        client_private_key=key,
-        ca_bundle=cert,
-    )
+    credentials = replace(credentials, api_key=None)
     assert _egress(server).discover_models(endpoint, credentials) == ("model-1",)
     assert server.received_authorization is None
 
 
 def test_cancel_delayed_https_chat_releases_slot_without_publishing_result(
-    provider: tuple[ProviderServer, bytes, bytes],
+    provider: tuple[ProviderServer, PlainCredentials],
 ) -> None:
-    server, cert, key = provider
+    server, credentials = provider
     server.mode = "delayed_chat"
     egress = _egress(server)
     endpoint = f"https://localhost:{server.server_port}/v1"
-    credentials = _credentials(cert, key)
     cancelled = Event()
     outcomes: list[object] = []
 
@@ -282,54 +281,50 @@ def test_cancel_delayed_https_chat_releases_slot_without_publishing_result(
     "mode", ["redirect", "oversize", "invalid", "huge_length", "bad_models"]
 )
 def test_invalid_provider_responses_are_rejected(
-    provider: tuple[ProviderServer, bytes, bytes], mode: str
+    provider: tuple[ProviderServer, PlainCredentials], mode: str
 ) -> None:
-    server, cert, key = provider
+    server, credentials = provider
     server.mode = mode
     with pytest.raises(EgressResponseError):
         _egress(server).discover_models(
-            f"https://localhost:{server.server_port}/v1", _credentials(cert, key)
+            f"https://localhost:{server.server_port}/v1", credentials
         )
 
 
 def test_untrusted_tls_or_disallowed_address_fails_closed(
-    provider: tuple[ProviderServer, bytes, bytes],
+    provider: tuple[ProviderServer, PlainCredentials],
 ) -> None:
-    server, cert, key = provider
+    server, credentials = provider
     endpoint = f"https://localhost:{server.server_port}/v1"
     with pytest.raises(EgressUnavailableError):
         _egress(server).discover_models(
             endpoint,
-            PlainCredentials(
-                api_key=b"private", client_certificate=cert, client_private_key=key
-            ),
+            replace(credentials, ca_bundle=None),
         )
     with pytest.raises(EgressPolicyError):
-        _egress(server, allow_loopback=False).discover_models(
-            endpoint, _credentials(cert, key)
-        )
+        _egress(server, allow_loopback=False).discover_models(endpoint, credentials)
 
 
 def test_provider_error_is_safe_unavailable(
-    provider: tuple[ProviderServer, bytes, bytes],
+    provider: tuple[ProviderServer, PlainCredentials],
 ) -> None:
-    server, cert, key = provider
+    server, credentials = provider
     server.mode = "provider_error"
     with pytest.raises(EgressUnavailableError, match="Model provider is unavailable"):
         _egress(server).discover_models(
-            f"https://localhost:{server.server_port}/v1", _credentials(cert, key)
+            f"https://localhost:{server.server_port}/v1", credentials
         )
 
 
 @pytest.mark.parametrize("mode", ["slow", "no_length_oversize", "invalid_length"])
 def test_deadline_and_streaming_size_enforced(
-    provider: tuple[ProviderServer, bytes, bytes], mode: str
+    provider: tuple[ProviderServer, PlainCredentials], mode: str
 ) -> None:
-    server, cert, key = provider
+    server, credentials = provider
     server.mode = mode
     egress = _egress(server, timeout=0.05 if mode == "slow" else 2)
     error_type = EgressUnavailableError if mode == "slow" else EgressResponseError
     with pytest.raises(error_type):
         egress.discover_models(
-            f"https://localhost:{server.server_port}/v1", _credentials(cert, key)
+            f"https://localhost:{server.server_port}/v1", credentials
         )

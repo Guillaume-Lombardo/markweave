@@ -87,18 +87,21 @@ pnpm run workspace:check
 pnpm run test:web
 ```
 
-Run the default local suite, which excludes only tests requiring Pandoc, Mermaid/Chromium,
-LibreOffice, or Podman, so it also passes on a host without Podman:
+The default local selection excludes Pandoc, Mermaid/Chromium, LibreOffice, and Podman.
 
 ```bash
 uv run pytest -m "not requires_pandoc and not requires_mermaid and not requires_libreoffice and not requires_podman"
 ```
 
-Run the complete test collection when all required engines and services are available:
+Run the full suite on Linux with all required engines and services available.
 
 ```bash
 uv run pytest
 ```
+
+Pytest reports `requires_linux` tests as skipped on macOS and other non-Linux hosts. Use
+`uv run pytest -rs` with the same selection to see skip reasons. Linux runs these tests
+under the same selection as every other test.
 
 Every external requirement must use its registered Pytest marker. PostgreSQL, S3, slow,
 integration, and end-to-end tests remain included in the default command. When these tests first need distributed services and no service variables are set, Pytest
@@ -107,11 +110,11 @@ PostgreSQL and RustFS images as CI, random loopback ports, per-session generated
 health checks, and isolated schemas/buckets. The session removes its own containers, network
 and volumes even after a test failure. Unit-only runs never start containers.
 
-The local Docker Engine socket `/var/run/docker.sock` and `docker compose` must be available
-to the current user. The helper explicitly selects that socket, ignoring remote Docker contexts.
-No `sudo`, system
-package installation, external credentials, persistent `.env`, or manual exports are needed.
-The first run may pull the pinned images.
+Local service provisioning requires the Docker Engine socket `/var/run/docker.sock` and
+`docker compose` to be available to the current user. Without them or externally managed
+services, the PostgreSQL and S3 tests report setup errors. The helper selects that socket
+regardless of the active Docker context. Setup needs no system package installation, external
+credentials, persistent `.env`, manual exports, or `sudo`. The first run may pull the pinned images.
 
 Every stack, its volumes and its network carry the labels `io.markweave.tests.stack=local-services`,
 `io.markweave.tests.lock`, `io.markweave.tests.created` and `io.markweave.tests.host`. The owning
@@ -171,7 +174,8 @@ fail closed. Test doubles use the `mocker` fixture supplied by `pytest-mock`; im
 Ruff targets Python 3.14 and applies the committed correctness, security, modernization, import,
 and maintainability rule families to source, CI helpers, and tests. Narrow per-file exceptions are
 recorded only for reviewed subprocess argument vectors and for assertions and process probes in
-tests. `ty` checks `src`, `scripts`, and `tests` explicitly against Python 3.14.
+tests. `ty` checks `src`, `scripts`, and `tests` against Python 3.14 on the Linux target,
+including when invoked from macOS.
 
 ### Fast parallel test loop
 

@@ -171,6 +171,7 @@ def test_lifecycle_diagnostic_watcher_is_querying_before_target_release(
 
 @pytest.mark.integration
 @pytest.mark.parametrize("crash", [False, True])
+@pytest.mark.requires_linux
 def test_uv_child_is_found_across_supervisor_threads(
     tmp_path: Path, crash: bool
 ) -> None:

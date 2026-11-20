@@ -326,23 +326,11 @@ def test_dns_resolver_failures_are_safe(
         egress._resolve(endpoint)
 
 
-def test_bad_tls_material_and_header_are_rejected(
-    policy: ConnectionPolicy, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+def test_bad_ca_and_header_are_rejected(
+    policy: ConnectionPolicy, mocker: MockerFixture
 ) -> None:
     with pytest.raises(EgressPolicyError, match="Trusted CA"):
         _tls_context(PlainCredentials(api_key=b"x", ca_bundle=b"not a CA"))
-    with pytest.raises(EgressPolicyError, match="Client certificate"):
-        _tls_context(
-            PlainCredentials(
-                client_certificate=b"not a certificate",
-                client_private_key=b"not a key",
-            )
-        )
-    monkeypatch.delattr(os, "memfd_create")
-    with pytest.raises(EgressPolicyError, match="In-memory"):
-        _tls_context(
-            PlainCredentials(client_certificate=b"cert", client_private_key=b"key")
-        )
     egress = ConnectionEgress(policy, lambda _host, _port: ("203.0.113.1",))
     mocker.patch.object(egress, "_resolve", return_value=ip_address("203.0.113.1"))
     with pytest.raises(EgressPolicyError, match="API credential"):
@@ -352,4 +340,25 @@ def test_bad_tls_material_and_header_are_rejected(
     with pytest.raises(EgressPolicyError, match="API credential"):
         egress.discover_models(
             "https://models.example/v1", PlainCredentials(api_key=b"bad key")
+        )
+
+
+@pytest.mark.requires_linux
+def test_bad_client_certificate_is_rejected() -> None:
+    with pytest.raises(EgressPolicyError, match="Client certificate"):
+        _tls_context(
+            PlainCredentials(
+                client_certificate=b"not a certificate",
+                client_private_key=b"not a key",
+            )
+        )
+
+
+def test_client_certificate_requires_in_memory_files(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delattr(os, "memfd_create", raising=False)
+    with pytest.raises(EgressPolicyError, match="In-memory"):
+        _tls_context(
+            PlainCredentials(client_certificate=b"cert", client_private_key=b"key")
         )

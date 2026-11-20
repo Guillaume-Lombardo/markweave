@@ -1063,6 +1063,7 @@ def _run_supply_chain(tmp_path: Path, summary_status: int) -> tuple[Any, Path, P
     return result, output, temporary
 
 
+@pytest.mark.requires_linux
 def test_a_rejected_scan_keeps_unverified_evidence_and_still_fails(
     tmp_path: Path,
 ) -> None:
@@ -1088,6 +1089,7 @@ def test_a_rejected_scan_keeps_unverified_evidence_and_still_fails(
         verify_supply_chain.verify_bundle(output, expected_manifest_sha256="0" * 64)
 
 
+@pytest.mark.requires_linux
 def test_an_accepted_scan_publishes_a_verifiable_bundle(tmp_path: Path) -> None:
     result, output, temporary = _run_supply_chain(tmp_path, summary_status=0)
 

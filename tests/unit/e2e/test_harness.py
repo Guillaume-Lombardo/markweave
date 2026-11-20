@@ -139,6 +139,7 @@ def test_admin_browser_disambiguates_concurrent_account_fields() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.requires_linux
 def test_relative_runtime_marker_is_contained_by_owned_directory() -> None:
     with tempfile.TemporaryDirectory(prefix="markweave-e2e.") as directory:
         harness_directory = Path(directory)
@@ -179,6 +180,7 @@ def test_relative_runtime_marker_is_contained_by_owned_directory() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.requires_linux
 def test_alternate_tmpdir_launches_and_removes_only_owned_tree(
     tmp_path: Path,
 ) -> None:
@@ -244,6 +246,7 @@ def test_runner_rejects_unsafe_tmpdir_before_worktree_setup(
 
 
 @pytest.mark.unit
+@pytest.mark.requires_linux
 def test_identity_failure_removes_new_tree_before_continuation(
     tmp_path: Path,
 ) -> None:
@@ -323,6 +326,7 @@ def test_worktree_guard_reports_and_preserves_unexpected_change(tmp_path: Path) 
 
 
 @pytest.mark.unit
+@pytest.mark.requires_linux
 def test_repository_local_tmpdir_is_removed_before_worktree_check(
     tmp_path: Path,
 ) -> None:
@@ -644,6 +648,7 @@ def test_composer_scenario_rejects_invalid_modes_before_runtime_setup(
 
 
 @pytest.mark.unit
+@pytest.mark.requires_linux
 def test_composer_browser_mounts_only_checksum_verified_small_corpus(
     tmp_path: Path,
 ) -> None:

@@ -210,6 +210,7 @@ def test_reverse_attempt_smoke_enforces_runtime_separation() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.requires_linux
 def test_pinned_anydoc_wheel_carries_the_reviewed_cargo_inventory() -> None:
     distribution = importlib.metadata.distribution("firecrawl-anydoc")
     candidates = [

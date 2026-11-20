@@ -79,5 +79,6 @@ def test_a_missing_or_concurrently_reaped_entry_has_no_state(
     assert process_state(42) is None
 
 
+@pytest.mark.requires_linux
 def test_reads_the_state_of_a_live_process() -> None:
     assert process_state(os.getpid()) == "R"

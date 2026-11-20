@@ -246,6 +246,7 @@ def test_missing_required_engine_fails_clearly(tmp_path: Path) -> None:
     assert list(output.iterdir()) == []
 
 
+@pytest.mark.requires_linux
 def test_missing_libreoffice_is_required_only_for_pdf(tmp_path: Path) -> None:
     source, output = _inputs(tmp_path)
     environment = _environment(
@@ -317,6 +318,7 @@ def test_unpinned_engine_warns_or_fails_with_require_pinned(tmp_path: Path) -> N
     assert manifest["engines_pinned"] is False
 
 
+@pytest.mark.requires_linux
 def test_global_timeout_terminates_the_engine_process_group(tmp_path: Path) -> None:
     source, output = _inputs(tmp_path)
     engine, pid_file = _slow_pandoc(tmp_path)
@@ -347,6 +349,7 @@ def test_global_timeout_terminates_the_engine_process_group(tmp_path: Path) -> N
 
 
 @pytest.mark.parametrize("signum", [signal.SIGTERM, signal.SIGINT])
+@pytest.mark.requires_linux
 def test_signal_cancels_the_running_engine_without_outputs(
     tmp_path: Path, signum: signal.Signals
 ) -> None:

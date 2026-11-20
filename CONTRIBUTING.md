@@ -50,6 +50,10 @@ uv run pytest -m "not requires_pandoc and not requires_mermaid and not requires_
 uv run pytest
 ```
 
+Run the full suite on Linux with all required engines and services. On macOS, Pytest reports
+`requires_linux` tests as skipped, and PostgreSQL and S3 tests require configured services or
+local Docker Compose provisioning. The type checker always targets Linux.
+
 For a faster loop while iterating, run the non-`slow` unit tests on all CPU cores with
 `uv run pytest -n auto -m "unit and not slow" --no-cov`. The canonical commands above remain the
 authoritative checks to run and report before review; see the

@@ -80,10 +80,10 @@ def _settings(tmp_path: Path, **overrides: object) -> Settings:
 
 
 def test_unix_execution_policy_and_client_use_every_explicit_ceiling(
-    tmp_path: Path,
+    short_socket_directory: Path,
 ) -> None:
     settings = _settings(
-        tmp_path,
+        short_socket_directory,
         reversion_pptx_max_archive_entries=200,
         reversion_pptx_max_member_bytes=9_000,
         reversion_pptx_max_uncompressed_bytes=25_000,

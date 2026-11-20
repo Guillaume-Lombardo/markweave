@@ -13,7 +13,7 @@ import markweave
 from scripts.ci.check_package_namespace import check_namespace
 from scripts.release.build import build_release
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.requires_linux]
 
 ROOT = Path(__file__).parents[2]
 
