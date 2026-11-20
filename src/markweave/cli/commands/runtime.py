@@ -113,9 +113,14 @@ def _migrate(context: CommandContext, writer: OutputWriter, command: str) -> Non
 
 def _runtime_error(error: Exception) -> CliError:
     """Map runtime boundaries to one redacted operational failure."""
-    from markweave.config import ConfigurationError  # noqa: PLC0415
+    from markweave.config import (  # noqa: PLC0415
+        ConfigurationError,
+        RemovedConfigurationAliasError,
+    )
     from markweave.persistence.errors import PersistenceError  # noqa: PLC0415
 
+    if isinstance(error, RemovedConfigurationAliasError):
+        return CliError("invalid_configuration", str(error))
     if isinstance(error, ConfigurationError):
         return CliError("invalid_configuration", "Invalid application configuration.")
     if isinstance(error, PersistenceError):

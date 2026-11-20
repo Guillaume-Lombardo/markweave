@@ -39,8 +39,8 @@ deployments also require the matching reverse-attempt image and native broker.
    provenance. Record the current version, image digest, configuration source,
    and database revision.
 2. Verify that every required `MARKWEAVE_*` setting is present for the selected
-   profile. Do not substitute unresolved production-limit placeholders with
-   values invented during an upgrade.
+   profile. For 0.8.0 and later, apply the [configuration migration](#configuration-compatibility).
+   Do not substitute unresolved production-limit placeholders with values invented during an upgrade.
 3. Create and verify a profile-consistent backup before changing binaries or
    schema. For standalone, preserve the SQLite database and the complete object
    directory together. For distributed, preserve the PostgreSQL recovery point
@@ -148,6 +148,8 @@ keep their verified `0.7.3` configuration until they adopt these exact pins and 
 deployment-specific verification. Do not run a `0.7.4` or `0.7.5` package against `0.7.3` images
 or invent a `0.7.4` image digest.
 
+## Upgrading to 0.8.0
+
 ### Reverse isolation in 0.8.0
 
 Version 0.8.0 removes the experimental `markweave[kubernetes]` extra and
@@ -156,23 +158,27 @@ For reverse conversion, configure the [rootless Podman broker](reverse-broker-de
 one of its authenticated transports. The broker rejects old Kubernetes configuration. T74's
 prototype is preserved in the `archive/t74-kubernetes-backend` Git tag.
 
-## Configuration compatibility
-
-### During 0.x
-
 <a id="configuration-compatibility"></a>
 
-`MARKWEAVE_*` is the canonical configuration namespace. Legacy
-`MD_CONVERTER_*` aliases remain supported throughout 0.x. Migrate each legacy
-setting to its corresponding canonical name before 1.0, verify the effective
-configuration, and remove the legacy definition once the canonical definition
-is confirmed.
+Version 0.8.0 removes the deprecated `MD_CONVERTER_*` aliases. Before starting the
+new version, rename each former alias in environment files, service definitions,
+Compose overrides, and deployment manifests. Keep its value and remove the old name
+from the process environment. If both names are present, verify the canonical value
+and remove the alias. Even an empty alias prevents startup. The error names each
+replacement and omits values.
 
-You may temporarily set both names for one setting during 0.x only when they
-validate to the same effective value. Conflicting dual definitions fail closed.
-The aliases are removed in 1.0, so an upgrade to 1.0 requires a configuration
-with no `MD_CONVERTER_*` entries. This policy does not alter which values are
-required or select values for unresolved production limits.
+| Previous name | Canonical name |
+| --- | --- |
+| `MD_CONVERTER_<SUFFIX>` (every former alias) | `MARKWEAVE_<SUFFIX>` (same suffix) |
+| `MD_CONVERTER_HOST` | `MARKWEAVE_HOST` |
+| `MD_CONVERTER_PORT` | `MARKWEAVE_PORT` |
+| `MD_CONVERTER_INITIAL_ADMIN_PASSWORD` | `MARKWEAVE_INITIAL_ADMIN_PASSWORD` |
+| `MD_CONVERTER_STANDALONE_DATA_DIRECTORY` | `MARKWEAVE_STANDALONE_DATA_DIRECTORY` |
+| `MD_CONVERTER_DISTRIBUTED_DATABASE_URL` | `MARKWEAVE_DISTRIBUTED_DATABASE_URL` |
+| `MD_CONVERTER_S3_BUCKET` | `MARKWEAVE_S3_BUCKET` |
+
+The repository Compose files already use canonical names. Check any local overrides
+before upgrading either storage profile or a local conversion environment.
 
 ## Stable links
 
@@ -181,7 +187,7 @@ required or select values for unresolved production limits.
 - [Upgrade procedure](#upgrade-procedure)
 - [Schema changes and rollback](#schema-changes-and-rollback)
 - [Upgrading to 0.7.5](#upgrading-to-075)
-- [Configuration compatibility during 0.x](#configuration-compatibility)
+- [Configuration migration for 0.8.0](#configuration-compatibility)
 
 ## Related guidance
 

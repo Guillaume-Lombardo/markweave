@@ -28,6 +28,7 @@ from markweave.cli.types import CommandContext, ExitCode
 
 if TYPE_CHECKING:
     from markweave.conversion.local import LocalConversionResult
+    from markweave.conversion.local_settings import LocalConversionSettings
 
 _LOCAL_DESTS = (
     "local_mode",
@@ -186,19 +187,8 @@ def _convert_locally(
         LocalConverter,
         LocalOutput,
     )
-    from markweave.conversion.local_settings import (  # noqa: PLC0415
-        LocalConfigurationError,
-        LocalConversionSettings,
-    )
 
-    try:
-        settings = LocalConversionSettings.load()
-    except LocalConfigurationError as error:
-        raise CliError(
-            "local_configuration_invalid",
-            "Local conversion configuration is missing or invalid: "
-            f"{', '.join(error.variables)}.",
-        ) from None
+    settings = _load_local_settings()
     source = _read_file(source_path, settings.conversion_upload_max_bytes, "source")
     template = (
         _read_file(template_path, settings.template_max_archive_bytes, "template")
@@ -263,6 +253,25 @@ def _convert_locally(
         f"Converted locally to {', '.join(names)}; traceability: {manifest_name}.",
         _payload(result, names, formats, manifest_name),
     )
+
+
+def _load_local_settings() -> LocalConversionSettings:
+    from markweave.config import RemovedConfigurationAliasError  # noqa: PLC0415
+    from markweave.conversion.local_settings import (  # noqa: PLC0415
+        LocalConfigurationError,
+        LocalConversionSettings,
+    )
+
+    try:
+        return LocalConversionSettings.load()
+    except RemovedConfigurationAliasError as error:
+        raise CliError("local_configuration_invalid", str(error)) from None
+    except LocalConfigurationError as error:
+        raise CliError(
+            "local_configuration_invalid",
+            "Local conversion configuration is missing or invalid: "
+            f"{', '.join(error.variables)}.",
+        ) from None
 
 
 def _payload(

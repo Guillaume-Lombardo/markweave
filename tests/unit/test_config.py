@@ -30,14 +30,14 @@ def _environment_configuration(**overrides: object) -> dict[str, object]:
 
 
 def _set_environment_configuration(
-    monkeypatch: pytest.MonkeyPatch, prefix: str, **overrides: object
+    monkeypatch: pytest.MonkeyPatch, **overrides: object
 ) -> None:
     for field_name in Settings.model_fields:
         monkeypatch.delenv(f"MARKWEAVE_{field_name.upper()}", raising=False)
         monkeypatch.delenv(f"MD_CONVERTER_{field_name.upper()}", raising=False)
     for field_name, value in _environment_configuration(**overrides).items():
         if value is not None:
-            monkeypatch.setenv(f"{prefix}{field_name.upper()}", str(value))
+            monkeypatch.setenv(f"MARKWEAVE_{field_name.upper()}", str(value))
 
 
 @pytest.mark.unit
@@ -245,12 +245,10 @@ def test_insecure_evaluation_mode_can_be_explicitly_enabled_from_environment(
 
 
 @pytest.mark.unit
-def test_legacy_environment_aliases_remain_supported_through_0_x(
+def test_canonical_environment_loads_without_legacy_aliases(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _set_environment_configuration(
-        monkeypatch, "MD_CONVERTER_", host="127.0.0.1", port=8000
-    )
+    _set_environment_configuration(monkeypatch, host="127.0.0.1", port=8000)
 
     settings = Settings.load()
 
@@ -260,14 +258,10 @@ def test_legacy_environment_aliases_remain_supported_through_0_x(
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("prefix", ("MARKWEAVE_", "MD_CONVERTER_"))
 def test_deprecated_idle_environment_input_is_never_silently_ignored(
-    monkeypatch: pytest.MonkeyPatch, prefix: str
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _set_environment_configuration(monkeypatch, "MARKWEAVE_")
-    monkeypatch.setenv(f"{prefix}SESSION_IDLE_SECONDS", "1200")
-    if prefix == "MD_CONVERTER_":
-        monkeypatch.delenv("MARKWEAVE_SESSION_IDLE_SECONDS", raising=False)
+    _set_environment_configuration(monkeypatch, session_idle_seconds=1200)
 
     with pytest.warns(FutureWarning, match="does not control"):
         assert Settings.load().session_idle_seconds == 1200
@@ -275,92 +269,69 @@ def test_deprecated_idle_environment_input_is_never_silently_ignored(
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    ("field_name", "canonical", "legacy"),
+    ("legacy", "value", "canonical"),
     [
-        ("host", "127.0.0.1", "127.0.0.1"),
-        ("port", "8080", "08080"),
-        ("session_idle_seconds", "1800", "01800"),
-        ("insecure_evaluation_mode", "true", "TRUE"),
-        ("reversion_upload_max_bytes", "4194304", "04194304"),
-        ("reversion_request_max_bytes", "4300000", "04300000"),
-        ("reversion_retry_after_seconds", "3", "03"),
-        ("reversion_result_retention_seconds", "86400", "086400"),
-        ("reversion_active_limit_per_user", "2", "02"),
+        ("MD_CONVERTER_PORT", "8080", "MARKWEAVE_PORT"),
+        ("MD_CONVERTER_HOST", "", "MARKWEAVE_HOST"),
         (
-            "public_origin",
-            "https://Converter.Example:8443",
-            "https://converter.example:8443",
+            "md_converter_initial_admin_password",
+            "private-value",
+            "MARKWEAVE_INITIAL_ADMIN_PASSWORD",
         ),
-        ("standalone_data_directory", "/data", "/data"),
-        ("malware_scanning_mode", "clamav", "clamav"),
     ],
 )
-def test_equal_canonical_and_legacy_aliases_compare_typed_values(
-    monkeypatch: pytest.MonkeyPatch,
-    field_name: str,
-    canonical: str,
-    legacy: str,
+def test_removed_aliases_fail_even_with_valid_canonical_configuration(
+    monkeypatch: pytest.MonkeyPatch, legacy: str, value: str, canonical: str
 ) -> None:
-    _set_environment_configuration(monkeypatch, "MARKWEAVE_")
-    monkeypatch.setenv(f"MARKWEAVE_{field_name.upper()}", canonical)
-    monkeypatch.setenv(f"MD_CONVERTER_{field_name.upper()}", legacy)
-
-    assert getattr(Settings.load(), field_name) is not None
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "field_name",
-    ("initial_admin_password", "distributed_database_url", "s3_secret_access_key"),
-)
-def test_secret_aliases_require_an_exact_raw_match(
-    monkeypatch: pytest.MonkeyPatch, field_name: str
-) -> None:
-    overrides: dict[str, object] = {}
-    if field_name != "initial_admin_password":
-        overrides = {
-            "storage_profile": "distributed",
-            "standalone_data_directory": None,
-            "distributed_database_url": "postgresql+psycopg://db/app",
-            "s3_bucket": "objects",
-            "s3_access_key_id": "access",
-            "s3_secret_access_key": "secret",
-        }
-    _set_environment_configuration(monkeypatch, "MARKWEAVE_", **overrides)
-    canonical = (
-        "postgresql+psycopg://one/app"
-        if field_name == "distributed_database_url"
-        else "canonical-secret"
-    )
-    legacy = (
-        "postgresql+psycopg://two/app"
-        if field_name == "distributed_database_url"
-        else f"{canonical}-other"
-    )
-    monkeypatch.setenv(f"MARKWEAVE_{field_name.upper()}", canonical)
-    monkeypatch.setenv(f"MD_CONVERTER_{field_name.upper()}", legacy)
+    _set_environment_configuration(monkeypatch, port=8080)
+    monkeypatch.setenv(legacy, value)
 
     with pytest.raises(ConfigurationError) as caught:
         Settings.load()
 
-    assert str(caught.value) == "Invalid application configuration"
-    assert canonical not in repr(caught.value)
+    message = str(caught.value)
+    assert f"{legacy.upper()} -> {canonical}" in message
+    if value:
+        assert value not in message
 
 
 @pytest.mark.unit
-def test_unequal_nonsecret_aliases_fail_without_exposing_values(
+def test_startup_reports_all_removed_aliases_before_validation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _set_environment_configuration(monkeypatch, "MARKWEAVE_")
-    monkeypatch.setenv("MARKWEAVE_JOB_GLOBAL_QUEUE_CAPACITY", "10")
-    monkeypatch.setenv("MD_CONVERTER_JOB_GLOBAL_QUEUE_CAPACITY", "11")
+    _set_environment_configuration(monkeypatch, initial_admin_password=None)
+    monkeypatch.setenv("MD_CONVERTER_INITIAL_ADMIN_PASSWORD", "private-value")
+    monkeypatch.setenv("MD_CONVERTER_PORT", "invalid-port")
 
     with pytest.raises(ConfigurationError) as caught:
         Settings.load()
 
-    assert str(caught.value) == "Invalid application configuration"
-    assert "10" not in repr(caught.value)
-    assert "11" not in repr(caught.value)
+    assert str(caught.value) == (
+        "Legacy configuration variables were removed. Rename "
+        "MD_CONVERTER_INITIAL_ADMIN_PASSWORD -> MARKWEAVE_INITIAL_ADMIN_PASSWORD, "
+        "MD_CONVERTER_PORT -> MARKWEAVE_PORT."
+    )
+
+
+@pytest.mark.unit
+def test_unrecognized_legacy_name_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_environment_configuration(monkeypatch, port=8000)
+    monkeypatch.setenv("MD_CONVERTER_UNKNOWN", "ignored")
+
+    assert Settings.load().port == 8000
+
+
+@pytest.mark.unit
+def test_conflicting_canonical_case_variants_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_environment_configuration(monkeypatch, port=8080)
+    monkeypatch.setenv("markweave_port", "8081")
+
+    with pytest.raises(
+        ConfigurationError, match=r"^Invalid application configuration$"
+    ):
+        Settings.load()
 
 
 @pytest.mark.unit

@@ -3,7 +3,7 @@ set -euo pipefail
 
 readonly image="${1:-localhost/md-converter:t20}"
 readonly container_name=md-converter-t20-api-smoke
-readonly legacy_container_name=md-converter-t20-legacy-api-smoke
+readonly custom_bind_container_name=md-converter-t20-custom-bind-api-smoke
 readonly clamav_name=md-converter-t20-api-smoke-clamav
 readonly network_name=md-converter-t20-api-smoke
 readonly runtime_uid="${T20_RUNTIME_UID:-50000}"
@@ -12,7 +12,7 @@ readonly expect_reversion_capabilities="${MARKWEAVE_EXPECT_REVERSION_CAPABILITIE
 seccomp_profile="$repository/toolchain/document-engines/chrome-seccomp.json"
 readonly seccomp_profile
 created=false
-legacy_created=false
+custom_bind_created=false
 clamav_created=false
 network_created=false
 template_directory="$(mktemp -d)"
@@ -21,8 +21,8 @@ cleanup() {
   if [[ "$created" == true ]]; then
     podman rm --force "$container_name" >/dev/null 2>&1 || true
   fi
-  if [[ "$legacy_created" == true ]]; then
-    podman rm --force "$legacy_container_name" >/dev/null 2>&1 || true
+  if [[ "$custom_bind_created" == true ]]; then
+    podman rm --force "$custom_bind_container_name" >/dev/null 2>&1 || true
   fi
   if [[ "$clamav_created" == true ]]; then
     podman rm --force "$clamav_name" >/dev/null 2>&1 || true
@@ -34,7 +34,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for name in "$container_name" "$legacy_container_name" "$clamav_name"; do
+for name in "$container_name" "$custom_bind_container_name" "$clamav_name"; do
   if podman container exists "$name"; then
     echo "Refusing to replace pre-existing container $name." >&2
     exit 1
@@ -127,13 +127,8 @@ settings=(
   --env MARKWEAVE_CLAMAV_HOST=clamav
 )
 
-legacy_settings=()
-for setting in "${settings[@]}"; do
-  legacy_settings+=("${setting/MARKWEAVE_/MD_CONVERTER_}")
-done
-
 podman run --detach \
-  --name "$legacy_container_name" \
+  --name "$custom_bind_container_name" \
   --network "$network_name" \
   --user "$runtime_uid:0" \
   --read-only \
@@ -147,33 +142,33 @@ podman run --detach \
   --tmpfs /work:rw,nosuid,nodev,size=256m,mode=0770 \
   --tmpfs /data:rw,nosuid,nodev,noexec,size=64m,mode=0770 \
   --shm-size=128m \
-  "${legacy_settings[@]}" \
-  --env MD_CONVERTER_HOST=127.0.0.1 \
-  --env MD_CONVERTER_PORT=18080 \
+  "${settings[@]}" \
+  --env MARKWEAVE_HOST=127.0.0.1 \
+  --env MARKWEAVE_PORT=18080 \
   "$image" serve >/dev/null
-legacy_created=true
+custom_bind_created=true
 
 for _ in $(seq 1 240); do
-  if podman exec "$legacy_container_name" /opt/md-converter/venv/bin/python -c \
+  if podman exec "$custom_bind_container_name" /opt/md-converter/venv/bin/python -c \
       'import urllib.request; assert b"\"status\":\"ok\"" in urllib.request.urlopen("http://127.0.0.1:18080/health/live", timeout=1).read()' \
       >/dev/null 2>&1; then
     break
   fi
-  if ! podman container exists "$legacy_container_name" || \
-     [[ "$(podman inspect "$legacy_container_name" --format '{{.State.Running}}')" != true ]]; then
-    podman logs "$legacy_container_name" >&2
+  if ! podman container exists "$custom_bind_container_name" || \
+     [[ "$(podman inspect "$custom_bind_container_name" --format '{{.State.Running}}')" != true ]]; then
+    podman logs "$custom_bind_container_name" >&2
     exit 1
   fi
   sleep 0.25
 done
-podman exec "$legacy_container_name" /opt/md-converter/venv/bin/python -c \
+podman exec "$custom_bind_container_name" /opt/md-converter/venv/bin/python -c \
   'import urllib.request; assert b"\"status\":\"ready\"" in urllib.request.urlopen("http://127.0.0.1:18080/health/ready", timeout=2).read()'
-podman exec "$legacy_container_name" /opt/md-converter/venv/bin/python -c \
+podman exec "$custom_bind_container_name" /opt/md-converter/venv/bin/python -c \
   'from markweave.config import Settings; assert (Settings.load().host, Settings.load().port) == ("127.0.0.1", 18080)'
 if [[ "$expect_reversion_capabilities" == true ]]; then
   podman cp "$repository/scripts/container/api_workflow_smoke.py" \
-    "$legacy_container_name:/work/api_workflow_smoke.py"
-  podman exec "$legacy_container_name" /opt/md-converter/venv/bin/python \
+    "$custom_bind_container_name:/work/api_workflow_smoke.py"
+  podman exec "$custom_bind_container_name" /opt/md-converter/venv/bin/python \
     /work/api_workflow_smoke.py \
     --base-url http://127.0.0.1:18080 \
     --expect-reversion-capabilities-unavailable
@@ -181,9 +176,9 @@ elif [[ "$expect_reversion_capabilities" != false ]]; then
   echo "MARKWEAVE_EXPECT_REVERSION_CAPABILITIES must be true or false." >&2
   exit 2
 fi
-podman rm --force "$legacy_container_name" >/dev/null
-legacy_created=false
-echo "Final-image legacy configuration smoke passed for $image."
+podman rm --force "$custom_bind_container_name" >/dev/null
+custom_bind_created=false
+echo "Final-image custom bind smoke passed for $image."
 
 reversion_capability_arguments=()
 if [[ "$expect_reversion_capabilities" == true ]]; then

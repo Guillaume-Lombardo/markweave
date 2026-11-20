@@ -95,9 +95,9 @@ class LocalConversionSettings(BaseSettings):
 
     @classmethod
     def load(cls) -> LocalConversionSettings:
-        """Load canonical and legacy variables, reporting only invalid names."""
+        """Load canonical variables, reporting only invalid or removed names."""
         try:
-            settings, _, _ = validated_environment_model(cls)
+            return validated_environment_model(cls)
         except ConflictingConfigurationError as error:
             raise LocalConfigurationError(_variables(error.fields)) from None
         except ValidationError as error:
@@ -115,7 +115,6 @@ class LocalConversionSettings(BaseSettings):
                     )
                 )
             ) from None
-        return settings
 
 
 def _variables(fields: tuple[str, ...]) -> tuple[str, ...]:

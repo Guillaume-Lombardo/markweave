@@ -107,9 +107,7 @@ def test_unix_execution_policy_and_client_use_every_explicit_ceiling(
     assert policies.broker_policy.limits.memory_bytes == 512_000_000
 
 
-def _mtls_environment(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, prefix: str
-) -> None:
+def _mtls_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     values = _settings(tmp_path).model_dump(mode="json")
     values.update(
         reversion_broker_transport="mtls",
@@ -131,14 +129,13 @@ def _mtls_environment(
             encoded = (
                 json.dumps(value) if isinstance(value, (list, bool)) else str(value)
             )
-            monkeypatch.setenv(prefix + name.upper(), encoded)
+            monkeypatch.setenv("MARKWEAVE_" + name.upper(), encoded)
 
 
-@pytest.mark.parametrize("prefix", ("MARKWEAVE_", "MD_CONVERTER_"))
 def test_mtls_certificate_pins_load_from_environment_json(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, prefix: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _mtls_environment(tmp_path, monkeypatch, prefix)
+    _mtls_environment(tmp_path, monkeypatch)
     with pytest.warns(FutureWarning):
         settings = Settings.load()
     assert settings.reversion_execution_configured
@@ -146,10 +143,6 @@ def test_mtls_certificate_pins_load_from_environment_json(
     monkeypatch.setenv(
         "MARKWEAVE_REVERSION_BROKER_SERVER_LEAF_SHA256",
         '[ "sha256:' + "b" * 64 + '" ]',
-    )
-    monkeypatch.setenv(
-        "MD_CONVERTER_REVERSION_BROKER_SERVER_LEAF_SHA256",
-        json.dumps(["sha256:" + "b" * 64]),
     )
     with pytest.warns(FutureWarning):
         assert Settings.load().reversion_broker_server_leaf_sha256 == (
@@ -172,7 +165,7 @@ def test_mtls_certificate_pins_load_from_environment_json(
 def test_mtls_environment_rejects_malformed_or_invalid_pins(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid: str
 ) -> None:
-    _mtls_environment(tmp_path, monkeypatch, "MARKWEAVE_")
+    _mtls_environment(tmp_path, monkeypatch)
     monkeypatch.setenv("MARKWEAVE_REVERSION_BROKER_SERVER_LEAF_SHA256", invalid)
     with pytest.raises(
         ConfigurationError, match=r"^Invalid application configuration$"

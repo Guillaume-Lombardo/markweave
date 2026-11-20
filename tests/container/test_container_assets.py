@@ -387,15 +387,15 @@ def test_recovery_smoke_does_not_require_optional_s3_key_count() -> None:
         _listed_object_count({"Contents": "not-a-list"})
 
 
-def test_final_image_does_not_bake_canonical_runtime_aliases() -> None:
+def test_final_image_runtime_bind_is_configurable_with_canonical_names() -> None:
     containerfile = Path("Containerfile").read_text(encoding="utf-8")
     smoke = Path("scripts/container/api-smoke.sh").read_text(encoding="utf-8")
 
     assert "MARKWEAVE_HOST=" not in containerfile
     assert "MARKWEAVE_PORT=" not in containerfile
-    assert 'legacy_settings+=("${setting/MARKWEAVE_/MD_CONVERTER_}")' in smoke
-    assert "--env MD_CONVERTER_HOST=127.0.0.1" in smoke
-    assert "--env MD_CONVERTER_PORT=18080" in smoke
+    assert "MD_CONVERTER_" not in smoke
+    assert "--env MARKWEAVE_HOST=127.0.0.1" in smoke
+    assert "--env MARKWEAVE_PORT=18080" in smoke
     assert 'urllib.request.urlopen("http://127.0.0.1:18080/health/live"' in smoke
     assert (
         '(Settings.load().host, Settings.load().port) == ("127.0.0.1", 18080)' in smoke
@@ -408,10 +408,10 @@ def test_final_image_smoke_covers_reversion_capability_auth_and_configuration() 
     assert smoke.count("--expect-reversion-capabilities-unavailable") == 1
     assert smoke.count("--expect-reversion-upload-max-bytes 4194304") == 1
     assert smoke.count("MARKWEAVE_REVERSION_UPLOAD_MAX_BYTES=4194304") == 1
-    assert smoke.index("legacy_settings=()") < smoke.index(
+    assert smoke.index("--env MARKWEAVE_PORT=18080") < smoke.index(
         "MARKWEAVE_REVERSION_UPLOAD_MAX_BYTES=4194304"
     )
-    assert '"$legacy_container_name:/work/api_workflow_smoke.py"' in smoke
+    assert '"$custom_bind_container_name:/work/api_workflow_smoke.py"' in smoke
     assert "/work/api_workflow_smoke.py" in smoke
     assert '"${MARKWEAVE_EXPECT_REVERSION_CAPABILITIES:-true}"' in smoke
     assert 'if [[ "$expect_reversion_capabilities" == true ]]' in smoke

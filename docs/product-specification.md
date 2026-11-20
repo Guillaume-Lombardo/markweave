@@ -54,7 +54,7 @@ Actions workflows, and an autonomous development workflow.
 | Command line | The installed `markweave` executable exposes every supported HTTP user/administrator operation and the local `serve`, `worker`, `doctor`, `migrate`, `backup`, and `restore` operational commands |
 | CLI boundary | Business commands use only the documented HTTP API; only operational commands and the explicit local conversion command of section 3.7 (D1) may access runtime services directly |
 | CLI authentication | Remote commands reuse the existing session and CSRF contract, prompt passwords without echo or process arguments, and keep only bounded session state in owner-only XDG files; scoped API tokens follow section 3.7 (D7) |
-| Configuration names | `MARKWEAVE_*` is canonical; legacy `MD_CONVERTER_*` aliases remain supported throughout 0.x, conflicting dual definitions fail closed, and aliases are removed in 1.0 |
+| Configuration names | `MARKWEAVE_*` is canonical. Through 0.7.x, legacy `MD_CONVERTER_*` aliases are accepted and conflicting dual definitions fail closed. Starting in 0.8.0, any former alias prevents startup with an error naming its canonical replacement. |
 | Git workflow | Trunk-based, short branches, pull requests to `main`, squash merge |
 | Python dependencies | `uv` |
 | Quality tools | Ruff, `ty`, Pytest, pytest-cov, and pytest-mock |
@@ -1128,7 +1128,7 @@ Before the first public release, configure a PyPI pending Trusted Publisher for 
 | T36 | Add supported `serve`, `worker`, `doctor`, and `migrate` operational commands | T12, T20, T31, T39 |
 | T37 | Add guarded standalone and distributed `backup` and `restore` operational commands | T12, T18, T20, T31, T39 |
 | T38 | Use the supported `markweave` commands as every source-built final-container, deployment/recovery, smoke, and E2E entry point | T20, T21, T33, T34, T35, T36, T37, T40 |
-| T39 | Make `MARKWEAVE_*` canonical while preserving fail-closed `MD_CONVERTER_*` compatibility throughout 0.x | T06, T20, T26 |
+| T39 | Make `MARKWEAVE_*` canonical and provide fail-closed `MD_CONVERTER_*` compatibility through 0.7.x | T06, T20, T26 |
 | T40 | Clarify the supported Python API, split optional backend extras, and complete PyPI metadata and installation verification | T22, T31, T39 |
 | T41 | Decompose the FastAPI application into routers, schemas, dependencies, error handling, lifecycle, and a small composition root | T06, T44 |
 | T42 | Decompose worker claim, heartbeat, execution, publication, cancellation, recovery, and cleanup orchestration against the finalized persistence ports | T13, T21, T43 |
@@ -1193,7 +1193,7 @@ Before the first public release, configure a PyPI pending Trusted Publisher for 
 | T107 | Remove the dormant Kubernetes isolation backend from main, recoverable from an archive tag | — |
 | T108 | Freeze the experimental reverse conversion scope | T96 |
 | T109 | Relocate completed spikes and archive historical evidence | — |
-| T110 | Remove legacy `MD_CONVERTER_*` configuration aliases at 1.0 | — |
+| T110 | Remove legacy `MD_CONVERTER_*` configuration aliases in 0.8.0 and report replacements at startup | — |
 | T111 | Add table of contents, section numbering and page breaks | T96 |
 | T112 | Add cross-references for figures, tables and equations | T96, T111 |
 | T113 | Add citations and bibliography | T96 |

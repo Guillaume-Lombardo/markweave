@@ -12,22 +12,13 @@ content-free error when the assembled settings are invalid. "Required" below mea
 deliberately no application default; operators must choose an approved value. Defaults are
 implementation defaults, not approval to use them unchanged in production.
 
-## 0.x configuration migration
+## Configuration migration for 0.8.0
 
-`MARKWEAVE_*` is the only prefix used in new deployments, Compose files, quickstarts, examples,
-and diagnostics. `MD_CONVERTER_*` remains a deprecated compatibility alias throughout every 0.x
-release and will be removed in 1.0.
-
-For a staged migration, rename each variable from `MD_CONVERTER_<SUFFIX>` to
-`MARKWEAVE_<SUFFIX>`. Defining both forms is allowed only when they mean the same validated value:
-for example, `MARKWEAVE_PORT=8080` and `MD_CONVERTER_PORT=08080` are equivalent. Passwords,
-database URLs, S3 credentials, and other secret or opaque values must match exactly as supplied.
-Any incompatible pair, including an invalid alias spelling, prevents startup without displaying
-either value. This fail-closed behavior avoids silently selecting a configuration source.
-
-The public Compose quickstart supplies only `MARKWEAVE_*` variables.
-The deprecated aliases remain available only for operators migrating an older external deployment;
-do not define both prefixes in new deployments.
+Starting in 0.8.0, the presence of a former `MD_CONVERTER_*` alias prevents startup, even if
+the variable is empty or the equivalent `MARKWEAVE_*` variable is already defined. The error
+lists canonical replacements without showing any values. The public Compose quickstart already
+uses canonical names. For external configurations, follow the
+[upgrade guide](upgrading.md#configuration-compatibility).
 
 The default cookie names remain `md_converter_session` and `__Host-md_converter_csrf` throughout
 0.x. Do not rename them during this environment-prefix migration; a deliberate session/cookie

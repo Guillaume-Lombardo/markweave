@@ -18,6 +18,14 @@ private reporting, and the [support policy](SUPPORT.md) for help with a publishe
   matched release images so jobs complete with the engine version they recorded at submission.
 - Version 0.8.0 removes the experimental `kubernetes` extra and `markweave-kubernetes-attester` executable.
 
+### Removed in 0.8.0
+
+- Legacy `MD_CONVERTER_*` configuration aliases now prevent startup. Rename each
+  `MD_CONVERTER_<SUFFIX>` variable to `MARKWEAVE_<SUFFIX>` and remove the old
+  definition, including empty or duplicate entries. Startup errors list the
+  replacements without exposing their values. See the
+  [configuration migration table](docs/upgrading.md#configuration-compatibility).
+
 <a id="release-0-7-5"></a>
 
 ## [0.7.5] - 2026-10-12

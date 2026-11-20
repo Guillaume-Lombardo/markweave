@@ -163,7 +163,4 @@ def test_upgrade_guide_exposes_explicit_stable_anchors() -> None:
     assert '<a id="upgrading"></a>' in guide
     assert '<a id="configuration-compatibility"></a>' in guide
     assert "[Upgrade guide top](#upgrading)" in guide
-    assert (
-        "[Configuration compatibility during 0.x](#configuration-compatibility)"
-        in guide
-    )
+    assert "[Configuration migration for 0.8.0](#configuration-compatibility)" in guide
