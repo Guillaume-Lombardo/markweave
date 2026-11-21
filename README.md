@@ -19,7 +19,7 @@ and exports stay accessible without one. See the
 [scope freeze](docs/index.md#scope-freeze).
 
 The project is licensed under [Apache-2.0](LICENSE). The source package version is `0.7.5`.
-The default public quickstart pins the matched published `0.7.5` backend and Next.js frontend
+The default public quickstart pins the matched published backend and Next.js frontend
 images by their verified registry digests. Do not substitute candidate or inferred digests;
 candidate testing may override both image references together with another matched immutable pair.
 
@@ -45,7 +45,7 @@ The first startup can take several minutes while ClamAV loads its signatures.
 
 For editable PowerPoint, open **2pptx** and follow the [PowerPoint guide](docs/powerpoint.md).
 The ordinary quickstart supports both forward workflows; **2md** requires the external broker.
-The simple quickstart keeps Composer model setup disabled with the pinned published 0.7.5 images.
+The simple quickstart keeps Composer model setup disabled by default.
 An explicitly supplied, matched Composer-capable backend/frontend pair can opt in with
 `MARKWEAVE_SIMPLE_COMPOSER_SETUP=true`; the helper then includes
 `compose.simple-composer.yaml`. Its administrator can

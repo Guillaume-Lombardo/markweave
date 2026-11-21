@@ -1291,6 +1291,49 @@ def test_automatic_release_workflow_satisfies_exact_policy() -> None:
     ("needle", "replacement", "message"),
     [
         (
+            "  adopt-receipts:\n    needs: [detect, publish, container]",
+            "  adopt-receipts:\n    needs: [detect, container]",
+            "receipt adoption must wait for successful PyPI and GHCR publication",
+        ),
+        (
+            "&& needs.container.result == 'success' }}",
+            "|| needs.container.result == 'success' }}",
+            "automatic release workflow differs from the reviewed policy",
+        ),
+        (
+            "      actions: write",
+            "      actions: write\n      pull-requests: write",
+            "automatic release job 'adopt-receipts' permissions are not minimal",
+        ),
+        (
+            "      - name: Verify receipts, prepare the adoption branch, and dispatch CI\n",
+            "      - name: Verify receipts, prepare the adoption branch, and dispatch CI\n"
+            "        continue-on-error: true\n",
+            "automatic release jobs and steps must fail closed",
+        ),
+        (
+            "    permissions: {}\n    steps:\n      - name: Summarize why adoption was skipped",
+            "    permissions: {contents: write}\n    steps:\n"
+            "      - name: Summarize why adoption was skipped",
+            "automatic release job 'report-incomplete-publication' permissions are not minimal",
+        ),
+    ],
+)
+def test_automatic_release_policy_guards_receipt_adoption(
+    needle: str, replacement: str, message: str
+) -> None:
+    workflow = Path(".github/workflows/release.yml").read_text(encoding="utf-8")
+    assert needle in workflow
+    assert message in validate_production_release_workflow_text(
+        workflow.replace(needle, replacement, 1)
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("needle", "replacement", "message"),
+    [
+        (
             "needs: [detect, build-and-verify, container-qualify]",
             "needs: [detect, build-and-verify]",
             "automatic release job 'create-release' must wait for container qualification",

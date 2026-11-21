@@ -38,8 +38,8 @@ Docker-compatible API. Podman's automatic Docker-API health metadata is not used
 ClamAV directly before starting Markweave, then polls Markweave's local readiness endpoint with a
 bounded timeout.
 
-The default helper keeps Composer model setup disabled with the pinned published 0.7.5 pair. A
-matched Composer-capable candidate backend/frontend pair can explicitly opt into
+The helper keeps Composer model setup disabled by default. A matched Composer-capable
+backend/frontend pair can explicitly opt into
 `MARKWEAVE_SIMPLE_COMPOSER_SETUP=true`; the helper then includes
 `compose.simple-composer.yaml`. A candidate preview script can supply the pair and opt-in together,
 so the administrator does not need to edit model-policy environment settings.
