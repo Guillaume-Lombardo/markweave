@@ -2,7 +2,7 @@
 ticket: T155
 linear_id: G1L-776
 linear_url: https://linear.app/g1lom/issue/G1L-776/t155-freeze-the-composer-feature-scope
-status: In Progress
+status: Done
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -46,6 +46,7 @@ new ticket with an explicit owner decision. No code is removed, and all Composer
   existing Composer guards are unchanged: model-assisted operations need a configured, enabled,
   and authorized LLM connection, and authorized users keep access to retained drafts, revisions,
   and exports without one. Documentation only; no code or test is removed.
+- 2026-11-21: Merged in #341; CI passed on `main` at `199f92f`. Closed.
 
 ## Synchronization
 

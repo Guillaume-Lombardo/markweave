@@ -2,7 +2,7 @@
 ticket: T108
 linear_id: G1L-632
 linear_url: https://linear.app/g1lom/issue/G1L-632/t108-freeze-the-experimental-reverse-conversion-scope
-status: In Progress
+status: Done
 priority: Low
 project: Markdown to DOCX and PDF Converter
 ---
@@ -42,6 +42,7 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
   fallback, formats beyond the T69 matrix, PDF images and layout, original-source recovery and a
   full visual round trip for edited PPTX, and the T74 Kubernetes backend, which T107 archives
   under the tag `archive/t74-kubernetes-backend`. Documentation only; no code or test is removed.
+- 2026-11-21: Merged in #341; CI passed on `main` at `199f92f`. Closed.
 
 ## Synchronization
 

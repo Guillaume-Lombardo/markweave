@@ -2,7 +2,7 @@
 ticket: T101
 linear_id: G1L-620
 linear_url: https://linear.app/g1lom/issue/G1L-620/t101-separate-the-normative-specification-from-delivery-history
-status: In Progress
+status: Done
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -42,6 +42,7 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
   specification ownership (section 13), exclusive ticket file ownership (section 9), mutation-check
   and Trusted Publisher requirements and the `0.6.0` no-rebuild rule (section 11). Linear status is
   not changed by this branch.
+- 2026-11-21: Merged in #348; CI passed on `main` at `49f2f1e`. Closed.
 
 ## Synchronization
 

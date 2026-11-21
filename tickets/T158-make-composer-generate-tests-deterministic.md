@@ -2,7 +2,7 @@
 ticket: T158
 linear_id: G1L-779
 linear_url: https://linear.app/g1lom/issue/G1L-779/t158-make-composer-generate-tests-deterministic
-status: In Progress
+status: Done
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -38,6 +38,7 @@ editing Markdown. The failures were reported in `CI / light`, including
   Both tests now wait for Generate to be enabled before each click, like the neighboring Generate
   tests. With the catalog delayed by 200 ms, both tests failed before the change and passed after
   it. The complete web Vitest suite passed (898 tests).
+- 2026-11-21: Merged in #349; CI passed on `main` at `6548266`. Closed.
 
 ## Synchronization
 

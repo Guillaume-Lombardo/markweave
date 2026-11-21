@@ -2,7 +2,7 @@
 ticket: T110
 linear_id: G1L-634
 linear_url: https://linear.app/g1lom/issue/G1L-634/t110-remove-legacy-md-converter-configuration-aliases-at-10
-status: In Progress
+status: Done
 priority: Low
 project: Markdown to DOCX and PDF Converter
 ---
@@ -39,6 +39,7 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
   are pending on Linux.
 - 2026-10-09: Created in Linear and mirrored here from the owner-accepted repository analysis.
   Not started.
+- 2026-11-21: Merged in #337; CI passed on `main` at `2ef8406`. Closed.
 
 ## Synchronization
 

@@ -2,7 +2,7 @@
 ticket: T109
 linear_id: G1L-633
 linear_url: https://linear.app/g1lom/issue/G1L-633/t109-relocate-completed-spikes-and-archive-historical-evidence
-status: In Progress
+status: Done
 priority: Low
 project: Markdown to DOCX and PDF Converter
 ---
@@ -50,6 +50,7 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
   platform or dependency failures on the base revision. Type checking reported 18 diagnostics
   for Linux-only APIs on macOS (T154). The canonical broad suites and container image build,
   smoke, and final-image E2E remain for Linux CI.
+- 2026-11-21: Merged in #338; CI passed on `main` at `48c2f96`. Closed.
 
 ## Synchronization
 

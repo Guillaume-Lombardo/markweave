@@ -10,21 +10,59 @@ Use the [upgrade guide](docs/upgrading.md) for supported transitions and rollbac
 [release process](docs/releasing.md) for artifact evidence, the [security policy](SECURITY.md) for
 private reporting, and the [support policy](SUPPORT.md) for help with a published release.
 
-## [Unreleased]
+<a id="release-0-8-0"></a>
 
-- Accept UBI RPM version updates within the reviewed package and license baseline, refresh Python and Mermaid dependencies, and track main CI failures in one GitHub issue.
+## [0.8.0] - 2026-11-21
+
+### Added
+
+- Composer adds reviewed Office edits on exact revisions. The model can propose text edits for
+  DOCX paragraphs and PPTX slide and speaker-notes text, and bounded structure edits change DOCX
+  paragraph styles, reorder PPTX slides, and replace scanned images. Each edit is applied only
+  after a human accepts it in the browser or the CLI, with preservation checks. A permissioned
+  reference library lets proposals cite reviewed sources. Model assistance still requires
+  `MARKWEAVE_COMPOSER_ENABLED=true` and its policy settings; permitted users keep drafts,
+  revisions, and exports without a model connection. Migration `20261021_27` adds the library
+  and citation state. Composer and the experimental 2md reverse conversion are now
+  feature-frozen: only fixes, security and dependency updates, and removals are accepted.
+
+### Security
+
 - Update the reverse-attempt image to `firecrawl-anydoc==0.2.5` and Rust `zip` 9.5.1 to
   address GHSA-m665-v7pm-7grj. Drain queued and running reverse jobs before switching to the
   matched release images so jobs complete with the engine version they recorded at submission.
-- Version 0.8.0 removes the experimental `kubernetes` extra and `markweave-kubernetes-attester` executable.
+- Container images adopt the reviewed Red Hat UBI `mod_http2` and `ca-certificates` updates, and
+  Pillow moves to version 13.
+- The backend Mermaid toolchain adopts DOMPurify `3.4.17`, which fixes GHSA-cg2g-xh64-v4q7.
 
-### Removed in 0.8.0
+### Changed
 
+- Accept UBI RPM version updates within the reviewed package and license baseline, refresh Python
+  and Mermaid dependencies, and track main CI failures in one GitHub issue.
+- The backend image ships Mermaid CLI `12.2.0`, and job traceability records that version.
+- Python images no longer ship the uv build cache.
+
+### Fixed
+
+- The Compose router healthcheck sends the public `Host` header, so a deployment with a public
+  origin reports healthy.
+- Composer generation waits for the template catalog, and reverse-conversion broker readiness and
+  termination are more reliable under load.
+
+### Removed
+
+- The experimental `kubernetes` extra and the `markweave-kubernetes-attester` executable. Use the
+  rootless Podman broker for reverse conversion.
 - Legacy `MD_CONVERTER_*` configuration aliases now prevent startup. Rename each
   `MD_CONVERTER_<SUFFIX>` variable to `MARKWEAVE_<SUFFIX>` and remove the old
   definition, including empty or duplicate entries. Startup errors list the
   replacements without exposing their values. See the
   [configuration migration table](docs/upgrading.md#configuration-compatibility).
+
+### Release notes
+
+- Repository Compose and quickstart defaults remain pinned to the verified `0.7.5` backend and
+  frontend digests until the `0.8.0` images are published and their exact receipts are adopted.
 
 <a id="release-0-7-5"></a>
 
