@@ -2,7 +2,7 @@
 ticket: T101
 linear_id: G1L-620
 linear_url: https://linear.app/g1lom/issue/G1L-620/t101-separate-the-normative-specification-from-delivery-history
-status: Backlog
+status: In Progress
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -35,6 +35,13 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 
 - 2026-10-09: Created in Linear and mirrored here from the owner-accepted repository analysis.
   Not started.
+- 2026-11-21: Moved completed delivery order, dated priority and decision narratives, completed
+  ticket coordination, release narratives, and the complete section 13 ticket table to the
+  non-normative `docs/delivery-history.md`. Section 13 now links the ticket mirrors and Linear and
+  lists only open tickets. Standing rules found in moved text stay normative: single-ticket
+  specification ownership (section 13), exclusive ticket file ownership (section 9), mutation-check
+  and Trusted Publisher requirements and the `0.6.0` no-rebuild rule (section 11). Linear status is
+  not changed by this branch.
 
 ## Synchronization
 

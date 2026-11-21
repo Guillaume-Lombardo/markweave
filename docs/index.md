@@ -97,3 +97,5 @@ See the [documentation archive](archive/index.md) for completed qualifications a
 The [product specification](product-specification.md) is normative for product, architecture,
 security, deployment, and acceptance decisions. The guides explain the implemented system; they do
 not replace that specification or approve values that section 14 leaves unresolved.
+The non-normative [delivery history](delivery-history.md) records completed delivery order, dated
+owner decisions, release narratives, and the complete historical ticket table.
