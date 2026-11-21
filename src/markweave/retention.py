@@ -81,7 +81,9 @@ class ComposerContentAuditRepository(Protocol):
 
     def cleanup_content_audit(self, *, cutoff_at: datetime, limit: int) -> int: ...
 
-    def cleanup_t91_audit(self, *, cutoff_at: datetime, limit: int) -> int: ...
+    def cleanup_author_template_audit(
+        self, *, cutoff_at: datetime, limit: int
+    ) -> int: ...
 
 
 class ComposerConnectionAuditRepository(Protocol):
@@ -181,9 +183,11 @@ class RetentionService:
                 cutoff_at=now - timedelta(seconds=self._policy.audit_seconds),
                 limit=limit,
             )
-            composer_cleaned += self._composer_content_audit.cleanup_t91_audit(
-                cutoff_at=now - timedelta(seconds=self._policy.audit_seconds),
-                limit=limit,
+            composer_cleaned += (
+                self._composer_content_audit.cleanup_author_template_audit(
+                    cutoff_at=now - timedelta(seconds=self._policy.audit_seconds),
+                    limit=limit,
+                )
             )
         if self._composer_connection_audit is not None:
             composer_cleaned += (

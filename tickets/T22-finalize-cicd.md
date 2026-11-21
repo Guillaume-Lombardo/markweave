@@ -485,7 +485,7 @@ Changed files relative to current main:
 - `build-constraints.txt`
 - `docs/pdf-conversion.md`
 - `pyproject.toml`
-- `scripts/generate_pdf_golden.py`
+- `scripts/generate_t11_pdf_golden.py`
 - `scripts/release/artifacts.py`
 - `scripts/release/process.py`
 - `scripts/testing/services.py`
@@ -683,7 +683,7 @@ Changed files relative to main:
 - `docs/archive/t00-toolchain-validation.md`
 - `scripts/ci/validate_ci.py`
 - `scripts/container/smoke.sh`
-- `scripts/generate_pdf_golden.py`
+- `scripts/generate_t11_pdf_golden.py`
 - `src/markweave/conversion/mermaid.py`
 - `src/markweave/conversion/runtime_manifest.py`
 - `tests/integration/document_engines/test_mermaid_cli.py`

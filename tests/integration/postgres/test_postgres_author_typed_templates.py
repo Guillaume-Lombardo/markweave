@@ -219,7 +219,8 @@ def test_postgresql_author_and_template_audit_is_visible_guarded_and_bounded() -
         audit = SqlComposerAuditRepository(engine)
         cutoff = now - timedelta(days=365)
         assert [
-            audit.cleanup_t91_audit(cutoff_at=cutoff, limit=1) for _ in range(4)
+            audit.cleanup_author_template_audit(cutoff_at=cutoff, limit=1)
+            for _ in range(4)
         ] == [
             1,
             1,

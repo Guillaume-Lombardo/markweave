@@ -175,7 +175,7 @@ class SqlComposerAuditRepository:
         except SQLAlchemyError:
             raise PersistenceError from None
 
-    def cleanup_t91_audit(self, *, cutoff_at: datetime, limit: int) -> int:
+    def cleanup_author_template_audit(self, *, cutoff_at: datetime, limit: int) -> int:
         """Remove one bounded page of old author/template evidence with a receipt."""
 
         if isinstance(limit, bool) or limit <= 0:

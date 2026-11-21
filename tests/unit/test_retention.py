@@ -70,7 +70,7 @@ def test_composer_retention_uses_configured_window_and_bounded_batch(
     composer.cleanup_orphan_sources.return_value = 1
     content_audit = mocker.Mock(spec=ComposerContentAuditRepository)
     content_audit.cleanup_content_audit.return_value = 2
-    content_audit.cleanup_t91_audit.return_value = 2
+    content_audit.cleanup_author_template_audit.return_value = 2
     composer_audit = mocker.Mock(spec=ComposerConnectionAuditRepository)
     composer_audit.cleanup_connection_audit.return_value = 1
     library = mocker.Mock(spec=ComposerLibraryMaintenanceRepository)
@@ -95,7 +95,7 @@ def test_composer_retention_uses_configured_window_and_bounded_batch(
     content_audit.cleanup_content_audit.assert_called_once_with(
         cutoff_at=now - timedelta(days=365), limit=3
     )
-    content_audit.cleanup_t91_audit.assert_called_once_with(
+    content_audit.cleanup_author_template_audit.assert_called_once_with(
         cutoff_at=now - timedelta(days=365), limit=3
     )
     composer_audit.cleanup_connection_audit.assert_called_once_with(

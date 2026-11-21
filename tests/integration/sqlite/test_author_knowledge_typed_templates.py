@@ -739,11 +739,11 @@ def test_specialized_audit_retention_is_bounded_guarded_and_receipted(
         database.execute(text("DELETE FROM typed_template_audit"))
     audit = SqlComposerAuditRepository(engine)
     cutoff = now - timedelta(days=365)
-    assert audit.cleanup_t91_audit(cutoff_at=cutoff, limit=1) == 1
-    assert audit.cleanup_t91_audit(cutoff_at=cutoff, limit=1) == 1
-    assert audit.cleanup_t91_audit(cutoff_at=cutoff, limit=1) == 0
+    assert audit.cleanup_author_template_audit(cutoff_at=cutoff, limit=1) == 1
+    assert audit.cleanup_author_template_audit(cutoff_at=cutoff, limit=1) == 1
+    assert audit.cleanup_author_template_audit(cutoff_at=cutoff, limit=1) == 0
     with pytest.raises(ValueError, match="limit"):
-        audit.cleanup_t91_audit(cutoff_at=cutoff, limit=0)
+        audit.cleanup_author_template_audit(cutoff_at=cutoff, limit=0)
     with Session(engine) as database:
         authors_left = database.scalars(select(AuthorKnowledgeAuditRow)).all()
         templates_left = database.scalars(select(TypedTemplateAuditRow)).all()

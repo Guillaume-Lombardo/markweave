@@ -29,7 +29,7 @@ for closed tickets while keeping Linear current.
 
 ## Dependencies
 
-- None.
+- Merge after T107 and T110, which delete or rewrite many of the same files.
 
 ## Progress
 
