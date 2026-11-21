@@ -24,7 +24,8 @@ transition on a pull request, merge-group candidate, or trusted `main` push: the
 PyPI, and Compose versions must still agree, the new project version must be higher, and all public
 evidence for the base version must remain valid. Scheduled, Release, and manual runs never receive
 this exception. A later revision at the unchanged new version also fails until the published image
-has been adopted.
+has been adopted, except the protected recovery revision that increments `attempt` by exactly one
+over its base at that same unpublished version.
 
 Past release incidents, one-time transition exceptions, source SHAs, run IDs and immutable receipts
 are retained in [release history](archive/evidence/release-migration-history.md#release-incidents-and-receipts-through-073).

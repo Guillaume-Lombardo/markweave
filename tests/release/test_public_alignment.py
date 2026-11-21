@@ -518,6 +518,82 @@ def test_future_unchanged_revision_cannot_reuse_pending_exception() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("event_name", ["pull_request", "merge_group", "push"])
+def test_accepts_same_version_attempt_retry_of_unpublished_release(
+    event_name: str,
+) -> None:
+    state = check_alignment(
+        project_version="0.5.0",
+        compose=ComposeIdentity("0.4.0", REGISTRY_DIGEST),
+        event_name=event_name,
+        transport=_public_transport(),
+        base=BaseIdentity("0.5.0", SOURCE_SHA, attempt_retry=True),
+    )
+
+    assert state == "pending"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("project_version", "compose_version", "base_version"),
+    [("0.5.0", "0.4.0", "0.4.1"), ("0.3.0", "0.4.0", "0.3.0")],
+)
+def test_attempt_retry_is_limited_to_the_unpublished_project_version(
+    project_version: str, compose_version: str, base_version: str
+) -> None:
+    with pytest.raises(AlignmentError, match="exact pending"):
+        check_alignment(
+            project_version=project_version,
+            compose=ComposeIdentity(compose_version, REGISTRY_DIGEST),
+            event_name="pull_request",
+            transport=_public_transport(),
+            base=BaseIdentity(base_version, SOURCE_SHA, attempt_retry=True),
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("head_attempt", "output"),
+    [(2, "alignment: pending"), (3, "release attempt must increase by exactly 1")],
+)
+def test_main_derives_attempt_retry_from_the_exact_base_and_head(
+    tmp_path: Path, mocker, capsys, head_attempt: int, output: str
+) -> None:
+    expected = 0 if head_attempt == 2 else 1
+    head = f'[project]\nversion = "0.5.0"\n[tool.markweave.release]\nattempt = {head_attempt}\n'
+    (tmp_path / "pyproject.toml").write_text(head, encoding="utf-8")
+    (tmp_path / "compose.yaml").write_text(
+        f"services:\n  markweave:\n    image: {public_alignment.IMAGE_REPOSITORY}:0.4.0@{REGISTRY_DIGEST}\n",
+        encoding="utf-8",
+    )
+    mocker.patch(
+        "scripts.release.public_alignment._git_output",
+        side_effect=[b'[project]\nversion = "0.5.0"\n', head.encode()],
+    )
+    mocker.patch(
+        "scripts.release.public_alignment.UrlLibTransport",
+        return_value=_public_transport(),
+    )
+
+    result = public_alignment.main(
+        [
+            "--repository",
+            str(tmp_path),
+            "--event-name",
+            "pull_request",
+            "--base",
+            SOURCE_SHA,
+            "--head",
+            "e" * 40,
+        ]
+    )
+
+    assert result == expected
+    captured = capsys.readouterr()
+    assert output in (captured.out if expected == 0 else captured.err)
+
+
+@pytest.mark.unit
 def test_rejects_pypi_compose_drift_before_trusting_other_surfaces() -> None:
     transport = _public_transport(version="0.5.0")
 

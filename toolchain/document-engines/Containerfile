@@ -8,6 +8,7 @@ ARG PANDOC_SHA256=c7edd535941c48be6a362081a748272837de81ae11777202d9c341d3d8261c
 ARG CHROME_VERSION=151.0.7922.173-1
 ARG CHROME_SHA256=2899353cad3732b8e3a88e76996c340e047d8729ea1b881fdfdd21e0e3baefa5
 ARG LIBREOFFICE_VERSION=26.2.5
+ARG LIBREOFFICE_BUILD=26.2.5.2
 ARG LIBREOFFICE_SHA256=f62611c441ff1faa5cadb499abdbab119f5a9013eb6c0e32fc9aa65f6ff8b53d
 
 RUN dnf install -y \
@@ -56,7 +57,7 @@ RUN curl --fail --location --silent --show-error \
     && rm /tmp/google-chrome.rpm
 
 RUN curl --fail --location --silent --show-error \
-        "https://download.documentfoundation.org/libreoffice/stable/${LIBREOFFICE_VERSION}/rpm/x86_64/LibreOffice_${LIBREOFFICE_VERSION}_Linux_x86-64_rpm.tar.gz" \
+        "https://downloadarchive.documentfoundation.org/libreoffice/old/${LIBREOFFICE_BUILD}/rpm/x86_64/LibreOffice_${LIBREOFFICE_BUILD}_Linux_x86-64_rpm.tar.gz" \
         --output /tmp/libreoffice.tar.gz \
     && echo "${LIBREOFFICE_SHA256}  /tmp/libreoffice.tar.gz" | sha256sum --check --strict \
     && mkdir /tmp/libreoffice \

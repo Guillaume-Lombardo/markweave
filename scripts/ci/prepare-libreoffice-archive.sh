@@ -4,18 +4,21 @@ umask 0077
 
 readonly variant="${1:-}"
 readonly version=26.2.5
+# The release mirror drops superseded versions from stable/; the archive keeps the same bytes
+# under the full build number.
+readonly build=26.2.5.2
 readonly cache_directory="${MARKWEAVE_TOOLCHAIN_CACHE_DIRECTORY:-${XDG_CACHE_HOME:-$HOME/.cache}/markweave/toolchain}"
 
 case "$variant" in
   rpm)
     readonly filename="LibreOffice_26.2.5_Linux_x86-64_rpm.tar.gz"
     readonly sha256=f62611c441ff1faa5cadb499abdbab119f5a9013eb6c0e32fc9aa65f6ff8b53d
-    readonly url="https://download.documentfoundation.org/libreoffice/stable/$version/rpm/x86_64/$filename"
+    readonly url="https://downloadarchive.documentfoundation.org/libreoffice/old/$build/rpm/x86_64/LibreOffice_${build}_Linux_x86-64_rpm.tar.gz"
     ;;
   deb)
     readonly filename="LibreOffice_26.2.5_Linux_x86-64_deb.tar.gz"
     readonly sha256=2f03bfb2ac9f33ea7c77331b4b7a23300fb0ed7443566046bf8b5bc51c1bed1e
-    readonly url="https://download.documentfoundation.org/libreoffice/stable/$version/deb/x86_64/$filename"
+    readonly url="https://downloadarchive.documentfoundation.org/libreoffice/old/$build/deb/x86_64/LibreOffice_${build}_Linux_x86-64_deb.tar.gz"
     ;;
   *)
     echo "LibreOffice archive variant must be rpm or deb." >&2
