@@ -2,7 +2,7 @@
 ticket: T157
 linear_id: G1L-778
 linear_url: https://linear.app/g1lom/issue/G1L-778
-status: In Progress
+status: Done
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -120,7 +120,9 @@ with a lower median and a higher total in this sample.
   on macOS. Rootless image and end-to-end verification run in hosted CI.
 - The full pull-request run passed container and supply-chain validation, both shards of both
   final-image profiles, and `CI / gate`.
+- 2026-11-21: Merged in #346; CI passed on `main` at `7e7e4eb`, including the 0.8.0 release
+  qualification. Closed.
 
 ## Synchronization
 
-- Repository mirror only. Linear issue G1L-778 was left untouched at the owner's request.
+Keep status, scope, acceptance criteria, dependencies, and progress aligned with G1L-778.
