@@ -22,6 +22,8 @@ from typing import TYPE_CHECKING, Any, Protocol
 import yaml
 from packaging.version import InvalidVersion, Version
 
+from scripts.release.detect_version import ReleaseVersionError, detect_transition
+
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
@@ -219,6 +221,7 @@ class BaseIdentity:
 
     version: str
     source_sha: str
+    attempt_retry: bool = False
 
 
 @dataclass(frozen=True)
@@ -837,9 +840,15 @@ def _base_identity(
         raise AlignmentError(
             "head project.version does not match the checked-out source"
         )
+    base_version = parse_project_version(previous, label="base pyproject.toml")
+    attempt_retry = False
+    if base_version == current_version:
+        try:
+            attempt_retry = detect_transition(previous, reviewed_head) is not None
+        except ReleaseVersionError as error:
+            raise AlignmentError(str(error)) from error
     return BaseIdentity(
-        version=parse_project_version(previous, label="base pyproject.toml"),
-        source_sha=base,
+        version=base_version, source_sha=base, attempt_retry=attempt_retry
     )
 
 
@@ -890,11 +899,19 @@ def check_alignment(  # noqa: PLR0912, PLR0913 - explicit release transition cas
     elif project_version != compose.version:
         if event_name not in PENDING_EVENTS:
             raise AlignmentError("this event requires fully published alignment")
-        if (
-            base is None
-            or base.version != compose.version
-            or Version(project_version) <= Version(base.version)
-        ):
+        version_transition = (
+            base is not None
+            and base.version == compose.version
+            and Version(project_version) > Version(base.version)
+        )
+        # A protected same-version retry after a failed run that published nothing.
+        attempt_retry = (
+            base is not None
+            and base.attempt_retry
+            and base.version == project_version
+            and Version(project_version) > Version(compose.version)
+        )
+        if not (version_transition or attempt_retry):
             raise AlignmentError(
                 "repository state is not an exact pending version transition"
             )
