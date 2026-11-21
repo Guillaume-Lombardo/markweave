@@ -19,12 +19,12 @@ ROOT = Path(__file__).resolve().parents[2]
 CANDIDATE_BACKEND = "localhost/markweave-backend:t64"
 CANDIDATE_FRONTEND = "localhost/markweave-frontend:t64"
 PUBLISHED_BACKEND = (
-    "ghcr.io/guillaume-lombardo/md-converter:0.7.5@"
-    "sha256:237597e5aee89a744f29027e3ad0e10845296f435da8902d1ee5af2b7f591677"
+    "ghcr.io/guillaume-lombardo/md-converter:0.8.0@"
+    "sha256:4aa0beec3f9c493c4109c2be4edb6e9f3e943808bb6f48e39492176d2d2f2a48"
 )
 PUBLISHED_FRONTEND = (
-    "ghcr.io/guillaume-lombardo/md-converter-web:0.7.5@"
-    "sha256:f628055556c61b04cfbd3202e32464ad38719d7b057ea87ed9b249e44c6d01ce"
+    "ghcr.io/guillaume-lombardo/md-converter-web:0.8.0@"
+    "sha256:2558483c2fadd33aa6de627d4e56a535cdf4a2c615d4a86f325cb6905f6c5fe8"
 )
 
 
