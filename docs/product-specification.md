@@ -1116,6 +1116,7 @@ revision):
 | T145 | Audit the release-after-close slot pattern in the metrics server and Kubernetes attester transport | Backlog | T141 |
 | T148 | Spike: shorten reverse worker leases in the E2E runtime | Backlog | T137 |
 | T149 | Investigate E2E worker containers that need SIGKILL to stop | Backlog | — |
+| T157 | Shorten the full CI pipeline | In Progress | T03, T147 |
 
 ## 14. Deferred decisions and initial-scope exclusions
 
