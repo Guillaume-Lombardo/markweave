@@ -34,6 +34,10 @@ private reporting, and the [support policy](SUPPORT.md) for help with a publishe
 - Container images adopt the reviewed Red Hat UBI `mod_http2` and `ca-certificates` updates, and
   Pillow moves to version 13.
 - The backend Mermaid toolchain adopts DOMPurify `3.4.17`, which fixes GHSA-cg2g-xh64-v4q7.
+- The Next.js frontend moves from `16.3.8` to `16.4.6`, fixing the Critical advisories
+  GHSA-2464-fhr4-w9xw and GHSA-673q-mjm6-r5xr, which have no `16.3` backport.
+- The frontend runtime image applies the fixed UBI `ca-certificates` build for the Critical
+  CVE-2026-114406.
 
 ### Changed
 
