@@ -5,10 +5,9 @@ from __future__ import annotations
 import json
 import os
 import warnings
-from collections.abc import Iterable
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Self, get_args
+from typing import Any, Self
 from uuid import UUID
 
 from pydantic import (
@@ -27,11 +26,24 @@ class ConfigurationError(RuntimeError):
 
 
 class ConflictingConfigurationError(ConfigurationError):
-    """Canonical and legacy aliases define different values for named fields."""
+    """Case variants of a canonical variable define different values."""
 
     def __init__(self, fields: tuple[str, ...]) -> None:
         super().__init__("Invalid application configuration")
         self.fields = fields
+
+
+class RemovedConfigurationAliasError(ConfigurationError):
+    """A safe startup diagnostic containing only recognized variable names."""
+
+    def __init__(self, fields: set[str]) -> None:
+        replacements = ", ".join(
+            f"MD_CONVERTER_{field.upper()} -> MARKWEAVE_{field.upper()}"
+            for field in sorted(fields)
+        )
+        super().__init__(
+            f"Legacy configuration variables were removed. Rename {replacements}."
+        )
 
 
 class StorageProfile(StrEnum):
@@ -560,84 +572,41 @@ class Settings(BaseSettings):
     def load(cls) -> Settings:
         """Load environment settings without exposing invalid values in the exception."""
         try:
-            settings, canonical_values, legacy_values = validated_environment_model(cls)
-            if (
-                "session_idle_seconds" in canonical_values
-                or "session_idle_seconds" in legacy_values
-            ):
-                warnings.warn(
-                    "SESSION_IDLE_SECONDS is deprecated and does not control the persisted role policy.",
-                    FutureWarning,
-                    stacklevel=2,
-                )
-            return settings
-        except ConfigurationError, ValidationError:
+            settings = validated_environment_model(cls)
+        except ConflictingConfigurationError, ValidationError:
             raise ConfigurationError("Invalid application configuration") from None
-
-
-def _environment_values(
-    field_names: Iterable[str],
-) -> tuple[dict[str, str], dict[str, str], set[str]]:
-    """Read canonical and legacy values without giving either alias precedence."""
-    environment: dict[str, list[tuple[str, str]]] = {}
-    for name, value in os.environ.items():
-        environment.setdefault(name.casefold(), []).append((name, value))
-
-    def find(field_name: str, name: str) -> str | None:
-        entries = environment.get(name.casefold(), [])
-        if len({value for _, value in entries}) > 1:
-            raise ConflictingConfigurationError((field_name,))
-        return entries[0][1] if entries else None
-
-    canonical: dict[str, str] = {}
-    legacy: dict[str, str] = {}
-    dual_definitions: set[str] = set()
-    for field_name in field_names:
-        suffix = field_name.upper()
-        canonical_value = find(field_name, f"MARKWEAVE_{suffix}")
-        legacy_value = find(field_name, f"MD_CONVERTER_{suffix}")
-        if canonical_value is not None:
-            canonical[field_name] = canonical_value
-        if legacy_value is not None:
-            legacy[field_name] = legacy_value
-        if canonical_value is not None and legacy_value is not None:
-            dual_definitions.add(field_name)
-    return canonical, legacy, dual_definitions
-
-
-def _is_secret(annotation: Any) -> bool:
-    """Identify values whose aliases must compare byte-for-byte as supplied."""
-    if annotation is SecretStr:
-        return True
-    return any(_is_secret(argument) for argument in get_args(annotation))
+        if "session_idle_seconds" in settings.model_fields_set:
+            warnings.warn(
+                "SESSION_IDLE_SECONDS is deprecated and does not control the persisted role policy.",
+                FutureWarning,
+                stacklevel=2,
+            )
+        return settings
 
 
 def validated_environment_model[ModelT: BaseSettings](
     model: type[ModelT],
-) -> tuple[ModelT, dict[str, str], dict[str, str]]:
-    """Validate canonical ``MARKWEAVE_*`` and legacy aliases for one settings model.
+) -> ModelT:
+    """Validate canonical variables after rejecting removed configuration aliases."""
+    environment_names = {name.casefold() for name in os.environ}
+    removed_fields = {
+        field
+        for field in Settings.model_fields
+        if f"md_converter_{field}" in environment_names
+    }
+    if removed_fields:
+        raise RemovedConfigurationAliasError(removed_fields)
 
-    Conflicting dual definitions raise ``ConflictingConfigurationError`` naming only
-    fields; invalid values raise pydantic's ``ValidationError``. Callers must not
-    expose either exception's input values.
-    """
-    canonical_values, legacy_values, dual_definitions = _environment_values(
-        model.model_fields
-    )
-    canonical_settings = model.model_validate(legacy_values | canonical_values)
-    legacy_settings = model.model_validate(canonical_values | legacy_values)
-    conflicts: list[str] = []
-    for field_name in sorted(dual_definitions):
-        if _is_secret(model.model_fields[field_name].annotation):
-            if canonical_values[field_name] != legacy_values[field_name]:
-                conflicts.append(field_name)
-        elif getattr(canonical_settings, field_name) != getattr(
-            legacy_settings, field_name
-        ):
-            conflicts.append(field_name)
-    if conflicts:
-        raise ConflictingConfigurationError(tuple(conflicts))
-    return canonical_settings, canonical_values, legacy_values
+    fields_by_name = {f"markweave_{field}": field for field in model.model_fields}
+    values: dict[str, str] = {}
+    for name, value in os.environ.items():
+        field = fields_by_name.get(name.casefold())
+        if field is None:
+            continue
+        if field in values and values[field] != value:
+            raise ConflictingConfigurationError((field,))
+        values[field] = value
+    return model.model_validate(values)
 
 
 _MAX_BROKER_CERTIFICATE_PINS = 2

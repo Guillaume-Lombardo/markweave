@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from markweave.config import Settings
+from markweave.config import RemovedConfigurationAliasError, Settings
 from markweave.conversion.local_settings import (
     LocalConfigurationError,
     LocalConversionSettings,
@@ -92,14 +92,16 @@ def test_load_reads_the_service_variables(local_environment: dict[str, str]) -> 
     assert settings.template_engine_workspace_root is None
 
 
-def test_load_accepts_matching_legacy_aliases(
-    local_environment: dict[str, str], monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("suffix", ("CONVERSION_MAX_IMAGES", "STORAGE_PROFILE"))
+def test_load_rejects_removed_aliases(
+    local_environment: dict[str, str], monkeypatch: pytest.MonkeyPatch, suffix: str
 ) -> None:
-    monkeypatch.delenv("MARKWEAVE_CONVERSION_MAX_FILES")
-    monkeypatch.setenv("MD_CONVERTER_CONVERSION_MAX_FILES", "7")
-    monkeypatch.setenv("MD_CONVERTER_CONVERSION_MAX_IMAGES", "50")
-    settings = LocalConversionSettings.load()
-    assert (settings.conversion_max_files, settings.conversion_max_images) == (7, 50)
+    monkeypatch.setenv(f"MD_CONVERTER_{suffix}", "")
+    with pytest.raises(
+        RemovedConfigurationAliasError,
+        match=f"MD_CONVERTER_{suffix} -> MARKWEAVE_{suffix}",
+    ):
+        LocalConversionSettings.load()
 
 
 def test_missing_and_invalid_variables_are_named_without_values(
@@ -117,10 +119,10 @@ def test_missing_and_invalid_variables_are_named_without_values(
     assert captured.value.__cause__ is None
 
 
-def test_conflicting_aliases_are_named(
+def test_conflicting_canonical_case_variants_are_named(
     local_environment: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("MD_CONVERTER_CONVERSION_MAX_FILES", "99")
+    monkeypatch.setenv("markweave_conversion_max_files", "99")
     with pytest.raises(LocalConfigurationError) as captured:
         LocalConversionSettings.load()
     assert captured.value.variables == ("MARKWEAVE_CONVERSION_MAX_FILES",)

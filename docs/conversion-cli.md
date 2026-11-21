@@ -141,9 +141,9 @@ substitute for the service when the input is untrusted.
 
 ### Configuration
 
-Local mode reads only the service's conversion, engine, and template variables, with the same
-names, constraints, and legacy `MD_CONVERTER_*` aliases; it never reads storage, account, scanner,
-or job settings. The repository provides
+Local mode uses the service's `MARKWEAVE_*` conversion, engine, and template variables with the
+same names and constraints. Starting in 0.8.0, the presence of a former `MD_CONVERTER_*` alias
+fails configuration loading and reports its canonical replacement. The repository provides
 [`examples/local-conversion.env`](../examples/local-conversion.env) with the quickstart evaluation
 values from `compose.yaml`. They are not sized production limits; review them for your workload.
 
@@ -156,7 +156,7 @@ The example file sets the final image's engine paths and font manifest. On a hos
 `MARKWEAVE_TEMPLATE_PANDOC_EXECUTABLE`, `MARKWEAVE_TEMPLATE_LIBREOFFICE_EXECUTABLE`,
 `MARKWEAVE_CONVERSION_MERMAID_EXECUTABLE`, and `MARKWEAVE_CONVERSION_CHROMIUM_EXECUTABLE` as
 needed. `MARKWEAVE_CONVERSION_FONT_MANIFEST_PATH` is required only for PDF output, whose
-traceability records its digest. A missing, invalid, or conflicting variable fails with
+traceability records its digest. A missing, invalid, conflicting, or removed variable fails with
 `local_configuration_invalid` and names the variables, never their values.
 
 ### Inputs, outputs, and templates

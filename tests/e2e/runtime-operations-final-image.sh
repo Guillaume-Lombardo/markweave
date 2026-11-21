@@ -36,6 +36,16 @@ done
 podman run --rm "${hardened_runtime[@]}" --network=none "$image" --version \
   | grep -Fxq "markweave $application_version"
 
+if legacy_error="$(podman run --rm \
+  "${hardened_runtime[@]}" \
+  --network=none \
+  --env MD_CONVERTER_PORT=private-value \
+  "$image" doctor 2>&1)"; then
+  echo "Runtime unexpectedly accepted a removed configuration alias." >&2
+  exit 1
+fi
+test "$legacy_error" = "error: Legacy configuration variables were removed. Rename MD_CONVERTER_PORT -> MARKWEAVE_PORT."
+
 podman run --rm \
   "${hardened_runtime[@]}" \
   --network=none \
