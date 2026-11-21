@@ -1094,14 +1094,8 @@ revision):
 | T92 | Deliver bounded Office editing tools and a cited document library (remaining scope frozen by D16) | Backlog | T91 |
 | T93 | Qualify Composer and publish the minor release with verified image receipts (frozen by D16) | Backlog | T92 |
 | T95 | Correct retention-aware restore object verification | In Progress | T18, T37 |
-| T100 | Automate published image receipt adoption after a release | In Progress | — |
-| T101 | Separate the normative specification from delivery history | In Progress | T96 |
 | T102 | Rename the GitHub repository to markweave | Backlog | — |
 | T105 | Allow a sanitized inline HTML subset | Backlog | T96 |
-| T107 | Remove the dormant Kubernetes isolation backend from main | In Progress | — |
-| T108 | Freeze the experimental reverse conversion scope | In Progress | T96 |
-| T109 | Relocate completed spikes and archive historical evidence | In Progress | — |
-| T110 | Remove legacy `MD_CONVERTER_*` configuration aliases in 0.8.0 | In Progress | — |
 | T111 | Add table of contents, section numbering and page breaks | Backlog | T96 |
 | T112 | Add cross-references for figures, tables and equations | Backlog | T96, T111 |
 | T113 | Add citations and bibliography | Backlog | T96 |
@@ -1122,9 +1116,6 @@ revision):
 | T145 | Audit the release-after-close slot pattern in the metrics server and Kubernetes attester transport | Backlog | T141 |
 | T148 | Spike: shorten reverse worker leases in the E2E runtime | Backlog | T137 |
 | T149 | Investigate E2E worker containers that need SIGKILL to stop | Backlog | — |
-| T153 | Restore a green main | In Progress | T00, T11, T18, T20, T22 |
-| T154 | Make local checks honest on non-Linux hosts | Backlog | T153 |
-| T155 | Freeze the Composer feature scope (D16) | In Progress | T108 |
 
 ## 14. Deferred decisions and initial-scope exclusions
 

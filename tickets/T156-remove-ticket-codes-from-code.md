@@ -2,7 +2,7 @@
 ticket: T156
 linear_id: G1L-777
 linear_url: https://linear.app/g1lom/issue/G1L-777
-status: In Progress
+status: Done
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -41,6 +41,7 @@ for closed tickets while keeping Linear current.
 - 2026-11-21: Ruff, ty, CI validation, and the targeted tests passed. On macOS, the default suite
   matched `main` with 6,292 passed, 120 skipped, 136 deselected, and the same 114 Docker setup
   errors. The OpenAPI artifacts and HTTP snapshots matched byte for byte.
+- 2026-11-21: Merged in #347; CI passed on `main` at `49f2f1e`. Closed.
 
 ## Synchronization
 

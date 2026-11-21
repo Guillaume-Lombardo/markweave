@@ -2,7 +2,7 @@
 ticket: T154
 linear_id: G1L-775
 linear_url: https://linear.app/g1lom/issue/G1L-775/t154-make-local-checks-honest-on-non-linux-hosts
-status: Backlog
+status: Done
 priority: High
 project: Markdown to DOCX and PDF Converter
 ---
@@ -43,6 +43,7 @@ runtime and keep portable tests runnable on development hosts.
   the unavailable local Docker service used for PostgreSQL and S3. The final run reached
   94.16% total and 90.01% branch coverage. Ruff, ty, CI policy validation, and 16 web tests
   passed. The complete engine-backed suite requires Linux with the document engines and services.
+- 2026-11-21: Merged in #345; CI passed on `main` at `a9e10bc`. Closed.
 
 ## Synchronization
 

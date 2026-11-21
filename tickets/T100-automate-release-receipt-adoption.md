@@ -2,7 +2,7 @@
 ticket: T100
 linear_id: G1L-619
 linear_url: https://linear.app/g1lom/issue/G1L-619/t100-automate-published-image-receipt-adoption-after-a-release
-status: In Progress
+status: Done
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -36,6 +36,7 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 - 2026-10-09: Created in Linear and mirrored here from the owner-accepted repository analysis.
   Not started.
 - 2026-11-20: Added verified receipt adoption for Compose and the quickstart pins, branch CI dispatch, and a maintainer command in the release summary. Added a read-only dry run and tests for exact edits, incomplete evidence, and branch retries.
+- 2026-11-21: Merged in #344; CI passed on `main` at `4e45570`. Closed.
 
 ## Synchronization
 

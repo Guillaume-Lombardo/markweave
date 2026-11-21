@@ -2,7 +2,7 @@
 ticket: T107
 linear_id: G1L-627
 linear_url: https://linear.app/g1lom/issue/G1L-627/t107-remove-the-dormant-kubernetes-isolation-backend-from-main
-status: In Progress
+status: Done
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -44,6 +44,7 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
   contents. The Linux release integration and both final-image E2E profiles remain CI checks.
 - 2026-10-09: Created in Linear and mirrored here from the owner-accepted repository analysis.
   Not started.
+- 2026-11-21: Merged in #340; CI passed on `main` at `c280820`. Closed.
 
 ## Synchronization
 

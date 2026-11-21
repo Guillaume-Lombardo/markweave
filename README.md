@@ -18,7 +18,7 @@ assistance needs a configured, enabled, and authorized LLM connection; retained 
 and exports stay accessible without one. See the
 [scope freeze](docs/index.md#scope-freeze).
 
-The project is licensed under [Apache-2.0](LICENSE). The source package version is `0.7.5`.
+The project is licensed under [Apache-2.0](LICENSE). The source package version is `0.8.0`.
 The default public quickstart pins the matched published backend and Next.js frontend
 images by their verified registry digests. Do not substitute candidate or inferred digests;
 candidate testing may override both image references together with another matched immutable pair.

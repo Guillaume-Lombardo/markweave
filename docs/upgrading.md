@@ -150,6 +150,13 @@ or invent a `0.7.4` image digest.
 
 ## Upgrading to 0.8.0
 
+Release 0.8.0 adds Composer migration `20261021_27`. Follow the upgrade procedure above: create
+and verify the profile-consistent backup, drain every component, and let one controlled `0.8.0`
+component apply the migration and report readiness before starting the others. There is no
+automatic downgrade; to return to `0.7.5` after the migration starts, restore the pre-upgrade
+database and object backup and the matched `0.7.5` backend/frontend images together. Rename any
+legacy configuration variable first, as described below, or startup fails.
+
 ### Reverse isolation in 0.8.0
 
 Version 0.8.0 removes the experimental `markweave[kubernetes]` extra and
@@ -189,6 +196,7 @@ before upgrading either storage profile or a local conversion environment.
 - [Upgrade procedure](#upgrade-procedure)
 - [Schema changes and rollback](#schema-changes-and-rollback)
 - [Upgrading to 0.7.5](#upgrading-to-075)
+- [Upgrading to 0.8.0](#upgrading-to-080)
 - [Configuration migration for 0.8.0](#configuration-compatibility)
 
 ## Related guidance

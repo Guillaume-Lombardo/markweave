@@ -2,7 +2,7 @@
 ticket: T153
 linear_id: G1L-774
 linear_url: https://linear.app/g1lom/issue/G1L-774/t153-restore-a-green-main-stable-image-package-inventory-dependency
-status: In Progress
+status: Done
 priority: High
 project: Markdown to DOCX and PDF Converter
 ---
@@ -75,6 +75,7 @@ updates, and surface failures on the default branch.
   and Grype matched no advisories. On Linux, 1,062 targeted tests, the type check, and a
   corpus parse through the product adapter on the pinned UBI base passed. PR CI qualifies
   the final images and E2E workflows.
+- 2026-11-21: Merged in #339; CI passed on `main` at `e9c25b9`. Closed.
 
 ## Synchronization
 
