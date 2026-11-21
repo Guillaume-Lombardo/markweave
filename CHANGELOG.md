@@ -16,13 +16,15 @@ private reporting, and the [support policy](SUPPORT.md) for help with a publishe
 
 ### Added
 
-- Composer, which stays optional and disabled unless configured, adds reviewed Office edits on
-  exact revisions: model-proposed DOCX text edits, PPTX slide and speaker-notes text edits, and
-  bounded DOCX structure edits, each applied only after a human accepts it in the browser or the
-  CLI. A permissioned reference library lets proposals cite reviewed sources. Migration
-  `20261021_27` adds the library and citation state. Composer and the experimental 2md reverse
-  conversion are now feature-frozen: only fixes, security and dependency updates, and removals
-  are accepted.
+- Composer adds reviewed Office edits on exact revisions. The model can propose text edits for
+  DOCX paragraphs and PPTX slide and speaker-notes text, and bounded structure edits change DOCX
+  paragraph styles, reorder PPTX slides, and replace scanned images. Each edit is applied only
+  after a human accepts it in the browser or the CLI, with preservation checks. A permissioned
+  reference library lets proposals cite reviewed sources. Model assistance still requires
+  `MARKWEAVE_COMPOSER_ENABLED=true` and its policy settings; permitted users keep drafts,
+  revisions, and exports without a model connection. Migration `20261021_27` adds the library
+  and citation state. Composer and the experimental 2md reverse conversion are now
+  feature-frozen: only fixes, security and dependency updates, and removals are accepted.
 
 ### Security
 
@@ -31,11 +33,13 @@ private reporting, and the [support policy](SUPPORT.md) for help with a publishe
   matched release images so jobs complete with the engine version they recorded at submission.
 - Container images adopt the reviewed Red Hat UBI `mod_http2` and `ca-certificates` updates, and
   Pillow moves to version 13.
+- The backend Mermaid toolchain adopts DOMPurify `3.4.17`, which fixes GHSA-cg2g-xh64-v4q7.
 
 ### Changed
 
 - Accept UBI RPM version updates within the reviewed package and license baseline, refresh Python
   and Mermaid dependencies, and track main CI failures in one GitHub issue.
+- The backend image ships Mermaid CLI `12.2.0`, and job traceability records that version.
 - Python images no longer ship the uv build cache.
 
 ### Fixed

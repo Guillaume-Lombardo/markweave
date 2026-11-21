@@ -154,8 +154,11 @@ Release 0.8.0 adds Composer migration `20261021_27`. Follow the upgrade procedur
 and verify the profile-consistent backup, drain every component, and let one controlled `0.8.0`
 component apply the migration and report readiness before starting the others. There is no
 automatic downgrade; to return to `0.7.5` after the migration starts, restore the pre-upgrade
-database and object backup and the matched `0.7.5` backend/frontend images together. Rename any
-legacy configuration variable first, as described below, or startup fails.
+database and object backup and the matched `0.7.5` backend/frontend images together. For
+reverse-enabled deployments, also restore the `0.7.5` native broker, its configuration, and the
+`0.7.5` reverse-attempt image, and confirm the broker reports `READY` before reopening reverse
+submissions. Rename any legacy configuration variable first, as described below, or startup
+fails.
 
 ### Reverse isolation in 0.8.0
 
