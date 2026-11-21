@@ -49,7 +49,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
           IS_DRAFT: ${{ github.event.pull_request.draft || false }}
-          COMPLETE_SUITE: ${{ github.event_name == 'schedule' || github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
+          COMPLETE_SUITE: ${{ github.event_name == 'schedule' || github.event_name == 'release' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' }}
         run: |
           set -euo pipefail
           args=(
@@ -550,10 +550,12 @@ jobs:
     permissions:
       contents: read
     outputs:
-      archive-attempt: ${{ github.run_attempt }}
       backend-image-id: ${{ steps.build.outputs.backend-image-id }}
       frontend-image-id: ${{ steps.build.outputs.frontend-image-id }}
       reverse-attempt-image-id: ${{ steps.build.outputs.reverse-attempt-image-id }}
+      backend-artifact-id: ${{ steps.upload-backend.outputs.artifact-id }}
+      frontend-artifact-id: ${{ steps.upload-frontend.outputs.artifact-id }}
+      reverse-attempt-artifact-id: ${{ steps.upload-reverse-attempt.outputs.artifact-id }}
     steps:
       - name: Check out reviewed source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -608,8 +610,9 @@ jobs:
         run: >-
           uv run python -m scripts.container.ci_images build
           --roles "$IMAGE_ROLES" --output-directory "$RUNNER_TEMP/final-images"
-          --github-output "$GITHUB_OUTPUT" --layer-compression zstd
+          --github-output "$GITHUB_OUTPUT" --layer-compression zstd --parallel
       - name: Publish the backend archive to this run
+        id: upload-backend
         if: ${{ contains(fromJSON(needs.detect.outputs.image-roles), 'backend') }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -619,6 +622,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
       - name: Publish the frontend archive to this run
+        id: upload-frontend
         if: ${{ contains(fromJSON(needs.detect.outputs.image-roles), 'frontend') }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -628,6 +632,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
       - name: Publish the reverse-attempt archive to this run
+        id: upload-reverse-attempt
         if: ${{ contains(fromJSON(needs.detect.outputs.image-roles), 'reverse-attempt') }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -708,24 +713,25 @@ jobs:
       - name: Install the locked E2E browser driver
         if: ${{ startsWith(matrix.domain, 'e2e-') }}
         run: pnpm install --frozen-lockfile --ignore-scripts --filter md-converter-web-tests
-      - name: Download the backend archive
-        if: ${{ matrix.domain == 'container' || matrix.domain == 'supply-chain' || startsWith(matrix.domain, 'e2e-') }}
+      - name: Select required final-image artifacts
+        id: image-artifacts
+        env:
+          CI_DOMAIN: ${{ matrix.domain }}
+          BACKEND_ARTIFACT_ID: ${{ needs.build-images.outputs.backend-artifact-id }}
+          FRONTEND_ARTIFACT_ID: ${{ needs.build-images.outputs.frontend-artifact-id }}
+          REVERSE_ATTEMPT_ARTIFACT_ID: ${{ needs.build-images.outputs.reverse-attempt-artifact-id }}
+        run: >-
+          uv run python -m scripts.container.ci_images select-artifacts
+          --domain "$CI_DOMAIN" --github-output "$GITHUB_OUTPUT"
+          --backend-artifact-id "$BACKEND_ARTIFACT_ID"
+          --frontend-artifact-id "$FRONTEND_ARTIFACT_ID"
+          --reverse-attempt-artifact-id "$REVERSE_ATTEMPT_ARTIFACT_ID"
+      - name: Download the required final-image archives
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: final-image-backend-${{ github.run_id }}-${{ needs.build-images.outputs.archive-attempt }}
+          artifact-ids: ${{ steps.image-artifacts.outputs.artifact-ids }}
           path: ${{ runner.temp }}/final-images
-      - name: Download the frontend archive
-        if: ${{ matrix.domain == 'frontend' || startsWith(matrix.domain, 'e2e-') }}
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: final-image-frontend-${{ github.run_id }}-${{ needs.build-images.outputs.archive-attempt }}
-          path: ${{ runner.temp }}/final-images
-      - name: Download the reverse-attempt archive
-        if: ${{ matrix.domain == 'container' || matrix.domain == 'supply-chain' || startsWith(matrix.domain, 'e2e-') }}
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: final-image-reverse-attempt-${{ github.run_id }}-${{ needs.build-images.outputs.archive-attempt }}
-          path: ${{ runner.temp }}/final-images
+          merge-multiple: true
       - name: Load verified final images
         env:
           BACKEND_IMAGE_ID: ${{ needs.build-images.outputs.backend-image-id }}
@@ -800,7 +806,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
-          MUTATION_MODE: ${{ (github.event_name == 'schedule' || github.event_name == 'release' || github.event_name == 'workflow_dispatch') && 'all' || 'changed' }}
+          MUTATION_MODE: ${{ (github.event_name == 'schedule' || github.event_name == 'release' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch') && 'all' || 'changed' }}
         run: >-
           uv run python -m scripts.ci.run_mutation_campaign
           --mode "$MUTATION_MODE" --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA"

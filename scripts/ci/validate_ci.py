@@ -124,17 +124,10 @@ PODMAN_ASSERTION = (
     "podman info --format '{{.Host.Security.Rootless}}' | grep -Fx true\n"
 )
 IMAGE_ARCHIVE_ROLES = ("backend", "frontend", "reverse-attempt")
-IMAGE_ARCHIVE_DOMAIN_CONDITIONS = {
-    "backend": (
-        "matrix.domain == 'container' || matrix.domain == 'supply-chain' || "
-        "startsWith(matrix.domain, 'e2e-')"
-    ),
-    "frontend": "matrix.domain == 'frontend' || startsWith(matrix.domain, 'e2e-')",
-    "reverse-attempt": (
-        "matrix.domain == 'container' || matrix.domain == 'supply-chain' || "
-        "startsWith(matrix.domain, 'e2e-')"
-    ),
-}
+COMPLETE_SUITE_CONDITION = (
+    "github.event_name == 'schedule' || github.event_name == 'release' || "
+    "github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'"
+)
 PUBLISH_STEP_COUNT = 3
 PARTIAL_TAG_CHECK_COUNT = 2
 RELEASE_CONCURRENCY_GROUP = "release-${{ github.ref }}"
@@ -146,7 +139,7 @@ for url in https://pypi.org/pypi/markweave/json https://pypi.org/simple/markweav
   test "$status" = 404
 done"""
 WORKFLOW_FIELDS = frozenset({"name", "on", "permissions", "concurrency", "jobs"})
-ACTION_STEP_FIELDS = frozenset({"name", "uses", "with", "if"})
+ACTION_STEP_FIELDS = frozenset({"name", "uses", "with", "if", "id"})
 RUN_STEP_FIELDS = frozenset({"name", "run", "env", "id", "if"})
 READ_ONLY_ENV_STEPS = frozenset(
     {
@@ -160,6 +153,7 @@ READ_ONLY_ENV_STEPS = frozenset(
         ("heavy", "Prepare verified LibreOffice DEB archive"),
         ("build-images", "Prepare verified LibreOffice RPM archive"),
         ("build-images", "Build, export and verify each selected final image once"),
+        ("final-image", "Select required final-image artifacts"),
         ("final-image", "Load verified final images"),
         ("final-image", "Run selected final-image suite without a shell"),
         ("heavy", "Install verified Pandoc for document-engine tests"),
@@ -179,6 +173,11 @@ READ_ONLY_ID_STEPS = frozenset(
     {
         ("detect", "Select affected domains"),
         ("build-images", "Build, export and verify each selected final image once"),
+        ("final-image", "Select required final-image artifacts"),
+        *(
+            ("build-images", f"Publish the {role} archive to this run")
+            for role in IMAGE_ARCHIVE_ROLES
+        ),
     }
 )
 
@@ -461,12 +460,6 @@ READ_ONLY_WORKFLOW_POLICIES = {
                 "final-image",
                 "Install the locked E2E browser driver",
             ): "${{ startsWith(matrix.domain, 'e2e-') }}",
-            **{
-                ("final-image", f"Download the {role} archive"): (
-                    f"${{{{ {IMAGE_ARCHIVE_DOMAIN_CONDITIONS[role]} }}}}"
-                )
-                for role in IMAGE_ARCHIVE_ROLES
-            },
             (
                 "final-image",
                 "Retain failed E2E evidence",
@@ -480,7 +473,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
             ),
             ("mutation", "Retain mutation evidence"): "${{ always() }}",
         },
-        canonical_digest="b276a8f8f097a400c8a76c7737d0d1121e48af288c7d994d3d739458e10ae0cc",
+        canonical_digest="b7bda447b95e37f3011529df8cbd7ffab62ceb832bdddeef8218b98046c52ff4",
     ),
     "mutation.yml": WorkflowPolicy(
         triggers=frozenset({"schedule", "workflow_dispatch"}),
@@ -1118,13 +1111,18 @@ def _validate_final_image_transfer(workflow: Mapping[str, Any]) -> list[str]:
     ]:
         errors.append("final-image domains must consume the run's single image build")
     if build.get("outputs") != {
-        "archive-attempt": "${{ github.run_attempt }}",
         **{
             f"{role}-image-id": f"${{{{ steps.build.outputs.{role}-image-id }}}}"
             for role in IMAGE_ARCHIVE_ROLES
         },
+        **{
+            f"{role}-artifact-id": f"${{{{ steps.upload-{role}.outputs.artifact-id }}}}"
+            for role in IMAGE_ARCHIVE_ROLES
+        },
     }:
-        errors.append("the image build must publish exactly the built image IDs")
+        errors.append(
+            "the image build must publish the built image and uploaded artifact IDs"
+        )
     contracts: list[tuple[str, str, str, object]] = [
         (
             "build-images",
@@ -1135,6 +1133,36 @@ def _validate_final_image_transfer(workflow: Mapping[str, Any]) -> list[str]:
                 "MARKWEAVE_TOOLCHAIN_CACHE_DIRECTORY": (
                     "${{ runner.temp }}/markweave-toolchain"
                 ),
+            },
+        ),
+        (
+            "final-image",
+            "Select required final-image artifacts",
+            "env",
+            {
+                "CI_DOMAIN": "${{ matrix.domain }}",
+                **{
+                    f"{role.upper().replace('-', '_')}_ARTIFACT_ID": (
+                        f"${{{{ needs.build-images.outputs.{role}-artifact-id }}}}"
+                    )
+                    for role in IMAGE_ARCHIVE_ROLES
+                },
+            },
+        ),
+        (
+            "final-image",
+            "Select required final-image artifacts",
+            "id",
+            "image-artifacts",
+        ),
+        (
+            "final-image",
+            "Download the required final-image archives",
+            "with",
+            {
+                "artifact-ids": "${{ steps.image-artifacts.outputs.artifact-ids }}",
+                "path": "${{ runner.temp }}/final-images",
+                "merge-multiple": True,
             },
         ),
         (
@@ -1172,16 +1200,10 @@ def _validate_final_image_transfer(workflow: Mapping[str, Any]) -> list[str]:
                     },
                 ),
                 (
-                    "final-image",
-                    f"Download the {role} archive",
-                    "with",
-                    {
-                        "name": (
-                            f"final-image-{role}-${{{{ github.run_id }}}}-"
-                            "${{ needs.build-images.outputs.archive-attempt }}"
-                        ),
-                        "path": "${{ runner.temp }}/final-images",
-                    },
+                    "build-images",
+                    f"Publish the {role} archive to this run",
+                    "id",
+                    f"upload-{role}",
                 ),
             )
         )
@@ -1194,19 +1216,43 @@ def _validate_final_image_transfer(workflow: Mapping[str, Any]) -> list[str]:
         if len(matches) != 1 or matches[0].get(field) != expected:
             errors.append(f"final-image transfer contract mismatch: {step_name}")
     consumer_steps = [step.get("name") for step in _job_steps(workflow, "final-image")]
-    loader = "Load verified final images"
-    runner = "Run selected final-image suite without a shell"
-    downloads = [f"Download the {role} archive" for role in IMAGE_ARCHIVE_ROLES]
-    if (
-        loader not in consumer_steps
-        or runner not in consumer_steps
-        or any(name not in consumer_steps for name in downloads)
-        or max(consumer_steps.index(name) for name in downloads)
-        > consumer_steps.index(loader)
-        or consumer_steps.index(loader) > consumer_steps.index(runner)
-    ):
+    required_order = [
+        "Select required final-image artifacts",
+        "Download the required final-image archives",
+        "Load verified final images",
+        "Run selected final-image suite without a shell",
+    ]
+    if [name for name in consumer_steps if name in required_order] != required_order:
         errors.append("final images must be verified and loaded before any suite runs")
     return errors
+
+
+def _validate_complete_suite(workflow: Mapping[str, Any]) -> list[str]:
+    """Require all test and mutation domains on the complete-suite events."""
+    required_bindings = (
+        (
+            "detect",
+            "Select affected domains",
+            "COMPLETE_SUITE",
+            f"${{{{ {COMPLETE_SUITE_CONDITION} }}}}",
+        ),
+        (
+            "mutation",
+            "Run reviewed mutation campaign",
+            "MUTATION_MODE",
+            f"${{{{ ({COMPLETE_SUITE_CONDITION}) && 'all' || 'changed' }}}}",
+        ),
+    )
+    return [
+        f"{job} must run the complete suite on schedule, release, merge queue, and manual dispatch"
+        for job, step_name, variable, expression in required_bindings
+        if [
+            (_mapping(step.get("env")) or {}).get(variable)
+            for step in _job_steps(workflow, job)
+            if step.get("name") == step_name
+        ]
+        != [expression]
+    ]
 
 
 def _validate_gate_bindings(workflow: Mapping[str, Any]) -> list[str]:
@@ -1328,7 +1374,14 @@ def _validate_ci_contract(workflow: Mapping[str, Any]) -> list[str]:
         ("build-images", "Build, export and verify each selected final image once"): (
             "uv run python -m scripts.container.ci_images build "
             '--roles "$IMAGE_ROLES" --output-directory "$RUNNER_TEMP/final-images" '
-            '--github-output "$GITHUB_OUTPUT" --layer-compression zstd'
+            '--github-output "$GITHUB_OUTPUT" --layer-compression zstd --parallel'
+        ),
+        ("final-image", "Select required final-image artifacts"): (
+            "uv run python -m scripts.container.ci_images select-artifacts "
+            '--domain "$CI_DOMAIN" --github-output "$GITHUB_OUTPUT" '
+            '--backend-artifact-id "$BACKEND_ARTIFACT_ID" '
+            '--frontend-artifact-id "$FRONTEND_ARTIFACT_ID" '
+            '--reverse-attempt-artifact-id "$REVERSE_ATTEMPT_ARTIFACT_ID"'
         ),
         ("final-image", "Load verified final images"): (
             "uv run python -m scripts.container.ci_images load "
@@ -1386,6 +1439,7 @@ def _validate_ci_contract(workflow: Mapping[str, Any]) -> list[str]:
 
     errors.extend(_validate_heavy_matrix(workflow))
     errors.extend(_validate_final_image_transfer(workflow))
+    errors.extend(_validate_complete_suite(workflow))
     errors.extend(_validate_gate_bindings(workflow))
     errors.extend(_validate_no_legacy_browser_command(workflow))
     errors.extend(_validate_chrome_downgrade_install(workflow))

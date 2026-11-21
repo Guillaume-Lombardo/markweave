@@ -123,7 +123,7 @@ def test_required_ci_gate_runs_affected_domains_and_retains_a_report() -> None:
         "build-images, final-image, mutation]" in workflow
     )
     assert (
-        "MUTATION_MODE: ${{ (github.event_name == 'schedule' || github.event_name == 'release' || github.event_name == 'workflow_dispatch') && 'all' || 'changed' }}"
+        "MUTATION_MODE: ${{ (github.event_name == 'schedule' || github.event_name == 'release' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch') && 'all' || 'changed' }}"
         in workflow
     )
     assert (

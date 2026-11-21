@@ -195,6 +195,50 @@ def test_roles_reject_malformed_or_unknown_input(text: str, message: str) -> Non
         ci_images.parse_roles(text)
 
 
+@pytest.mark.parametrize(("domain", "roles"), IMAGE_DOMAIN_ROLES.items())
+def test_artifact_selection_writes_only_the_required_immutable_ids(
+    tmp_path: Path, domain: str, roles: tuple[str, ...]
+) -> None:
+    published = {"backend": "313", "frontend": "314", "reverse-attempt": "315"}
+    output = tmp_path / "github-output"
+    assert (
+        ci_images.main(
+            [
+                "select-artifacts",
+                "--domain",
+                domain,
+                "--github-output",
+                str(output),
+                *(
+                    part
+                    for role, value in published.items()
+                    for part in (f"--{role}-artifact-id", value)
+                ),
+            ]
+        )
+        == 0
+    )
+    assert output.read_text(encoding="utf-8") == (
+        "artifact-ids=" + ",".join(published[role] for role in roles) + "\n"
+    )
+
+
+@pytest.mark.parametrize(
+    ("domain", "published", "message"),
+    [
+        ("compose-secure", {}, "consumes no final image"),
+        ("frontend", {}, "no valid artifact ID was published for frontend"),
+        ("frontend", {"frontend": "3,4"}, "no valid artifact ID"),
+        ("container", {"backend": "31", "reverse-attempt": "31"}, "must be distinct"),
+    ],
+)
+def test_invalid_artifact_selection_fails_closed(
+    domain: str, published: dict[str, str], message: str
+) -> None:
+    with pytest.raises(ImageTransferError, match=message):
+        ci_images.domain_artifact_ids(domain, published)
+
+
 def test_archive_names_are_role_bound() -> None:
     assert ci_images.archive_name("backend") == "backend.oci.tar"
     with pytest.raises(ImageTransferError, match="unknown image role"):
@@ -241,6 +285,45 @@ def test_build_runs_each_role_once_and_publishes_verified_ids(
     assert runtime.calls.index(pulls[0]) < runtime.calls.index(builds[0])
     assert (tmp_path / "archives").stat().st_mode & 0o777 == 0o700
     assert "built role=frontend" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_overlapping_builds_publish_ids_only_after_all_archives_verify(
+    tmp_path: Path, fail: bool
+) -> None:
+    runtime = FakeRuntime()
+    roles = ("backend", "frontend")
+    overlap = threading.Barrier(len(roles), timeout=5)
+    output = tmp_path / "github-output"
+    if fail:
+        runtime.failing = ("bash", "scripts/container/build-frontend.sh")
+
+    def runner(command: list[str], **options: Any) -> subprocess.CompletedProcess[str]:
+        if command[1].startswith("scripts/container/build"):
+            assert not output.exists()
+            overlap.wait()
+        return runtime(command, **options)
+
+    def build() -> dict[str, str]:
+        return ci_images.build(
+            roles,
+            tmp_path / "archives",
+            output,
+            runner=runner,
+            clock=_clock,
+            layer_compression="zstd",
+            parallel=True,
+        )
+
+    if fail:
+        with pytest.raises(ImageTransferError, match="command failed with status 3"):
+            build()
+        assert not output.exists()
+    else:
+        assert build() == {role: f"sha256:{_image_id(role)}" for role in roles}
+        assert output.read_text(encoding="utf-8").splitlines() == [
+            f"{role}-image-id=sha256:{_image_id(role)}" for role in roles
+        ]
 
 
 def test_build_selects_only_requested_roles(tmp_path: Path) -> None:
@@ -490,7 +573,11 @@ def test_command_line_build_and_load_report_failures(
         == 0
     )
     build.assert_called_once_with(
-        ("backend",), tmp_path / "a", tmp_path / "o", layer_compression="gzip"
+        ("backend",),
+        tmp_path / "a",
+        tmp_path / "o",
+        layer_compression="gzip",
+        parallel=False,
     )
     build.reset_mock()
     assert (
@@ -505,12 +592,17 @@ def test_command_line_build_and_load_report_failures(
                 str(tmp_path / "o"),
                 "--layer-compression",
                 "zstd",
+                "--parallel",
             ]
         )
         == 0
     )
     build.assert_called_once_with(
-        ("backend",), tmp_path / "a", tmp_path / "o", layer_compression="zstd"
+        ("backend",),
+        tmp_path / "a",
+        tmp_path / "o",
+        layer_compression="zstd",
+        parallel=True,
     )
     assert (
         ci_images.main(

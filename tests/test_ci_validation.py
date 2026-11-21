@@ -275,6 +275,23 @@ def test_approved_complete_suite_schedule_and_parallelism_are_fixed() -> None:
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
+    "event", ["schedule", "release", "merge_group", "workflow_dispatch"]
+)
+def test_complete_suite_events_cannot_omit_domains(event: str) -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+    changed_lines = [
+        line.replace(f"github.event_name == '{event}'", "false")
+        if line.lstrip().startswith(("COMPLETE_SUITE:", "MUTATION_MODE:"))
+        else line
+        for line in workflow.splitlines()
+    ]
+    errors = validate_workflow_text("\n".join(changed_lines))
+    for job in ("detect", "mutation"):
+        assert any(f"{job} must run the complete suite" in error for error in errors)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
     ("needle", "replacement", "message"),
     [
         *(
@@ -2793,11 +2810,19 @@ def test_split_jobs_reuse_dependencies_and_only_trusted_main_writes_compiler_cac
             "final-image transfer contract mismatch: Publish the frontend archive",
         ),
         (
-            "name: final-image-reverse-attempt-${{ github.run_id }}-"
-            "${{ needs.build-images.outputs.archive-attempt }}",
-            "name: final-image-reverse-attempt-${{ github.run_id }}-"
-            "${{ github.run_attempt }}",
-            "final-image transfer contract mismatch: Download the reverse-attempt",
+            "artifact-ids: ${{ steps.image-artifacts.outputs.artifact-ids }}",
+            "artifact-ids: ${{ needs.build-images.outputs.reverse-attempt-artifact-id }}",
+            "final-image transfer contract mismatch: Download the required",
+        ),
+        (
+            "REVERSE_ATTEMPT_ARTIFACT_ID: ${{ needs.build-images.outputs.reverse-attempt-artifact-id }}",
+            "REVERSE_ATTEMPT_ARTIFACT_ID: ${{ needs.build-images.outputs.backend-artifact-id }}",
+            "final-image transfer contract mismatch: Select required",
+        ),
+        (
+            "reverse-attempt-artifact-id: ${{ steps.upload-reverse-attempt.outputs.artifact-id }}",
+            "reverse-attempt-artifact-id: ${{ steps.upload-backend.outputs.artifact-id }}",
+            "the image build must publish the built image and uploaded artifact IDs",
         ),
         (
             "BACKEND_IMAGE_ID: ${{ needs.build-images.outputs.backend-image-id }}",
@@ -2807,7 +2832,12 @@ def test_split_jobs_reuse_dependencies_and_only_trusted_main_writes_compiler_cac
         (
             "backend-image-id: ${{ steps.build.outputs.backend-image-id }}",
             "backend-image-id: ${{ steps.build.outputs.frontend-image-id }}",
-            "the image build must publish exactly the built image IDs",
+            "the image build must publish the built image and uploaded artifact IDs",
+        ),
+        (
+            "--layer-compression zstd --parallel",
+            "--layer-compression zstd",
+            "missing required workflow command",
         ),
         (
             "    needs: [detect, build-images]\n",

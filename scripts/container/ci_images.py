@@ -45,6 +45,7 @@ ROLE_CONTAINERFILES: Mapping[str, str] = {
 }
 IMAGE_ID = re.compile(r"[0-9a-f]{64}")
 EXPECTED_IMAGE_ID = re.compile(r"sha256:([0-9a-f]{64})")
+ARTIFACT_ID = re.compile(r"[1-9][0-9]*")
 LOADED_IMAGE_LINE = re.compile(r"^Loaded image(?:\(s\))?:\s*(.+)$")
 LOADED_REFERENCE = re.compile(r"(?:sha256:)?([0-9a-f]{64})")
 
@@ -211,11 +212,13 @@ def build(  # noqa: PLR0913 - explicit outputs, export format and test seams
     runner: Runner = subprocess.run,
     clock: Callable[[], float] = time.monotonic,
     layer_compression: str = "gzip",
+    parallel: bool = False,
 ) -> dict[str, str]:
     """Build each role once, export it, and publish its verified image ID.
 
     `gzip` keeps `podman save`; `zstd` recompresses every layer with
     `podman push --compression-format zstd` for run-scoped CI archives only.
+    CI can overlap role builds after acquiring their shared pinned bases.
     """
     if layer_compression not in LAYER_COMPRESSIONS:
         raise ImageTransferError(f"unsupported layer compression {layer_compression!r}")
@@ -235,8 +238,8 @@ def build(  # noqa: PLR0913 - explicit outputs, export format and test seams
             *(ROLE_CONTAINERFILES[role] for role in roles),
         ],
     )
-    identities: dict[str, str] = {}
-    for role in roles:
+
+    def build_role(role: str) -> str:
         started = clock()
         _stream(runner, _build_command(role, source_date_epoch))
         built = clock()
@@ -246,7 +249,6 @@ def build(  # noqa: PLR0913 - explicit outputs, export format and test seams
         _verified_archive_id(archive, image_id)
         _verified_layer_media(archive, layer_compression)
         exported = clock()
-        identities[role] = f"sha256:{image_id}"
         print(
             f"built role={role} image_id=sha256:{image_id} "
             f"archive_bytes={archive.stat().st_size} "
@@ -254,10 +256,32 @@ def build(  # noqa: PLR0913 - explicit outputs, export format and test seams
             f"export_seconds={exported - built:.1f}",
             flush=True,
         )
+        return f"sha256:{image_id}"
+
+    if parallel and len(roles) > 1:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            identities = dict(zip(roles, pool.map(build_role, roles), strict=True))
+    else:
+        identities = {role: build_role(role) for role in roles}
     with github_output.open("a", encoding="utf-8") as output:
         for role, image_id in identities.items():
             output.write(f"{role}-image-id={image_id}\n")
     return identities
+
+
+def domain_artifact_ids(domain: str, published: Mapping[str, str]) -> str:
+    """Select the producer's immutable artifact IDs for the domain's roles."""
+    if domain not in IMAGE_DOMAIN_ROLES:
+        raise ImageTransferError(f"domain {domain!r} consumes no final image")
+    ids = []
+    for role in IMAGE_DOMAIN_ROLES[domain]:
+        artifact_id = published.get(role, "")
+        if ARTIFACT_ID.fullmatch(artifact_id) is None:
+            raise ImageTransferError(f"no valid artifact ID was published for {role}")
+        ids.append(artifact_id)
+    if len(ids) != len(set(ids)):
+        raise ImageTransferError("final-image artifact IDs must be distinct")
+    return ",".join(ids)
 
 
 def _pending_load(
@@ -532,19 +556,24 @@ def _arguments(arguments: Sequence[str] | None) -> argparse.Namespace:
     build_parser.add_argument("--roles", required=True)
     build_parser.add_argument("--output-directory", type=Path, required=True)
     build_parser.add_argument("--github-output", type=Path, required=True)
+    build_parser.add_argument("--parallel", action="store_true")
     build_parser.add_argument(
         "--layer-compression", choices=LAYER_COMPRESSIONS, default="gzip"
     )
     load_parser = commands.add_parser("load")
     load_parser.add_argument("--domain", required=True)
     load_parser.add_argument("--archive-directory", type=Path, required=True)
+    artifact_parser = commands.add_parser("select-artifacts")
+    artifact_parser.add_argument("--domain", required=True)
+    artifact_parser.add_argument("--github-output", type=Path, required=True)
     for role in IMAGE_ROLES:
         load_parser.add_argument(f"--{role}-image-id", default="")
+        artifact_parser.add_argument(f"--{role}-artifact-id", default="")
     return parser.parse_args(arguments)
 
 
 def main(arguments: Sequence[str] | None = None) -> int:
-    """Run one build or load phase for GitHub Actions."""
+    """Build, select, or load the images used by GitHub Actions."""
     options = _arguments(arguments)
     try:
         if options.command == "build":
@@ -553,7 +582,18 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 options.output_directory,
                 options.github_output,
                 layer_compression=options.layer_compression,
+                parallel=options.parallel,
             )
+        elif options.command == "select-artifacts":
+            ids = domain_artifact_ids(
+                options.domain,
+                {
+                    role: getattr(options, f"{role.replace('-', '_')}_artifact_id")
+                    for role in IMAGE_ROLES
+                },
+            )
+            with options.github_output.open("a", encoding="utf-8") as output:
+                output.write(f"artifact-ids={ids}\n")
         else:
             load(
                 options.domain,
