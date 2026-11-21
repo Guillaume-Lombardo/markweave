@@ -219,17 +219,17 @@ class ReleaseWorkflowPolicy:
 
 
 CONTAINER_RELEASE_CANONICAL_DIGEST = (
-    "0840ebd22f1d37cbdd717c0aeab4a69c02c8c8262d36cc321ba7ba566b954b7a"
+    "aef624d4bbd82ed8656ed7137dd72188fea3f96661eedb22171a687419489016"
 )
 CONTAINER_QUALIFY_CANONICAL_DIGEST = (
-    "24c733843b406d45a01b8e0802f5ce6cb0036526b29497d9eeef5c4163f79edb"
+    "5706f144d50bb4d15d2791bb3276f84d86282df1eb5ada2a68d08fa403e4ebd8"
 )
 CONTAINER_PAIR_PUBLISHER_CANONICAL_DIGEST = (
     "3a61c6bd75e47afe761ead42b77f73ae46cc0da2e8430f09e5dce0f74a7d6fdc"
 )
 RELEASE_IMAGE_ROLES = ("backend", "frontend", "reverse_attempt")
 PRODUCTION_RELEASE_CANONICAL_DIGEST = (
-    "0086e5cb17f7bc33461478e43aa4d47441ac516c4061ca908da06a809f9803a2"
+    "ef68e9bcdd921d050e9fe65e812387e9848833a2a0a97bc759107785124e64d5"
 )
 
 
@@ -473,7 +473,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
             ),
             ("mutation", "Retain mutation evidence"): "${{ always() }}",
         },
-        canonical_digest="b7bda447b95e37f3011529df8cbd7ffab62ceb832bdddeef8218b98046c52ff4",
+        canonical_digest="e1f400af9fca750b79106fc230e36b86b5aaf3d49d7f9da57f52754af2b958dc",
     ),
     "mutation.yml": WorkflowPolicy(
         triggers=frozenset({"schedule", "workflow_dispatch"}),
@@ -493,7 +493,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
         },
         job_conditions={"mutation": TRUSTED_REPOSITORY_GUARD},
         step_conditions={("mutation", "Retain mutation evidence"): "${{ always() }}"},
-        canonical_digest="de975f63a966f3f482f5d5ae9ab42fbddd0788b562f880b797cce16d7cff245e",
+        canonical_digest="add670ada616ac584f3809e224f36939fd5a72f55ee0774cd6aa37781f296172",
     ),
 }
 

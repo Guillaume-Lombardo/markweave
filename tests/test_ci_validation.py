@@ -1274,7 +1274,7 @@ def test_container_attestation_requires_job_local_registry_authentication() -> N
     )
     weakened = workflow.replace(
         "      - name: Log in to GHCR for attestation publication\n"
-        "        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0\n"
+        "        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0\n"
         "        with:\n"
         "          registry: ghcr.io\n"
         "          username: ${{ github.actor }}\n"
