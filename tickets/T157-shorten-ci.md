@@ -87,7 +87,27 @@ for the LibreOffice RPM archive, heavy uv dependencies, and the pnpm store in sa
 
 ### After
 
-Pending a complete hosted run.
+[Full PR run 44838614776](https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/actions/runs/44838614776)
+passed all 23 jobs with head `20e37b2bc3b80e6f3e2985a7c2501d44eecbe5f0`. Its path was
+detect domains → build images → e2e-distributed-1 → gate. The workflow diff selected every
+active domain, so the PR run supplied the full-suite measurement.
+
+| Metric | Before, median of five full runs | After, full PR run |
+| --- | ---: | ---: |
+| Wall time to gate | 28:37 | 31:29 |
+| Runner execution time | 95:04 | 90:07 |
+| Critical path, modeled without runner queues | 16:16 | 15:12 |
+| Image build job | 5:42 | 4:29 |
+| Build, export, and verify step | 4:35 | 3:59 |
+| Archive download, median consumer per run | 0:28 | 0:18 |
+| Archive downloads, all consumers combined | 5:55 | 6:05 |
+| Gate queue | 0:10 | 4:45 |
+
+The queue-free model sums execution time along each dependency path and takes the longest.
+The measured run used 4:57 fewer runner minutes than the baseline median, with 1:04 less
+modeled critical-path execution. Its observed wall time was 2:52 longer amid runner contention.
+The gate's queue alone was 4:35 longer than the before median. Download times varied by runner,
+with a lower median and a higher total in this sample.
 
 ## Progress
 
@@ -98,6 +118,8 @@ Pending a complete hosted run.
   the complete-suite events, producer bindings, and download and load order.
 - Passed Ruff formatting and lint, ty, the workflow validator, and 511 targeted pytest cases
   on macOS. Rootless image and end-to-end verification run in hosted CI.
+- The full pull-request run passed container and supply-chain validation, both shards of both
+  final-image profiles, and `CI / gate`.
 
 ## Synchronization
 
