@@ -167,7 +167,9 @@ At T64 cutover it sends `/`, `/login`, `/change-password`, `/convert`, `/templat
 frontend's accessible `404`; they never fall through to FastAPI or an external destination. The
 router preserves `Host` and `Origin`, rejects unknown hosts, does not trust forwarded headers, and
 never selects an upstream from user-controlled headers. No CORS or second browser origin is
-supported. Before the frontend catch-all, the public router returns a content-free `404` for
+supported. In the CNI-free rootless Podman trusted-upstream and insecure quickstarts, host
+forwarding into the shared rootless network namespace keeps this public-host policy and the host's
+loopback-only publication boundary. Before the frontend catch-all, the public router returns a content-free `404` for
 `/_frontend/health`, every descendant, and decoded or case-varied equivalents. Only platform probes
 may call the exact internal `/_frontend/health/live` and `/_frontend/health/ready` paths through the
 frontend Service's separate probe port; the public router reaches only the page port.
@@ -1050,7 +1052,8 @@ PyPI Trusted Publishing is bound to project `markweave`, owner `Guillaume-Lombar
 every upload, recheck that the exact `markweave` version is unpublished. A pending publisher does
 not reserve the distribution name. The public license is Apache-2.0.
 
-Repository-owned pull-request and scheduled mutation checks remain required, with independent
+Markweave stays under the personal GitHub account; no organization or repository transfer is
+required. Repository-owned pull-request and scheduled mutation checks remain required, with independent
 review of workflow and policy changes. These checks remain modifiable in a pull request;
 contributor-immutable enforcement is not required. No organization, Enterprise subscription,
 repository transfer, separately owned policy repository, or external check provider is a
@@ -1071,16 +1074,17 @@ thresholds remain required.
 
 ## 13. Delivery tickets
 
-Every delivery ticket is mirrored in `tickets/Txx-<slug>.md` and tracked in the
+Every delivery ticket is mirrored in [`tickets/Txx-<slug>.md`](../tickets/) and tracked in the
 [Linear project](https://linear.app/g1lom/project/markdown-to-docx-and-pdf-converter-3724edb949f9).
 Linear is authoritative for operational status; each ticket mirror is authoritative for its
 reviewed scope, acceptance criteria, dependencies, and progress notes. The complete historical
 ticket table, with each ticket's outcome and dependencies, and the completed delivery-order and
-priority notes are in the [delivery history](delivery-history.md).
+priority notes are in the non-normative [delivery history](delivery-history.md).
 
 Only one ticket edits this specification at a time.
 
-Open tickets on 2026-11-21 (status neither Done nor Canceled in the ticket mirrors on `main`):
+Open tickets on 2026-11-21 (status neither Done nor Canceled in the ticket mirrors of this
+revision):
 
 | Ticket | Outcome | Status | Depends on |
 |---|---|---|---|
@@ -1118,7 +1122,7 @@ Open tickets on 2026-11-21 (status neither Done nor Canceled in the ticket mirro
 | T145 | Audit the release-after-close slot pattern in the metrics server and Kubernetes attester transport | Backlog | T141 |
 | T148 | Spike: shorten reverse worker leases in the E2E runtime | Backlog | T137 |
 | T149 | Investigate E2E worker containers that need SIGKILL to stop | Backlog | — |
-| T153 | Restore a green main | In Progress | — |
+| T153 | Restore a green main | In Progress | T00, T11, T18, T20, T22 |
 | T154 | Make local checks honest on non-Linux hosts | Backlog | T153 |
 | T155 | Freeze the Composer feature scope (D16) | In Progress | T108 |
 
@@ -1162,7 +1166,8 @@ Open tickets on 2026-11-21 (status neither Done nor Canceled in the ticket mirro
   Markdown/assets package builder. T71 may configure reviewed budgets and persist the stable unit
   identity/proof and resulting package, but must not introduce a second broker, runner, parser,
   renderer adapter, or manifest serializer.
-- If T74 resumes, restore the optional Kubernetes reverse-isolation prototype from
+- T74 remains deferred until a concrete Kubernetes deployment need justifies it. If T74
+  resumes, restore the optional Kubernetes reverse-isolation prototype from
   `archive/t74-kubernetes-backend`. Follow the detailed node and proof requirements in the
   archived specification and the [T74 acceptance criteria](../tickets/T74-kubernetes-reverse-isolation.md).
   Qualify the separately reviewed node attester, exact-method CRI read proxy, digest-attested
