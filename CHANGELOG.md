@@ -48,6 +48,9 @@ private reporting, and the [support policy](SUPPORT.md) for help with a publishe
   origin reports healthy.
 - Composer generation waits for the template catalog, and reverse-conversion broker readiness and
   termination are more reliable under load.
+- Image builds fetch the pinned LibreOffice `26.2.5` archives from the permanent Document
+  Foundation archive, because the stable mirror no longer serves that release. The bytes and
+  SHA-256 pins are unchanged.
 
 ### Removed
 
