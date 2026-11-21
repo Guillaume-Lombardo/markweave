@@ -1074,7 +1074,7 @@ thresholds remain required.
 
 ## 13. Delivery tickets
 
-Every delivery ticket is mirrored in [`tickets/Txx-<slug>.md`](../tickets/) and tracked in the
+Every delivery ticket is mirrored in `tickets/Txx-<slug>.md` and tracked in the
 [Linear project](https://linear.app/g1lom/project/markdown-to-docx-and-pdf-converter-3724edb949f9).
 Linear is authoritative for operational status; each ticket mirror is authoritative for its
 reviewed scope, acceptance criteria, dependencies, and progress notes. The complete historical
