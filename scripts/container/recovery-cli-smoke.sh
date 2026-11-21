@@ -212,7 +212,7 @@ if run_cli -- --non-interactive --timeout 60 restore --profile standalone \
   exit 1
 fi
 
-# A populated pre-T91 set (schema 20260923_24) restores to head with its references.
+# A populated set at 20260923_24 restores to head with its references.
 run_setup -- standalone-older-initialize --path /e2e/older-source
 older_json="$(run_cli -- --json --non-interactive --timeout 60 backup \
   --profile standalone --data-directory /e2e/older-source \
@@ -376,7 +376,7 @@ historical_set() {
     -- distributed-historical-set --path "$destination" "$@" | tail -n 1
 }
 
-# A populated pre-T91 distributed set restores to head with its references.
+# A populated distributed set at 20260923_24 restores to head with its references.
 run_setup "${common_s3[@]}" \
   --env RECOVERY_DATABASE="$postgres_root/older_source" \
   --env RECOVERY_SOURCE_BUCKET=older-source-bucket \

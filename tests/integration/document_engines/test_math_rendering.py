@@ -1,4 +1,4 @@
-"""Pinned Pandoc OMML equation output for T103 math in DOCX and PPTX."""
+"""Pinned Pandoc OMML equation output for math in DOCX and PPTX."""
 
 from __future__ import annotations
 

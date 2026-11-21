@@ -1,4 +1,4 @@
-"""PostgreSQL admission serialization and short-load coverage for T18."""
+"""PostgreSQL admission serialization and short-load coverage."""
 
 from __future__ import annotations
 

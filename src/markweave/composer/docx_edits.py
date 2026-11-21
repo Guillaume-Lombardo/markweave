@@ -1,7 +1,6 @@
 """Bounded, surgical text edits on private copies of admitted DOCX packages.
 
-This is the first T92 Office edit family. It only replaces the text of one
-eligible ``w:t`` node per operation in ``word/document.xml``. The edit splices
+Each operation replaces one eligible ``w:t`` node's text in ``word/document.xml``. The edit splices
 the exact node bytes, so every other byte of that part and every other package
 member is preserved and verified after the write.
 """

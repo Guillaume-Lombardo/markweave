@@ -44,7 +44,7 @@ _DOCX_MEDIA_TYPE = (
 
 @dataclass
 class _Command:
-    """Parser-local values passed through T31's stable family-handler seam."""
+    """Parsed arguments passed to the template command handler."""
 
     name: str
     values: dict[str, Any] = field(default_factory=dict)

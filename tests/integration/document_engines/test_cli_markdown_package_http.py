@@ -1,4 +1,4 @@
-"""CLI Markdown-with-local-images packaging against the real service (T104).
+"""CLI Markdown-with-local-images packaging against the real service.
 
 The client reads real files, packages them into the approved archive layout, and
 crosses only the HTTP API. A real worker then applies the service's archive,

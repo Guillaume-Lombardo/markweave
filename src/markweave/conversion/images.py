@@ -51,7 +51,7 @@ SvgRenderer = Callable[[bytes, int, int], bytes]
 
 @dataclass(frozen=True)
 class ImageLimits:
-    """Explicit configurable bounds; T18 owns their production values."""
+    """Configured bounds for image decoding and normalization."""
 
     max_source_bytes: int
     max_width_pixels: int

@@ -1,4 +1,4 @@
-"""Real subprocess and Pandoc integration tests for T07 DOCX conversion."""
+"""Real subprocess and Pandoc integration tests for DOCX conversion."""
 
 from __future__ import annotations
 
@@ -77,7 +77,7 @@ def test_real_pandoc_converts_complete_corpus_and_applies_reference(
         relationship.relationship_type.endswith("/footnotes")
         for relationship in snapshot.relationships
     )
-    document = ElementTree.fromstring(  # noqa: S314 - T04 rejected declarations
+    document = ElementTree.fromstring(  # noqa: S314 - the OpenXML helper rejected declarations
         snapshot.xml_parts["word/document.xml"]
     )
     assert next(document.iter(f"{{{WORD_NAMESPACE}}}tbl"), None) is not None
@@ -93,7 +93,7 @@ def test_real_pandoc_converts_complete_corpus_and_applies_reference(
         for node in document.iter(f"{{{WORD_NAMESPACE}}}bookmarkStart")
     }
     assert "t07-custom-heading" in bookmarks
-    footnotes = ElementTree.fromstring(  # noqa: S314 - T04 rejected declarations
+    footnotes = ElementTree.fromstring(  # noqa: S314 - the OpenXML helper rejected declarations
         snapshot.xml_parts["word/footnotes.xml"]
     )
     footnote_text = "".join(

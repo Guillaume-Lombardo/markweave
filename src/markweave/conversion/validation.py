@@ -39,7 +39,7 @@ _MAX_URL_PORT = 65_535
 
 @dataclass(frozen=True)
 class ApprovedMarkdown:
-    """Markdown that passed all T07 pre-Pandoc checks."""
+    """Markdown that passed validation for Pandoc conversion."""
 
     text: str
     entrypoint: PurePosixPath = field(default_factory=lambda: PurePosixPath("input.md"))

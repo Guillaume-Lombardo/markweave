@@ -14,15 +14,15 @@ from markweave.composer.author_knowledge import (
     AuthorRecord,
 )
 from markweave.composer.revisions import ComposerConflictError, ComposerNotFoundError
+from markweave.http.composer_author_fill_schemas import (
+    AuthorListResponse,
+    AuthorResponse,
+    AuthorWriteRequest,
+)
 from markweave.http.composer_errors import (
     ComposerPreconditionRequiredError,
     ComposerRequestError,
     ComposerUnavailableError,
-)
-from markweave.http.composer_t91_schemas import (
-    AuthorListResponse,
-    AuthorResponse,
-    AuthorWriteRequest,
 )
 from markweave.http.dependencies import HttpDependencies
 from markweave.http.errors import error_responses

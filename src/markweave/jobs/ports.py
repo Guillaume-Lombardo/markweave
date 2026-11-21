@@ -135,7 +135,7 @@ class JobRepository(
 
 
 class JobProcessor(Protocol):
-    """T15-integrated document processing boundary invoked by a worker."""
+    """Document processing boundary invoked by a worker."""
 
     def process(
         self,

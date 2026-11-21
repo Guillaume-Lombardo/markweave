@@ -1,4 +1,4 @@
-"""T18 policy validation, assembly, and duration-budget behavior."""
+"""Resource-policy validation, assembly, and duration-budget behavior."""
 
 from __future__ import annotations
 

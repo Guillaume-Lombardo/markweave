@@ -1,4 +1,4 @@
-"""Temporary thread-safe in-memory adapters used before T12 persistence."""
+"""Thread-safe in-memory adapters for authentication state."""
 
 from __future__ import annotations
 

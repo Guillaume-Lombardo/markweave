@@ -1012,7 +1012,7 @@ run_reverse_lifecycle() {
   if [[ "$profile" == distributed ]]; then
     metrics_url="http://127.0.0.1:$(podman port "$worker_one_name" 9464/tcp | sed 's/.*://')/metrics"
   fi
-  # T142: start the bounded fault window only after the worker proves the
+  # Start the bounded fault window only after the worker proves the
   # container-to-host broker path, which can stall after container restarts.
   uv run python -m scripts.e2e.reverse_broker wait-worker-broker --root "$broker_directory" \
     --metrics-url "$metrics_url"
@@ -1242,7 +1242,7 @@ use_browser_runtime() {
   application_runtime=browser
 }
 
-# T142: the container-to-host broker path can stall after containers restart, and
+# The container-to-host broker path can stall after containers restart, and
 # use_browser_runtime proves only API readiness. Before a step depends on reverse
 # execution, wait until the reverse worker completes consecutive authenticated
 # broker reconciliations. Only the application (standalone) or the first worker
@@ -1957,7 +1957,7 @@ e2e_phase_service() {
   fi
 
   # `exercise` leaves one retained result for `verify-expiration`, which runs
-  # after the CLI and recovery journeys have used its 60-second retention (T146).
+  # after the CLI and recovery journeys have used its 60-second retention.
   uv run python -m tests.e2e.service_workflow exercise \
     --base-url "$base_url" --profile "$profile" \
     --template "$evidence_directory/template.docx" --state-file "$state_file" \
@@ -2227,7 +2227,7 @@ e2e_phase_reverse_lifecycle() {
 # Conversion, reversion, presentation, local-image, and workspace journeys, then
 # reverse expiry and unavailability through the CLI. The retained reverse result
 # is submitted first so that the browser journeys use its 60-second retention
-# instead of a wait (T146).
+# instead of a wait.
 e2e_phase_browser_workspaces() {
   if ! e2e_selects_phase service; then
     e2e_seed_browser_prerequisites
@@ -2283,7 +2283,7 @@ e2e_phase_browser_runtime() {
     --env MARKWEAVE_E2E_PROFILE="$profile" \
     --env MARKWEAVE_E2E_CONVERSION_STATE=/browser-session/next-conversion.json
 
-  # Keep the T62 durable-result checkpoint inside its deliberate 60-second
+  # Keep the durable-result checkpoint inside its deliberate 60-second
   # retention window. The longer administration journey runs only after restart
   # recovery has proved the original result remains authoritative.
   read_checkpoint_policy_values

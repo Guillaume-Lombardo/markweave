@@ -1,4 +1,4 @@
-"""Unit coverage for the explicit local mode of ``markweave convert`` (T106, D1)."""
+"""Unit coverage for the explicit local mode of ``markweave convert``."""
 
 from __future__ import annotations
 

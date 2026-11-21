@@ -1,4 +1,4 @@
-"""Client-side packaging of Markdown with its referenced local images (T104, D2).
+"""Client-side packaging of Markdown with its referenced local images.
 
 The remote ``convert`` command places a Markdown file and the local images it
 references into the approved archive layout before upload. Image references are

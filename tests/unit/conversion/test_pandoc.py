@@ -179,7 +179,7 @@ def test_adapter_materializes_only_approved_package_resources(
 
 
 @pytest.mark.unit
-def test_reference_document_is_opaque_to_t07(tmp_path: Path, mocker) -> None:
+def test_reference_document_is_opaque_to_pandoc_adapter(tmp_path: Path, mocker) -> None:
     process = mocker.Mock()
     process.wait.return_value = 2
 

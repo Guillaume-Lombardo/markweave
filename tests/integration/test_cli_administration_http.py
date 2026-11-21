@@ -1,4 +1,4 @@
-"""Real HTTP integration coverage for T35 remote command workflows."""
+"""Real HTTP integration coverage for remote administration commands."""
 
 from __future__ import annotations
 

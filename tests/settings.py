@@ -1,4 +1,4 @@
-"""Explicit test-only values for T18-owned template configuration."""
+"""Explicit template configuration for tests."""
 
 from typing import Any
 
@@ -69,7 +69,7 @@ def template_settings(**overrides: Any) -> dict[str, Any]:
 
 
 def local_conversion_settings(**overrides: Any) -> Any:
-    """Build T106 local settings from the same explicit test-only values."""
+    """Build local conversion settings from the same explicit test-only values."""
     from markweave.conversion.local_settings import (  # noqa: PLC0415
         LocalConversionSettings,
     )

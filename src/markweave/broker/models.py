@@ -59,7 +59,7 @@ def is_next_unit_state(current: ManagedUnitState, target: ManagedUnitState) -> b
 
 @dataclass(frozen=True, slots=True)
 class RuntimeLimits:
-    """Positive T71-supplied ceilings enforced by a runtime backend."""
+    """Positive execution limits supplied by the worker and enforced by the runtime."""
 
     cpu_quota_micros: int
     cpu_period_micros: int
@@ -85,7 +85,7 @@ class RuntimeLimits:
 
 @dataclass(frozen=True, slots=True)
 class RuntimeChannelLimits:
-    """Positive T71-supplied byte ceilings for the attempt workspace channel."""
+    """Positive byte limits supplied by the worker for the attempt workspace."""
 
     max_input_bytes: int
     max_output_bytes: int
@@ -125,7 +125,7 @@ class BrokerPolicy:
 
 
 def policy_specification_evidence(policy: BrokerPolicy) -> EvidenceDigest:
-    """Digest the fixed execution contract and T71-owned runtime ceilings."""
+    """Digest the fixed execution contract and configured runtime limits."""
 
     if type(policy) is not BrokerPolicy:
         raise ValueError("Broker policy is invalid")

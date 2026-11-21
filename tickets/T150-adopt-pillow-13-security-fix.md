@@ -54,7 +54,7 @@ None. Unblocks the supply-chain gate on every open pull request, including the T
     `Image.fromarray` mode changes, `get_child_images`, `Image._show`,
     `ImageCmsProfile.product_name`/`product_info`, `ExifTags.IFD.Makernote`) touch no repository
     code: only `conversion/images.py`, `conversion/mermaid.py` and
-    `scripts/generate_t11_pdf_golden.py` import Pillow, and none of them uses those APIs.
+    `scripts/generate_pdf_golden.py` import Pillow, and none of them uses those APIs.
   - `supply-chain.sh` now moves a rejected scan's staging directory to the output directory without
     a release-bundle manifest and still exits with the gate's status. `run-ci-supply-chain.sh` scans
     the reverse-attempt image even after a backend rejection and then fails with the first

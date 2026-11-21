@@ -43,7 +43,7 @@ _MEDIA_SUFFIXES = {
 
 @dataclass(frozen=True)
 class ReverseAssetLimits:
-    """Caller-supplied limits whose production values are owned by T71."""
+    """Caller-supplied limits for reverse-conversion asset normalization."""
 
     image: ImageLimits
     max_asset_count: int
@@ -301,7 +301,7 @@ def normalize_assets(
 
     Missing bytes are an explicit unavailable occurrence. Every supplied byte stream is
     signature-identified independently of its declared type, rejected when its container has
-    trailing polyglot data, and normalized through the T08 image boundary.
+    trailing polyglot data, and passed through the shared image normalizer.
     """
 
     if len(references) > limits.max_asset_count:

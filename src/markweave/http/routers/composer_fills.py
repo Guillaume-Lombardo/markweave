@@ -29,18 +29,18 @@ from markweave.composer.typed_templates import (
     ValidatedTemplate,
     validate_values,
 )
+from markweave.http.composer_author_fill_schemas import (
+    FillPlanCreateRequest,
+    FillPlanListResponse,
+    FillPlanResponse,
+    FillPlanUpdateRequest,
+)
 from markweave.http.composer_errors import (
     ComposerPreconditionRequiredError,
     ComposerRequestError,
     ComposerUnavailableError,
 )
 from markweave.http.composer_schemas import ComposerRevisionResponse
-from markweave.http.composer_t91_schemas import (
-    FillPlanCreateRequest,
-    FillPlanListResponse,
-    FillPlanResponse,
-    FillPlanUpdateRequest,
-)
 from markweave.http.dependencies import HttpDependencies
 from markweave.http.errors import error_responses
 from markweave.persistence.composer.fill_plans import FillPlan, SqlFillPlanRepository

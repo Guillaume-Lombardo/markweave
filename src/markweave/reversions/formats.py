@@ -227,7 +227,7 @@ def admit_format(
     *,
     csv_text_validated: bool = False,
 ) -> FormatAdmission:
-    """Apply the extension-hint/content-detection agreement fixed by T69."""
+    """Check detected content or validated CSV text against the extension hint."""
     return REVERSE_ADMISSION_POLICY.admit(
         extension,
         detected_format,

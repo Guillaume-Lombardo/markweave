@@ -1,4 +1,4 @@
-"""Real-process termination coverage for isolated engine version probes (T106)."""
+"""Real-process termination coverage for isolated engine version probes."""
 
 from __future__ import annotations
 

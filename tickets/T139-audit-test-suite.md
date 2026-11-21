@@ -47,9 +47,9 @@ removed. This is part of the CI and local test speed effort (T98, T130, T135).
 - **Inventory.** 6,144 Python tests, 844 vitest tests, and final-image E2E made of 20 Node browser
   files executed 33 times across phases plus 10 Python workflow drivers. The 4,081 unit tests take
   89 s of worker time in total, so deleting unit tests cannot save meaningful time.
-- **D1.** `tests/test_t22_maintenance.py::test_mutation_workflow_is_isolated_bounded_and_read_only`
-  repeats assertions the `mutation.yml` policy in `scripts/ci/validate_ci.py` already enforces and
-  covers no application arc.
+- **D1.** The retired `test_mutation_workflow_is_isolated_bounded_and_read_only` in the
+  maintenance suite (now `tests/test_maintenance_workflows.py`) repeated assertions already
+  enforced by the `mutation.yml` policy in `scripts/ci/validate_ci.py` and covered no application arc.
 - **D2.** The retired T67 tooling tests (8 functions, 12 cases, in `tests/test_pnpm_workspace.py`,
   and the 10 cases of `tests/integration/test_benchmark_timeout.py`) test scripts no workflow has
   run since T80. They cover no application arc and go only together with those scripts.

@@ -145,7 +145,7 @@ def test_postgresql_s3_author_grants_and_typed_versions_survive_restart() -> Non
         objects.close()
 
 
-def test_postgresql_t91_audit_is_visible_guarded_and_bounded() -> None:
+def test_postgresql_author_and_template_audit_is_visible_guarded_and_bounded() -> None:
     engine = create_database_engine(os.environ["MARKWEAVE_TEST_POSTGRES_URL"])
     upgrade_database(engine)
     owner, reader = uuid4(), uuid4()
@@ -219,7 +219,8 @@ def test_postgresql_t91_audit_is_visible_guarded_and_bounded() -> None:
         audit = SqlComposerAuditRepository(engine)
         cutoff = now - timedelta(days=365)
         assert [
-            audit.cleanup_t91_audit(cutoff_at=cutoff, limit=1) for _ in range(4)
+            audit.cleanup_author_template_audit(cutoff_at=cutoff, limit=1)
+            for _ in range(4)
         ] == [
             1,
             1,

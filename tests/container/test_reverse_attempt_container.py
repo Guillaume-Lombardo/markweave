@@ -1,4 +1,4 @@
-"""Packaging contract for the isolated T70 reverse-attempt image."""
+"""Packaging contract for the isolated reverse-attempt image."""
 
 from __future__ import annotations
 
@@ -418,9 +418,9 @@ fi
 
 
 @pytest.mark.unit
-def test_final_image_measurements_reuse_the_bounded_t69_probe() -> None:
+def test_final_image_measurements_reuse_the_bounded_anydoc_probe() -> None:
     smoke = (ROOT / "scripts/container/smoke-reverse-attempt.sh").read_text()
-    measurement = smoke.split("# Reuse T69 instrumentation", 1)[1]
+    measurement = smoke.rsplit('if [[ -n "$measurement_receipt" ]]; then', 1)[1]
     assert "podman image inspect \"$requested_image\" --format '{{.Id}}'" in smoke
     for required in (
         "podman run --rm --timeout 60",

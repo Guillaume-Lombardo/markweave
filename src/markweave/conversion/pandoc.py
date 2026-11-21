@@ -34,7 +34,7 @@ _REQUIRED_DOCX_PARTS = frozenset(
 
 @dataclass(frozen=True)
 class PandocConfig:
-    """Explicit adapter configuration without T18 production defaults."""
+    """Pandoc executable, deadlines, cancellation polling, and workspace root."""
 
     executable: str
     timeout_seconds: float

@@ -18,7 +18,7 @@ def publish_template_pair(  # noqa: PLR0913
     sha256: str = "0" * 64,
     size: int = 1,
 ) -> None:
-    """Create one active current pair without crossing the T10 engine boundary."""
+    """Create one active current pair without invoking the document engines."""
     with Session(engine) as database, database.begin():
         database.add(
             TemplateRow(

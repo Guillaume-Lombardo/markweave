@@ -144,7 +144,7 @@ def test_root_containerfile_selects_container_domain() -> None:
         "tests/container/test_container_assets.py",
     ],
 )
-def test_t20_asset_changes_select_container_domain(path: str) -> None:
+def test_container_asset_changes_select_container_domain(path: str) -> None:
     selected = select_domains([path])
     assert "container" in selected
     assert "supply-chain" in selected
@@ -230,7 +230,7 @@ def test_anydoc_corpus_selects_real_library_integration() -> None:
     ],
 )
 def test_local_conversion_changes_select_its_final_image_e2e(path: str) -> None:
-    """T106 local mode reruns its final-image E2E in the container domain."""
+    """Local conversion changes select the container domain for final-image E2E."""
     assert "container" in select_domains([path])
 
 
@@ -384,7 +384,7 @@ def test_always_run_suite_changes_need_no_path_selected_domain(path: str) -> Non
     "path",
     [
         "tests/corpus/manifest.json",
-        "scripts/generate_t11_pdf_golden.py",
+        "scripts/generate_pdf_golden.py",
         "tests/conftest.py",
         "tests/golden/openxml.py",
         "tests/unit/test_golden_raster.py",
@@ -420,7 +420,7 @@ def test_browser_workflow_changes_select_document_engine_domain(path: str) -> No
 
 
 @pytest.mark.unit
-def test_t04_document_engine_domain_runs_current_integration_boundaries() -> None:
+def test_document_engine_domain_runs_current_integration_boundaries() -> None:
     registry = load_registry(Path(".github/ci/domains.json"))
     planned, runnable = classify_domains(["document-engines"], registry)
     assert planned == []
@@ -442,7 +442,7 @@ def test_t04_document_engine_domain_runs_current_integration_boundaries() -> Non
 
 
 @pytest.mark.unit
-def test_t21_e2e_domains_are_active_and_profile_specific() -> None:
+def test_e2e_domains_are_active_and_profile_specific() -> None:
     """Each final-image profile runs as complementary shards on loaded images."""
     registry = load_registry(Path(".github/ci/domains.json"))
     assert E2E_DOMAINS == {
@@ -491,7 +491,7 @@ def test_t21_e2e_domains_are_active_and_profile_specific() -> None:
         "deploy/standalone.yaml.example",
     ],
 )
-def test_final_image_inputs_select_both_t21_profiles(path: str) -> None:
+def test_final_image_inputs_select_both_e2e_profiles(path: str) -> None:
     """No final-image, driver, deployment, or E2E change can skip one profile."""
     selected = select_domains([path])
     assert set(E2E) <= set(selected)

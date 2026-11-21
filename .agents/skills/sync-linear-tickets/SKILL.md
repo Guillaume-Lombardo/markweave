@@ -34,9 +34,9 @@ description: Keep the Markdown to DOCX and PDF Converter project synchronized be
 ## Complete work
 
 1. Verify every acceptance criterion and canonical repository check, including required integration and E2E coverage; record only explicitly approved exceptions.
-2. Update the local progress section with the delivered result, tests, pull request, and limitations.
-3. Update Linear with the same outcome and mark it `Done` only after the change is verified on `main`.
-4. Re-fetch the Linear issue and compare it with the merged local ticket before declaring synchronization complete.
+2. Once the change is verified on `main`, immediately record the outcome in Linear and mark the issue `Done`.
+3. Batch the mirror's `Done` status and progress note with the delivered result, tests, PR, and limitations in the next functional PR or a periodic sync PR.
+4. Re-fetch the Linear issue after the mirror update merges and confirm the two agree.
 
 ## Guardrails
 

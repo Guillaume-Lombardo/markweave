@@ -1,6 +1,6 @@
 """Bounded structural Office edits: paragraph styles, slide order, and images.
 
-These T92 edit families reuse the text-edit admission of an untrusted private
+Structural edits reuse the text-edit admission checks on an untrusted private
 copy. Each operation names a stable target and the value the reviewer saw, then
 splices exact bytes: a ``w:pStyle`` declaration, the order of ``p:sldId``
 entries, or one image part re-encoded from a validated upload. The rewritten

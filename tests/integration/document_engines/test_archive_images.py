@@ -1,4 +1,4 @@
-"""Real ZIP, image-engine, Pandoc, and OpenXML integration for T08."""
+"""Real ZIP, image-engine, Pandoc, and OpenXML integration."""
 
 from __future__ import annotations
 

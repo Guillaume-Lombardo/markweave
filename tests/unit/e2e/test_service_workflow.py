@@ -376,7 +376,7 @@ def test_result_validation_accepts_strict_legacy_versioned_manifest(
 
 @pytest.mark.unit
 @pytest.mark.parametrize("template_mode", ("pandoc-default", "versioned"))
-def test_result_validation_rejects_legacy_manifest_for_t29_job(
+def test_result_validation_rejects_legacy_manifest_for_current_job(
     mocker: MockerFixture, template_mode: str
 ) -> None:
     job = {

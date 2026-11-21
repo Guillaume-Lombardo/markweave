@@ -76,7 +76,7 @@ def _branch_report(*, covered: int, branches: int) -> dict[str, Any]:
 
 @pytest.mark.unit
 def test_committed_quality_configuration_enforces_required_tools() -> None:
-    """The checked-in policy fixes every T05 quality invariant in one configuration."""
+    """The checked-in policy keeps the Python quality gates in one configuration."""
     config = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     pytest_options = config["tool"]["pytest"]["ini_options"]
     assert {

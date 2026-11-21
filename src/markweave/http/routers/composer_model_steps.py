@@ -21,6 +21,11 @@ from markweave.composer.library_prompt import (
     compose_library_prompt,
 )
 from markweave.composer.revisions import ComposerConflictError
+from markweave.http.composer_author_fill_schemas import (
+    AuthorPromptPreviewRequest,
+    AuthorPromptPreviewResponse,
+    AuthorReference,
+)
 from markweave.http.composer_errors import (
     ComposerPreconditionRequiredError,
     ComposerRequestError,
@@ -38,11 +43,6 @@ from markweave.http.composer_schemas import (
     ComposerQuestionResponse,
 )
 from markweave.http.composer_step_runner import ModelStepInput
-from markweave.http.composer_t91_schemas import (
-    AuthorPromptPreviewRequest,
-    AuthorPromptPreviewResponse,
-    AuthorReference,
-)
 from markweave.http.dependencies import HttpDependencies
 from markweave.http.errors import capacity_error_responses, error_responses
 from markweave.persistence.composer import ComposerModelStep

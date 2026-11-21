@@ -1,4 +1,4 @@
-"""Runtime assembly for complete T10 template activation validation."""
+"""Runtime assembly for template activation validation."""
 
 from __future__ import annotations
 

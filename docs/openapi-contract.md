@@ -45,6 +45,5 @@ version and artifact path in its own approved ticket, preserve the v1 artifact a
 supported compatibility period, update clients and documentation, and then update the CI policy in
 the same independently reviewed change. A same-major incompatible change remains a CI failure.
 
-The readable snapshots under `tests/fixtures/t41_http_contract/` remain T41 decomposition
-regression evidence. They deliberately stay separate from the durable artifact, and a test requires
-their normalized OpenAPI content to agree so that neither can drift silently.
+The readable snapshots under `tests/fixtures/http_contract/` catch regressions in registered routes
+and their schemas. A test compares their normalized OpenAPI content with the versioned artifact.

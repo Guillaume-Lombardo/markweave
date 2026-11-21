@@ -1,4 +1,4 @@
-"""Policy checks for the dedicated T35 final-image CLI driver."""
+"""Policy checks for the final-image administration CLI driver."""
 
 from __future__ import annotations
 

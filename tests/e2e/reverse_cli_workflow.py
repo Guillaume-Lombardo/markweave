@@ -1,6 +1,6 @@
 """Exercise installed reverse-job CLI workflows against final backend images.
 
-The T73 orchestrator supplies a running final backend and its matched reverse-attempt
+The E2E harness supplies a running final backend and its matched reverse-attempt
 image/broker. This driver deliberately owns no container lifecycle or fault injection.
 """
 
@@ -366,7 +366,7 @@ def _exercise_structured_pptx(container: str, profile: str) -> None:
 
 
 def _submit_expiry(container: str, profile: str, state_file: Path) -> None:
-    """Retain one reverse result whose expiry `_verify_expiry` proves later (T146)."""
+    """Retain one reverse result so `_verify_expiry` can verify its expiry later."""
     _copy_source(container)
     _create_users(container)
     _login(container, _ALICE_PROFILE, _ALICE, _ALICE_PASSWORD)

@@ -34,7 +34,7 @@ from markweave.storage import ObjectStore
 
 @dataclass(frozen=True, slots=True)
 class WorkerPolicy:
-    """Caller-owned timings whose production values remain assigned to T18."""
+    """Configured intervals and time limits for a conversion worker."""
 
     lease_seconds: float
     heartbeat_seconds: float

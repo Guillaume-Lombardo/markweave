@@ -1,4 +1,4 @@
-"""Drive T35 commands from the installed final-image CLI."""
+"""Exercise administration commands from the installed final-image CLI."""
 
 from __future__ import annotations
 
@@ -182,7 +182,7 @@ def _login(container: str, profile: str, username: str, password: str) -> None:
             profile,
         ),
         ((b"Password: ", password),),
-        # The shared CLI pilot immediately preceding T35 inspects the blocked
+        # The shared CLI workflow already inspects the blocked
         # login process. This pilot still rejects secrets in argv and output,
         # without racing a second /proc snapshot for each role transition.
         inspect_login=False,

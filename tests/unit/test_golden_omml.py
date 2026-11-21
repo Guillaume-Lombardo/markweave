@@ -1,4 +1,4 @@
-"""Deterministic OMML observation helpers used by the T103 math golden tests."""
+"""Deterministic OMML observation helpers used by the math golden tests."""
 
 from __future__ import annotations
 

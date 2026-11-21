@@ -1,4 +1,4 @@
-"""Unit coverage for the T35 administration, audit, and health CLI family."""
+"""Unit coverage for the administration, audit, and health commands."""
 
 from __future__ import annotations
 

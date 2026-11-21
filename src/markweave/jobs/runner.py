@@ -32,7 +32,7 @@ class RunnableWorkerLoop(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class WorkerSchedule:
-    """Caller-owned polling and cleanup schedule whose values belong to T18."""
+    """Configured polling and cleanup intervals for the job runner."""
 
     idle_poll_seconds: float
     cleanup_interval_seconds: float

@@ -237,7 +237,7 @@ def test_candidate_contract_records_approved_product_decisions() -> None:
 
 
 @pytest.mark.unit
-def test_approved_decisions_are_reflected_in_spec_and_t70_contract() -> None:
+def test_approved_decisions_are_reflected_in_spec_and_broker_contract() -> None:
     product_spec = " ".join(
         (ROOT / "docs/product-specification.md").read_text().split()
     )

@@ -7,8 +7,8 @@
     "scripts/ci/validate_ci.py",
     "scripts/ci/run_mutation_campaign.py",
     "tests/test_ci_validation.py",
-    "tests/test_t22_maintenance.py",
-    "tests/test_t48_mutation.py",
+    "tests/test_maintenance_workflows.py",
+    "tests/test_mutation_campaign.py",
     "uv.lock"
   ],
   "failure_statuses": [
@@ -110,8 +110,8 @@
         "src/markweave/storage.py",
         "tests/unit/test_retention.py",
         "tests/unit/test_storage_adapters.py",
-        "tests/integration/sqlite/test_t18_data_retention.py",
-        "tests/integration/postgres/test_t18_data_retention_distributed.py"
+        "tests/integration/sqlite/test_data_retention.py",
+        "tests/integration/postgres/test_data_retention_distributed.py"
       ],
       "mutants": [
         "markweave.retention.xǁRetentionServiceǁcleanup__mutmut_1",

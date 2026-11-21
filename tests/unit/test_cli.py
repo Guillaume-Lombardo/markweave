@@ -1,4 +1,4 @@
-"""Unit coverage for the stable T31 command-line contract."""
+"""Unit coverage for the stable command-line contract."""
 
 from __future__ import annotations
 
@@ -168,7 +168,7 @@ def test_output_writer_success_details_and_interrupt_are_safe(
 
 
 def test_connection_profile_keeps_opaque_session_values_out_of_repr() -> None:
-    """Profile logging cannot expose the bounded state T32 will persist."""
+    """Profile logging cannot expose bounded remote connection state."""
     profile = ConnectionProfile(
         name="default",
         service_url="https://example.test",

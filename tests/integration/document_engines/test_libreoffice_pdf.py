@@ -1,4 +1,4 @@
-"""Real LibreOffice and process-boundary integration coverage for T11."""
+"""Real LibreOffice and process-boundary integration coverage."""
 
 from __future__ import annotations
 
@@ -298,7 +298,7 @@ def _pdf_text(pdf: bytes) -> str:
 def test_real_pdf_keeps_equations_and_malformed_tex_literals(
     tmp_path: Path, markdown_path: Path, expected_fragments: tuple[str, ...]
 ) -> None:
-    """Equations disappear from the PDF when LibreOffice Math is missing (T103)."""
+    """Equations disappear from the PDF when LibreOffice Math is missing."""
 
     workspace = _workspace(tmp_path)
     reference = _reference_docx()
@@ -435,7 +435,7 @@ def test_timeout_and_cancellation_kill_process_group_descendants(
     def timeout_readiness_gate() -> bool:
         # A starved host can reach the 0.3 s deadline before the engine
         # publishes the descendant pid, which fails on a missing pid file
-        # instead of a surviving descendant (T144). The converter polls this
+        # instead of a surviving descendant. The converter polls this
         # before every deadline check, so holding the first poll after the
         # engine starts until publication orders the two; the real deadline
         # still ends the run. The poll before the workspace exists precedes

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Final rootless image E2E for `markweave convert --local` (T106, decision D1).
+# Final rootless image E2E for `markweave convert --local`.
 # Covers the documented container invocation, approved-pin enforcement, Mermaid,
 # missing engines, invalid input, global timeout, and SIGTERM cancellation.
 set -euo pipefail

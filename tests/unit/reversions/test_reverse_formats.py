@@ -1,4 +1,4 @@
-"""Unit coverage for the exact T69 format-admission matrix."""
+"""Unit coverage for the reverse-conversion format-admission matrix."""
 
 import json
 from pathlib import Path

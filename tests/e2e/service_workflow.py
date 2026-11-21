@@ -823,7 +823,7 @@ def write_state(path: Path, state: dict[str, str]) -> None:
 
 
 def validate_policy_state(state: dict[str, str]) -> None:
-    """Validate the additional evidence owned by the source-built T59 image."""
+    """Validate the additional evidence emitted by the source-built image."""
     try:
         uuid.UUID(state["policy_audit_id"])
         uuid.UUID(state["policy_audit_actor_id"])
@@ -1461,7 +1461,7 @@ def exercise(arguments: argparse.Namespace) -> None:  # noqa: PLR0912, PLR0915
     ) != expiring_job.get("correlation_id"):
         raise WorkflowFailure("expiration: durable identity changed")
     # verify-expiration proves the expiry after later journeys have used the
-    # retention window, instead of sleeping through it here (T146).
+    # retention window, instead of sleeping through it here.
     write_state(
         arguments.expiration_state_file,
         expiration_payload(

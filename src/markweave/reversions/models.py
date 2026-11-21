@@ -26,7 +26,7 @@ class ReverseOutputMode(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class ReverseContentLimits:
-    """Explicit T71-owned input, image, asset, Markdown, and output limits."""
+    """Configured input, image, asset, Markdown, and output limits."""
 
     max_input_bytes: int
     max_output_bytes: int
@@ -87,7 +87,7 @@ class ReverseContentLimits:
 
     @property
     def image_limits(self) -> ImageLimits:
-        """Build the existing T08 image-normalization limit model."""
+        """Adapt the reverse-conversion limits to the shared image normalizer."""
 
         return ImageLimits(
             self.max_image_source_bytes,

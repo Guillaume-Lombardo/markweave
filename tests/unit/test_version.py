@@ -23,7 +23,7 @@ def test_approved_release_version_is_consistent_across_public_surfaces() -> None
     assert VERSION == __version__ == "0.7.5"
     assert ("md-converter", "0.7.5") in COMPONENT_VERSIONS
     assert "version=VERSION" in Path("src/markweave/app.py").read_text(encoding="utf-8")
-    golden_generator = Path("scripts/generate_t11_pdf_golden.py").read_text(
+    golden_generator = Path("scripts/generate_pdf_golden.py").read_text(
         encoding="utf-8"
     )
     assert "from markweave.version import VERSION" in golden_generator

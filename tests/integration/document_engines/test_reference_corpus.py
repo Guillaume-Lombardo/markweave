@@ -1,4 +1,4 @@
-"""Filesystem, archive, and OpenXML boundary tests for the T04 corpus."""
+"""Filesystem, archive, and OpenXML boundary tests for the reference corpus."""
 
 import io
 import json

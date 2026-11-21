@@ -52,7 +52,8 @@
 - Mirror every Linear issue in `tickets/Txx-<slug>.md`; use the recorded `linear_id` for synchronization.
 - Linear is authoritative for operational status and coordination. Ticket files are authoritative for repository-reviewed scope, acceptance criteria, dependencies, and durable progress notes.
 - Use `.agents/skills/sync-linear-tickets/SKILL.md` whenever project work is selected, started, updated, blocked, completed, split, or added.
-- Mark a ticket `Done` only after its change is verified on `main`.
+- Mark a ticket `Done` in Linear immediately after its change is verified on `main`. Batch the
+  mirror status and progress updates in the next functional PR or a periodic sync PR.
 
 ## Tests and external engines
 

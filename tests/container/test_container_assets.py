@@ -1,4 +1,4 @@
-"""Static contracts for the T20 final-image assets."""
+"""Static contracts for the final-image assets."""
 
 from __future__ import annotations
 
@@ -132,7 +132,7 @@ def test_container_domain_is_active_and_runs_rootless_harness() -> None:
 @pytest.mark.parametrize(
     ("job_template_mode", "accepted"), ((None, True), ("versioned", False))
 )
-def test_container_workflow_limits_legacy_manifest_to_pre_t29_api(
+def test_container_workflow_limits_legacy_manifest_to_older_api(
     mocker, job_template_mode: str | None, accepted: bool
 ) -> None:
     client, job = smoke_pdf_client(mocker, 1, job_template_mode)
@@ -545,7 +545,7 @@ def test_container_ci_always_stages_bounded_status_evidence() -> None:
     assert "MARKWEAVE_CONTAINER_EVIDENCE_DIRECTORY" in run_ci
 
 
-def test_t64_historical_cutover_evidence_is_retained() -> None:
+def test_frontend_cutover_evidence_is_retained() -> None:
     """Keep the completed migration gate as evidence, never as a current CI fixture."""
     evidence = json.loads(
         Path("docs/archive/evidence/t64-cutover-gates.json").read_text(encoding="utf-8")
@@ -748,7 +748,7 @@ def test_smoke_fails_when_libreoffice_math_drops_equations_from_pdf() -> None:
         ("deploy/distributed.yaml.example", "worker"),
     ],
 )
-def test_deployment_examples_apply_worker_security_and_t18_limits(
+def test_deployment_examples_apply_worker_security_and_resource_limits(
     manifest: str, mode: str
 ) -> None:
     documents = tuple(yaml.safe_load_all(Path(manifest).read_text(encoding="utf-8")))

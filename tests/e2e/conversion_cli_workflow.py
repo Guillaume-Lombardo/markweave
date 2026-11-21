@@ -237,7 +237,7 @@ def main() -> int:  # noqa: PLR0911, PLR0912, PLR0915 - bounded E2E driver
 def _exercise_local_images(  # noqa: PLR0911 - bounded E2E assertions
     prefix: list[str], container: str
 ) -> str | None:
-    """Verify T104 client-side packaging and unchanged service validation."""
+    """Verify client-side packaging and service-side archive validation."""
     setup = _inside(container, _LOCAL_IMAGE_SETUP.format(root=_LOCAL_IMAGES))
     if setup.returncode != 0:
         return "local image setup"

@@ -1,4 +1,4 @@
-"""Contract checks for the reproducible T11 rootless test harness."""
+"""Contract checks for the rootless document-engine test harness."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 
-def test_t11_harness_is_valid_shell_and_preserves_security_contract() -> None:
+def test_engine_harness_is_valid_shell_and_keeps_security_controls() -> None:
     path = Path("toolchain/document-engines/run-t11-tests.sh")
     subprocess.run(["bash", "-n", str(path)], check=True)
     script = path.read_text(encoding="utf-8")

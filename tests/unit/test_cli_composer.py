@@ -2922,7 +2922,7 @@ def test_fill_plan_cli_review_publish_and_regenerate_use_preconditions(
     assert calls[11].args[1].endswith(f"/revisions/{REVISION_ID}/regenerations")
 
 
-def test_t91_private_json_is_checked_before_mutation(remote, tmp_path, capsys) -> None:
+def test_private_json_is_checked_before_mutation(remote, tmp_path, capsys) -> None:
     _profile, _constructor, client = remote
     fields = tmp_path / "fields.json"
     fields.write_text('{"email": {"value": "private"}}', encoding="utf-8")

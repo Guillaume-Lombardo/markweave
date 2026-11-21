@@ -126,7 +126,7 @@ DOMAIN_PATTERNS: Mapping[str, tuple[str, ...]] = {
     "document-engines": (
         "package.json",
         "src/**",
-        "scripts/generate_t11_pdf_golden.py",
+        "scripts/generate_pdf_golden.py",
         "toolchain/document-engines/**",
         "toolchain/anydoc/corpus/**",
         "tests/corpus/**",

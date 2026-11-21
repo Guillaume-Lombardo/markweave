@@ -22,7 +22,7 @@ from scripts.openapi_contract import (
     main,
 )
 
-T41_FIXTURE = Path("tests/fixtures/t41_http_contract/openapi.json")
+HTTP_CONTRACT_FIXTURE = Path("tests/fixtures/http_contract/openapi.json")
 
 
 def _artifact() -> dict[str, Any]:
@@ -39,11 +39,11 @@ def _parameters(
 
 
 @pytest.mark.unit
-def test_canonical_artifact_matches_generator_runtime_and_t41_fixture() -> None:
+def test_canonical_artifact_matches_generator_runtime_and_http_fixture() -> None:
     artifact_bytes = ARTIFACT.read_bytes()
     assert artifact_bytes == canonical_bytes(build_contract())
     assert artifact_bytes == canonical_bytes(
-        json.loads(T41_FIXTURE.read_text(encoding="utf-8"))
+        json.loads(HTTP_CONTRACT_FIXTURE.read_text(encoding="utf-8"))
     )
 
     with TestClient(build_contract_app()) as client:

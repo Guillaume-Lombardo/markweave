@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class UserRepository(Protocol):
-    """Account persistence contract implemented by T06 memory and T12 profiles."""
+    """Account persistence contract shared by in-memory and SQL repositories."""
 
     def bootstrap_admin(
         self, username: str, normalized_username: str, password_hash: str

@@ -1,4 +1,4 @@
-"""Unit coverage for the T32 authentication command family."""
+"""Unit coverage for the authentication commands."""
 
 from __future__ import annotations
 

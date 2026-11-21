@@ -32,7 +32,7 @@ FIRST_VISIBLE_CHARACTER = 33
 
 @dataclass(frozen=True, slots=True)
 class JobServicePolicy:
-    """Caller-owned terminal retention whose production value belongs to T18."""
+    """Configured retention period for terminal jobs."""
 
     result_retention_seconds: float
     max_job_duration_seconds: float | None = None

@@ -1649,7 +1649,7 @@ def test_reverse_broker_gate_queries_only_the_reverse_worker(
         tmp_path, profile, gate, "wait_for_reverse_worker_broker\n"
     )
 
-    # The forward-only second worker never holds broker credentials (T142).
+    # The forward-only second worker never holds broker credentials.
     assert calls == [
         f"podman port {runtime} {port}/tcp",
         "uv run python -m scripts.e2e.reverse_broker wait-worker-broker "
@@ -1737,7 +1737,7 @@ def test_reverse_broker_crash_signals_verified_child_not_uv_wrapper() -> None:
 
 @pytest.mark.unit
 def test_runner_invokes_local_image_packaging_in_both_profiles() -> None:
-    """T104 browser and CLI packaging run once per final-image profile."""
+    """Browser and CLI image packaging run once per final-image profile."""
     runner = _runner_text()
     browser = Path("tests/e2e/browser-next-local-images.test.mjs").read_text(
         encoding="utf-8"

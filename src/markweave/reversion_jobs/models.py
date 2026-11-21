@@ -126,7 +126,7 @@ TERMINAL_REVERSION_STATES = frozenset(
 
 @dataclass(frozen=True, slots=True)
 class ReversionTraceMetadata:
-    """Closed content-free counters copied from the T70 manifest contract."""
+    """Fixed set of content-free counters from the reversion manifest."""
 
     schema_version: int
     engine_name: str

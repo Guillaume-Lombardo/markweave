@@ -33,7 +33,7 @@ class CommandContext:
 
 @dataclass(frozen=True)
 class ConnectionProfile:
-    """Bounded remote connection state; persistence is owned by T32."""
+    """Bounded remote connection state shared by command handlers."""
 
     name: str
     service_url: str

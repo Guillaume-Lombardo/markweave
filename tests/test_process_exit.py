@@ -1,4 +1,4 @@
-"""The descendant-exit helper decides from one latched ``/proc`` observation (T143)."""
+"""The descendant-exit helper decides from one latched ``/proc`` observation."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ def _states(
 
 def test_a_zombie_seen_once_stays_exited_while_it_is_reaped_or_its_pid_reused() -> None:
     # /proc shows Z, then X while the reaper reaps it, then possibly a new
-    # process under the reused PID. Re-reading after Z made the T143 run fail.
+    # process under the reused PID. State Z already establishes exit.
     calls, read_state = _states("Z", "X", "S")
 
     assert wait_for_process_exit(4229, 2.0, read_state=read_state)

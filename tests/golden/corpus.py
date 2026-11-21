@@ -1,4 +1,4 @@
-"""Validated manifest and deterministic builders for the T04 reference corpus."""
+"""Validated manifest and deterministic builders for the reference corpus."""
 
 from __future__ import annotations
 

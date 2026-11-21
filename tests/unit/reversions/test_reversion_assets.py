@@ -133,7 +133,7 @@ def test_assets_are_png_normalized_deduplicated_and_source_ordered() -> None:
         assert image.size == (4, 3)
 
 
-def test_safe_svg_is_rasterized_through_the_t08_boundary() -> None:
+def test_safe_svg_is_rasterized_by_the_shared_image_normalizer() -> None:
     result = normalize_assets(
         (
             AssetSource(

@@ -95,7 +95,7 @@ def _is_sha256(value: str) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class PdfLimits:
-    """Explicit T18-owned byte and structural bounds."""
+    """Configured size and structure limits for DOCX inputs and PDF outputs."""
 
     max_docx_bytes: int
     max_docx_entries: int
@@ -618,7 +618,7 @@ class LibreOfficePdfConverter:
         *,
         deadline_monotonic: float | None = None,
     ) -> PdfArtifact:
-        """Convert once; T13 later owns durable cancellation and publication races."""
+        """Convert once and validate the resulting PDF before returning it."""
 
         cancelled = cancellation_requested or (lambda: False)
         if type(docx) is not bytes or not docx:

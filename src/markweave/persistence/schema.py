@@ -151,7 +151,7 @@ Index(
 
 
 class TemplateRow(Base):
-    """Stable template identity; content versions arrive in T15."""
+    """Stable template identity and metadata shared by its content versions."""
 
     __tablename__ = "templates"
     __table_args__ = (

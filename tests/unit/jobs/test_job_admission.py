@@ -1,4 +1,4 @@
-"""Fast in-process branch coverage for T18 transactional admission."""
+"""Fast in-process branch coverage for transactional job admission."""
 
 from __future__ import annotations
 

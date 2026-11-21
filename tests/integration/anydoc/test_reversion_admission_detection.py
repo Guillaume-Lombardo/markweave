@@ -14,7 +14,7 @@ pytestmark = pytest.mark.integration
 CORPUS = Path(__file__).resolve().parents[3] / "toolchain" / "anydoc" / "corpus"
 
 
-def test_every_t69_corpus_source_reaches_its_approved_parser_family() -> None:
+def test_every_reference_corpus_source_reaches_its_expected_parser_family() -> None:
     manifest = json.loads((CORPUS / "manifest.json").read_text())
     admitted_extensions: set[str] = set()
 
