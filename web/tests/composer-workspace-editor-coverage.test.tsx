@@ -296,7 +296,9 @@ test("direct Generate retains unsaved Markdown after a forbidden save and retrie
   fireEvent.change(editor, {
     target: { value: "# Reviewed human correction" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Generate DOCX" }));
+  const generate = screen.getByRole("button", { name: "Generate DOCX" });
+  await waitFor(() => expect(generate).toBeEnabled());
+  fireEvent.click(generate);
   expect(
     await screen.findByText("Saving this draft is forbidden."),
   ).toBeVisible();
@@ -317,7 +319,8 @@ test("direct Generate retains unsaved Markdown after a forbidden save and retrie
     api.setCurrentDraft(saved);
     return { data: saved };
   });
-  fireEvent.click(screen.getByRole("button", { name: "Generate DOCX" }));
+  await waitFor(() => expect(generate).toBeEnabled());
+  fireEvent.click(generate);
   await waitFor(() => expect(api.startGeneration).toHaveBeenCalledOnce());
   expect(api.saveDraft).toHaveBeenLastCalledWith(
     expect.objectContaining({ id: draft.id }),

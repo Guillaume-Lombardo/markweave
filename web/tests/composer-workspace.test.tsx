@@ -1267,7 +1267,9 @@ test("Generate freezes an unsaved human edit before submitting the conversion", 
   fireEvent.change(screen.getByRole("textbox", { name: "Editable Markdown" }), {
     target: { value: "# Human edit" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Generate DOCX" }));
+  const generate = screen.getByRole("button", { name: "Generate DOCX" });
+  await waitFor(() => expect(generate).toBeEnabled());
+  fireEvent.click(generate);
   await waitFor(() =>
     expect(api.startGeneration).toHaveBeenCalledWith(
       saved,
