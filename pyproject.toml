@@ -95,7 +95,7 @@ dev = [
 
 [tool.markweave.release]
 # Increment only through a protected recovery PR after a publication run created no external state.
-attempt = 2
+attempt = 3
 
 [tool.uv]
 build-constraint-dependencies = [
