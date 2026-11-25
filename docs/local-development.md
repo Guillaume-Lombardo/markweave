@@ -237,9 +237,9 @@ browser-module tests with independent coverage gates, unit tests with blocking o
 coverage, an explicit branch-only JSON check, changed application line coverage, lock validation,
 and cheap workflow security checks. Draft pull requests do not run activated heavy domains.
 
-The `Main CI is failing` issue, labeled `ci-main-failure`, links to the latest scheduled and
-push-to-main results. A successful run clears the failure for its own event type. The issue
-closes when all tracked results are green and reopens if main CI fails again.
+The `Main CI is failing` issue, labeled `ci-main-failure`, links to scheduled CI, push-to-main
+CI, and the release qualification dry-run. A successful run clears the corresponding failure.
+The issue closes when all tracked results are green and reopens when a tracked check fails.
 
 T48 defines the reviewed, risk-ranked mutation manifest, runner, evidence format, and
 mutation-driven tests. Its five bounded domains cover

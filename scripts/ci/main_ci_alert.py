@@ -11,7 +11,16 @@ LABEL = "ci-main-failure"
 ISSUES = "repos/{owner}/{repo}/issues"
 BOT_LOGIN = "github-actions[bot]"
 STATE_PREFIX = "<!-- main-ci-state "
-EVENT_NAMES = {"schedule": "Scheduled CI", "push": "Push to main"}
+DRY_RUN_SOURCE = "release-qualification"
+DRY_RUN_SUCCESSES = (
+    "repos/{owner}/{repo}/actions/workflows/release-qualification-dry-run.yml/runs"
+    "?branch=main&status=success&per_page=1"
+)
+TRACKING_SOURCES = {
+    "schedule": "Scheduled CI",
+    "push": "Push to main",
+    DRY_RUN_SOURCE: "Release qualification dry-run",
+}
 
 
 class Run(TypedDict):
@@ -69,21 +78,29 @@ def _render_body(latest: dict[str, Run]) -> str:
     lines = [
         f"{STATE_PREFIX}{json.dumps(latest, sort_keys=True)} -->",
         "",
-        "This issue tracks the latest scheduled CI and push-to-main results.",
-        "A successful run clears the failure for the event that triggered it.",
+        "This issue tracks scheduled CI, push-to-main CI, and release qualification.",
+        "A successful run clears the failure for the corresponding check.",
         "",
     ]
-    for event, name in EVENT_NAMES.items():
-        if event in latest:
-            run = latest[event]
+    for source, name in TRACKING_SOURCES.items():
+        if source in latest:
+            run = latest[source]
             lines.append(f"- {name} — [{run['conclusion']}]({run['url']})")
     return "\n".join(lines)
 
 
-def reconcile(event: str, run: Run) -> None:
-    """Apply the result once, with recovery tracked separately for each event."""
-    if event not in EVENT_NAMES or run["conclusion"] not in {"failure", "success"}:
-        raise ValueError("Expected a scheduled or main-push CI gate result")
+def reconcile(source: str, run: Run) -> None:
+    """Apply the result once, with recovery tracked separately for each source."""
+    if source not in TRACKING_SOURCES or run["conclusion"] not in {
+        "failure",
+        "success",
+    }:
+        raise ValueError("Expected a tracked main CI gate result")
+
+    if source == DRY_RUN_SOURCE and run["conclusion"] == "failure":
+        successful_runs = _api(DRY_RUN_SUCCESSES)["workflow_runs"]
+        if any(result["run_number"] > run["number"] for result in successful_runs):
+            return
 
     issue = _tracking_issue()
     if issue is None:
@@ -106,19 +123,19 @@ def reconcile(event: str, run: Run) -> None:
             payload={
                 "title": TITLE,
                 "labels": [LABEL],
-                "body": _render_body({event: run}),
+                "body": _render_body({source: run}),
             },
         )
         return
 
     latest = _read_state(issue["body"])
-    previous = latest.get(event)
+    previous = latest.get(source)
     if previous is not None and (run["number"], run["attempt"]) <= (
         previous["number"],
         previous["attempt"],
     ):
         return
-    latest[event] = run
+    latest[source] = run
     failing = any(result["conclusion"] == "failure" for result in latest.values())
     _api(
         "--method",
@@ -137,7 +154,7 @@ def main() -> None:
     run_id = os.environ["GITHUB_RUN_ID"]
     attempt = int(os.environ["GITHUB_RUN_ATTEMPT"])
     reconcile(
-        os.environ["GITHUB_EVENT_NAME"],
+        os.environ.get("CI_TRACKING_SOURCE") or os.environ["GITHUB_EVENT_NAME"],
         {
             "number": int(os.environ["GITHUB_RUN_NUMBER"]),
             "attempt": attempt,

@@ -70,7 +70,7 @@ repositories.
    metadata and integrity, and installs the exact wheel in a clean Python 3.14 environment. Only
    those verified files are transferred to the `pypi` environment job.
 5. In parallel, the read-only reusable `container-qualify.yml` workflow qualifies the container
-   images before any irreversible external mutation. Its `build` job checks out the same SHA and
+   images before any irreversible external mutation. Its `stage` job checks out the same SHA and
    builds the backend, frontend, and reverse-attempt images once, with the reviewed commit
    timestamp, then exports each one as an OCI archive bound to its image ID and transfers it within
    the run. Parallel jobs load those archives only after the archive, loaded, and tagged image IDs
@@ -98,6 +98,26 @@ repositories.
    publication receipts, and matched evidence to the verified Release identity. Because job
    credentials are isolated, the attestation job performs its own ephemeral GHCR login immediately
    before pushing provenance; it does not reuse or persist the publication job's credentials.
+
+### Weekly release qualification
+
+The **Release qualification dry-run** workflow runs on `main` every Monday at 05:17 UTC. To
+check a suspected regression or verify a fix, run
+`gh workflow run release-qualification-dry-run.yml --ref main`. Qualification and failure
+reporting require `main`.
+
+The dry-run uses the same final-image builds, smoke tests, SBOM checks, Critical-vulnerability
+gate, and E2E shards as the release. A fresh runner and a run-local engine cache force the
+upstream downloads. The scanner fetches a fresh Grype database. Image archives transfer within
+the run. The dry-run creates no Git tag, GitHub Release, PyPI upload, GHCR push, attestation, or
+publication receipt.
+
+If qualification fails, follow its run from the `ci-main-failure` issue and restore green
+qualification on `main` before resuming feature work. A successful dry-run clears the dry-run
+failure in that issue. The reporting job checks prior successful dry-runs before recording a
+failure so an older rerun cannot raise a stale alert.
+
+### Post-release adoption
 
 After the version pull request is merged, suspend unrelated integrations and monitor the automatic
 release workflow on `main` to a terminal result. After both publications succeed, the

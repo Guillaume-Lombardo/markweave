@@ -23,6 +23,7 @@ from scripts.ci.validate_ci import (
     validate_production_release_workflow_text,
     validate_python_imports,
     validate_registry_text,
+    validate_release_qualification_dry_run_workflow_text,
     validate_release_workflow_text,
     validate_workflow_files,
     validate_workflow_text,
@@ -384,6 +385,7 @@ def _action_pin(workflow: str, action: str) -> str:
         ("container-qualify.yml", "astral-sh/setup-uv"),
         ("container-release.yml", "docker/login-action"),
         ("mutation.yml", "actions/checkout"),
+        ("release-qualification-dry-run.yml", "actions/checkout"),
         ("release.yml", "pypa/gh-action-pypi-publish"),
     ],
 )
@@ -947,9 +949,92 @@ def test_all_committed_workflows_have_explicit_policies() -> None:
         "container-qualify.yml",
         "container-release.yml",
         "mutation.yml",
+        "release-qualification-dry-run.yml",
         "release.yml",
     ]
     assert validate_workflow_files(workflows) == []
+
+
+def _release_qualification_dry_run_workflow() -> str:
+    return Path(".github/workflows/release-qualification-dry-run.yml").read_text(
+        encoding="utf-8"
+    )
+
+
+@pytest.mark.unit
+def test_release_qualification_dry_run_rejects_invalid_yaml() -> None:
+    assert validate_release_qualification_dry_run_workflow_text("jobs: [")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "permission", ["packages: write", "id-token: write", "contents: write"]
+)
+@pytest.mark.parametrize("indent", [2, 6])
+def test_release_qualification_dry_run_rejects_publication_permissions(
+    permission: str, indent: int
+) -> None:
+    workflow = _release_qualification_dry_run_workflow()
+    prefix = " " * indent
+    needle = f"\n{prefix}contents: read\n"
+    assert needle in workflow
+    replacement = (
+        f"\n{prefix}{permission}\n"
+        if permission == "contents: write"
+        else f"{needle}{prefix}{permission}\n"
+    )
+    errors = validate_release_qualification_dry_run_workflow_text(
+        workflow.replace(needle, replacement, 1)
+    )
+    assert (
+        "release qualification dry-run must default to contents: read"
+        if indent == 2
+        else "release qualification dry-run must limit permissions to qualification and issue reporting"
+    ) in errors
+
+
+@pytest.mark.unit
+def test_release_qualification_dry_run_rejects_an_inline_publish_step() -> None:
+    workflow = _release_qualification_dry_run_workflow()
+    publish_step = (
+        "      - name: Publish release\n        run: gh release create v1.0.0\n"
+    )
+    assert validate_release_qualification_dry_run_workflow_text(
+        workflow + publish_step
+    ) == ["release qualification dry-run differs from the reviewed policy"]
+
+
+@pytest.mark.unit
+def test_release_qualification_dry_run_rejects_the_publication_workflow() -> None:
+    workflow = _release_qualification_dry_run_workflow().replace(
+        "./.github/workflows/container-qualify.yml",
+        "./.github/workflows/container-release.yml",
+    )
+    errors = validate_release_qualification_dry_run_workflow_text(workflow)
+    assert (
+        "every action reference must be pinned to a lowercase hexadecimal revision"
+        in errors
+    )
+
+
+@pytest.mark.unit
+def test_dry_run_and_ci_serialize_updates_to_the_same_issue() -> None:
+    ci = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    dry_run = yaml.safe_load(_release_qualification_dry_run_workflow())
+    assert (
+        ci["jobs"]["main-ci-alert"]["concurrency"]
+        == dry_run["jobs"]["main-ci-alert"]["concurrency"]
+        == {"group": "main-ci-failure-tracking", "queue": "max"}
+    )
+
+
+@pytest.mark.unit
+def test_dry_run_serializes_runs_before_reconciling_results() -> None:
+    workflow = yaml.safe_load(_release_qualification_dry_run_workflow())
+    assert workflow["concurrency"] == {
+        "group": "release-qualification-dry-run-${{ github.ref }}",
+        "queue": "max",
+    }
 
 
 @pytest.mark.unit
@@ -1011,8 +1096,8 @@ def test_container_qualification_requires_recovery_final_image_smoke() -> None:
             "container qualification job 'supply-chain' must consume the single stage",
         ),
         (
-            "  smoke:\n    needs: stage\n    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && github.event_name == 'push' && github.sha == inputs.source-sha }}\n    runs-on: ubuntu-24.04\n    timeout-minutes: 30\n    permissions:\n      contents: read\n",
-            "  smoke:\n    needs: stage\n    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && github.event_name == 'push' && github.sha == inputs.source-sha }}\n    runs-on: ubuntu-24.04\n    timeout-minutes: 30\n    permissions:\n      contents: read\n      packages: write\n",
+            "    permissions:\n      contents: read\n",
+            "    permissions:\n      contents: read\n      packages: write\n",
             "container qualification must not hold publication credentials",
         ),
         (
