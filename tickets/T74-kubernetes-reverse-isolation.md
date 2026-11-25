@@ -2,7 +2,7 @@
 ticket: T74
 linear_id: G1L-571
 linear_url: https://linear.app/g1lom/issue/G1L-571/t74-design-and-implement-the-kubernetes-reverse-isolation-backend
-status: Backlog
+status: Canceled
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -332,6 +332,9 @@ backend.
   Pod API and RuntimeClass cannot satisfy per-attempt PID containment, hard ephemeral-storage
   limits, node-local egress isolation, or proof that a sandbox is empty and removed. T70 proceeds
   with Podman as its sole required backend; this ticket is intentionally non-blocking for T71-T73.
+- 2026-11-25: Canceled by owner decision (T161): T107 (#340) removed the Kubernetes reverse backend
+  from main. The prototype stays in the `archive/t74-kubernetes-backend` tag; reopening needs a new
+  owner decision.
 
 ## Synchronization
 

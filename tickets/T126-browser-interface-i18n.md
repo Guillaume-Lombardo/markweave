@@ -2,7 +2,7 @@
 ticket: T126
 linear_id: G1L-658
 linear_url: https://linear.app/g1lom/issue/G1L-658/t126-internationalize-the-browser-interface
-status: Backlog
+status: Canceled
 priority: Low
 project: Markdown to DOCX and PDF Converter
 ---
@@ -35,6 +35,8 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 - 2026-10-09: Created in Linear and mirrored here from the owner-accepted repository analysis.
   Not started.
 - 2026-10-09: Deferred by T96 decision D13; stays in the backlog.
+- 2026-11-25: Canceled in the backlog triage (owner decision, T161): D13 deferred interface
+  languages without approving them; the English-only interface rule stays in force.
 
 ## Synchronization
 
