@@ -45,6 +45,7 @@ ASCII_DELETE = 127
 TRUSTED_REPOSITORY = "Guillaume-Lombardo/simple-md-to-docx-converter"
 TRUSTED_REPOSITORY_CONDITION = f"github.repository == '{TRUSTED_REPOSITORY}'"
 TRUSTED_REPOSITORY_GUARD = f"${{{{ {TRUSTED_REPOSITORY_CONDITION} }}}}"
+MAIN_FAILURE_TRACKING_PERMISSIONS = {"contents": "read", "issues": "write"}
 MAIN_CI_ALERT_CONDITION = (
     f"${{{{ !cancelled() && {TRUSTED_REPOSITORY_CONDITION} && "
     "github.ref == 'refs/heads/main' && "
@@ -227,7 +228,10 @@ CONTAINER_RELEASE_CANONICAL_DIGEST = (
     "fa4447c2e77a46da607ec80bb01ac909542a7666a922d77438961124749725de"
 )
 CONTAINER_QUALIFY_CANONICAL_DIGEST = (
-    "93cdad4718b4ea8b6983becba782d18ad2aaf9bc9b80a264a9eed5ff4bcde2e7"
+    "a44375efe21573cad442f0675b3cc654c904e67ecffcd62732e1dd6b4985e645"
+)
+RELEASE_QUALIFICATION_DRY_RUN_CANONICAL_DIGEST = (
+    "e0ddaff38821a6c7c32b45cbef380bef1337d02c4a00ac9618011b60b1b05c6a"
 )
 CONTAINER_PAIR_PUBLISHER_CANONICAL_DIGEST = (
     "3a61c6bd75e47afe761ead42b77f73ae46cc0da2e8430f09e5dce0f74a7d6fdc"
@@ -347,6 +351,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
             ),
             "main-ci-alert": frozenset(
                 {
+                    "concurrency",
                     "if",
                     "name",
                     "needs",
@@ -478,7 +483,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
             ),
             ("mutation", "Retain mutation evidence"): "${{ always() }}",
         },
-        canonical_digest="9046d5fa60256c5b4ed7c3d40cca1a24b8d9803df1785d998d997999604dd3a3",
+        canonical_digest="95dbfa82894ed97a11177256a5450a1fd29a2fc0a44a5cca61b28efb90565386",
     ),
     "mutation.yml": WorkflowPolicy(
         triggers=frozenset({"schedule", "workflow_dispatch"}),
@@ -770,7 +775,7 @@ def _validate_read_only_job_permissions(
         "heavy": {"contents": "read"},
         "build-images": {"contents": "read"},
         "final-image": {"contents": "read"},
-        "main-ci-alert": {"contents": "read", "issues": "write"},
+        "main-ci-alert": MAIN_FAILURE_TRACKING_PERMISSIONS,
     }.get(job_name)
     if expected is not None and job.get("permissions") != expected:
         return [
@@ -2276,6 +2281,12 @@ def validate_container_publish_pair_text(text: str) -> list[str]:
 
 RELEASE_QUALIFICATION_JOBS = ("stage", "smoke", "supply-chain", "e2e")
 RELEASE_QUALIFICATION_TIMEOUT_MINUTES = 30
+RELEASE_QUALIFICATION_CONDITION = (
+    f"${{{{ {TRUSTED_REPOSITORY_CONDITION} && "
+    "github.ref == 'refs/heads/main' && "
+    "(github.event_name == 'push' || github.event_name == 'schedule' || "
+    "github.event_name == 'workflow_dispatch') && github.sha == inputs.source-sha }}"
+)
 # One job each for stage, smoke and supply-chain, plus one per E2E shard.
 RELEASE_QUALIFICATION_JOB_COUNT = len(RELEASE_QUALIFICATION_JOBS) - 1 + len(E2E_DOMAINS)
 RELEASE_BUILD_FRAGMENTS = (
@@ -2323,16 +2334,7 @@ def _validate_qualification_jobs(workflow: Mapping[str, Any]) -> list[str]:
         job = _mapping(jobs.get(name)) or {}
         if job.get("permissions") != READ_ONLY_PERMISSIONS:
             errors.append(f"container qualification job {name!r} must be read-only")
-        condition = job.get("if")
-        if not isinstance(condition, str) or not all(
-            clause in condition
-            for clause in (
-                TRUSTED_REPOSITORY_CONDITION,
-                "github.event_name == 'push'",
-                "github.ref == 'refs/heads/main'",
-                "github.sha == inputs.source-sha",
-            )
-        ):
+        if job.get("if") != RELEASE_QUALIFICATION_CONDITION:
             errors.append(
                 f"container qualification job {name!r} lacks the trusted-main guard"
             )
@@ -2433,8 +2435,9 @@ def validate_container_qualify_workflow_text(text: str) -> list[str]:
             "container qualification workflow differs from the reviewed policy"
         )
     expected_inputs = {
-        name: {"required": True, "type": "string"}
-        for name in ("version", "tag", "source-sha")
+        "version": {"type": "string"},
+        "tag": {"type": "string"},
+        "source-sha": {"required": True, "type": "string"},
     }
     if _mapping(workflow.get("on")) != {"workflow_call": {"inputs": expected_inputs}}:
         errors.append("container qualification must be an exact reusable workflow")
@@ -2478,6 +2481,40 @@ def validate_container_qualify_workflow_text(text: str) -> list[str]:
                 f"container qualification must not use {forbidden.strip('-')}"
             )
     errors.extend(_validate_qualification_commands(workflow))
+    return errors
+
+
+def validate_release_qualification_dry_run_workflow_text(text: str) -> list[str]:
+    """Allow only the read-only qualification call and the main issue update."""
+    workflow, canonical_text, errors = _load_workflow(text, normalize_pins=True)
+    if workflow is None:
+        return errors
+    if hashlib.sha256(canonical_text.encode("utf-8")).hexdigest() != (
+        RELEASE_QUALIFICATION_DRY_RUN_CANONICAL_DIGEST
+    ):
+        errors.append("release qualification dry-run differs from the reviewed policy")
+    if workflow.get("permissions") != READ_ONLY_PERMISSIONS:
+        errors.append("release qualification dry-run must default to contents: read")
+    jobs = _mapping(workflow.get("jobs")) or {}
+    reporting_permissions = MAIN_FAILURE_TRACKING_PERMISSIONS | {"actions": "read"}
+    if any(
+        (_mapping(job) or {}).get("permissions")
+        != (reporting_permissions if name == "main-ci-alert" else None)
+        for name, job in jobs.items()
+    ):
+        errors.append(
+            "release qualification dry-run must limit permissions to qualification and issue reporting"
+        )
+    errors.extend(
+        _validate_action_allowlist(
+            workflow,
+            allowed_actions=frozenset({"actions/checkout", "actions/setup-python"}),
+            allowed_local_workflows=frozenset(
+                {"./.github/workflows/container-qualify.yml"}
+            ),
+        )
+    )
+    errors.extend(_validate_checkout_credentials(workflow))
     return errors
 
 
@@ -3096,41 +3133,15 @@ def validate_final_image_registry(text: str) -> list[str]:
 def validate_workflow_files(paths: Iterable[Path]) -> list[str]:
     """Validate every committed workflow against its filename-specific policy."""
     errors: list[str] = []
+    release_validators = {
+        "container-qualify.yml": validate_container_qualify_workflow_text,
+        "container-release.yml": validate_container_release_workflow_text,
+        "release-qualification-dry-run.yml": validate_release_qualification_dry_run_workflow_text,
+        "release.yml": validate_production_release_workflow_text,
+    }
     for path in sorted(paths):
-        if path.name == "container-qualify.yml":
-            try:
-                text = path.read_text(encoding="utf-8")
-            except OSError as error:
-                errors.append(f"{path}: cannot read workflow: {error}")
-                continue
-            errors.extend(
-                f"{path}: {error}"
-                for error in validate_container_qualify_workflow_text(text)
-            )
-            continue
-        if path.name == "container-release.yml":
-            try:
-                text = path.read_text(encoding="utf-8")
-            except OSError as error:
-                errors.append(f"{path}: cannot read workflow: {error}")
-                continue
-            errors.extend(
-                f"{path}: {error}"
-                for error in validate_container_release_workflow_text(text)
-            )
-            continue
-        if path.name == "release.yml":
-            try:
-                text = path.read_text(encoding="utf-8")
-            except OSError as error:
-                errors.append(f"{path}: cannot read workflow: {error}")
-                continue
-            errors.extend(
-                f"{path}: {error}"
-                for error in validate_production_release_workflow_text(text)
-            )
-            continue
-        if path.name not in READ_ONLY_WORKFLOW_POLICIES:
+        validate_release = release_validators.get(path.name)
+        if validate_release is None and path.name not in READ_ONLY_WORKFLOW_POLICIES:
             errors.append(f"{path}: workflow has no explicit security policy")
             continue
         try:
@@ -3138,10 +3149,12 @@ def validate_workflow_files(paths: Iterable[Path]) -> list[str]:
         except OSError as error:
             errors.append(f"{path}: cannot read workflow: {error}")
             continue
-        errors.extend(
-            f"{path}: {error}"
-            for error in validate_workflow_text(text, workflow_name=path.name)
+        violations = (
+            validate_release(text)
+            if validate_release is not None
+            else validate_workflow_text(text, workflow_name=path.name)
         )
+        errors.extend(f"{path}: {error}" for error in violations)
     return errors
 
 

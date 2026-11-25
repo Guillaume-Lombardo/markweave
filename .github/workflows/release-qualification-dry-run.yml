@@ -1,0 +1,50 @@
+name: Release qualification dry-run
+
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-qualification-dry-run-${{ github.ref }}
+  queue: max
+
+jobs:
+  container-qualify:
+    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' }}
+    uses: ./.github/workflows/container-qualify.yml
+    with:
+      source-sha: ${{ github.sha }}
+
+  main-ci-alert:
+    name: Release qualification dry-run / main failure tracking
+    needs: container-qualify
+    if: "${{ !cancelled() && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && (needs.container-qualify.result == 'failure' || needs.container-qualify.result == 'success') }}"
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    concurrency:
+      group: main-ci-failure-tracking
+      queue: max
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.14
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: .python-version
+          check-latest: false
+      - name: Reconcile the main CI tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_GATE_RESULT: ${{ needs.container-qualify.result }}
+          CI_TRACKING_SOURCE: release-qualification
+        run: python -m scripts.ci.main_ci_alert

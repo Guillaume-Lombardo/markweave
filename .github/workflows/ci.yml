@@ -874,6 +874,9 @@ jobs:
     permissions:
       contents: read
       issues: write
+    concurrency:
+      group: main-ci-failure-tracking
+      queue: max
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

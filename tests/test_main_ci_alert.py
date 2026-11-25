@@ -28,12 +28,25 @@ def _issue(latest: dict[str, alert.Run]) -> dict:
     }
 
 
-def test_first_failure_creates_the_labeled_issue(mocker: MockerFixture) -> None:
-    api = mocker.patch.object(alert, "_api", return_value=[[]])
+@pytest.mark.parametrize(
+    ("source", "previous_success"),
+    [
+        ("schedule", None),
+        ("release-qualification", []),
+        ("release-qualification", [{"run_number": 1}]),
+    ],
+)
+def test_first_failure_creates_the_labeled_issue(
+    mocker: MockerFixture, source: str, previous_success: list[dict[str, int]] | None
+) -> None:
+    responses = [[[]], {}]
+    if previous_success is not None:
+        responses.insert(0, {"workflow_runs": previous_success})
+    api = mocker.patch.object(alert, "_api", side_effect=responses)
     command = mocker.patch.object(alert, "_gh")
-    failure = _run(1, "failure")
+    failure = _run(2, "failure")
 
-    alert.reconcile("schedule", failure)
+    alert.reconcile(source, failure)
 
     command.assert_called_once()
     assert command.call_args.args[:3] == ("label", "create", alert.LABEL)
@@ -41,8 +54,35 @@ def test_first_failure_creates_the_labeled_issue(mocker: MockerFixture) -> None:
     payload = api.call_args.kwargs["payload"]
     assert payload["title"] == alert.TITLE
     assert payload["labels"] == [alert.LABEL]
-    assert alert._read_state(payload["body"]) == {"schedule": failure}
+    assert alert._read_state(payload["body"]) == {source: failure}
+    assert alert.TRACKING_SOURCES[source] in payload["body"]
     assert failure["url"] in payload["body"]
+
+
+@pytest.mark.parametrize(
+    "latest",
+    [None, {"push": _run(3, "success")}, {"release-qualification": _run(1, "success")}],
+)
+def test_older_dry_run_failure_cannot_raise_an_alert_after_newer_success(
+    mocker: MockerFixture, latest: dict[str, alert.Run] | None
+) -> None:
+    api = mocker.patch.object(
+        alert,
+        "_api",
+        side_effect=[
+            {"workflow_runs": [{"run_number": 2}]},
+            [[_issue(latest)] if latest is not None else []],
+        ],
+    )
+    command = mocker.patch.object(alert, "_gh")
+
+    alert.reconcile("release-qualification", _run(1, "failure", attempt=2))
+
+    api.assert_called_once_with(
+        "repos/{owner}/{repo}/actions/workflows/release-qualification-dry-run.yml/runs"
+        "?branch=main&status=success&per_page=1"
+    )
+    command.assert_not_called()
 
 
 def test_green_run_without_an_owned_issue_does_nothing(mocker: MockerFixture) -> None:
@@ -76,6 +116,30 @@ def test_green_run_without_an_owned_issue_does_nothing(mocker: MockerFixture) ->
         ("push", {"push": _run(2, "failure")}, _run(3, "success"), "closed"),
         ("push", {"push": _run(2, "failure")}, _run(3, "failure"), "open"),
         ("push", {"push": _run(2, "success")}, _run(3, "failure"), "open"),
+        (
+            "push",
+            {"release-qualification": _run(2, "failure")},
+            _run(3, "success"),
+            "open",
+        ),
+        (
+            "release-qualification",
+            {"push": _run(3, "success")},
+            _run(1, "failure"),
+            "open",
+        ),
+        (
+            "release-qualification",
+            {"release-qualification": _run(2, "failure"), "push": _run(3, "success")},
+            _run(3, "success"),
+            "closed",
+        ),
+        (
+            "release-qualification",
+            {"schedule": _run(4, "failure")},
+            _run(4, "success"),
+            "open",
+        ),
     ],
 )
 def test_tracking_issue_is_updated_in_place(
@@ -85,11 +149,14 @@ def test_tracking_issue_is_updated_in_place(
     run: alert.Run,
     state: str,
 ) -> None:
-    api = mocker.patch.object(alert, "_api", return_value=[[], [_issue(latest)]])
+    responses = [[[], [_issue(latest)]], {}]
+    if event == "release-qualification" and run["conclusion"] == "failure":
+        responses.insert(0, {"workflow_runs": []})
+    api = mocker.patch.object(alert, "_api", side_effect=responses)
 
     alert.reconcile(event, run)
 
-    assert api.call_count == 2
+    assert api.call_count == len(responses)
     assert api.call_args.args == ("--method", "PATCH", f"{alert.ISSUES}/17")
     payload = api.call_args.kwargs["payload"]
     assert payload["state"] == state
@@ -145,8 +212,20 @@ def test_duplicate_tracking_issues_require_manual_resolution(
     api.assert_called_once()
 
 
+@pytest.mark.parametrize(
+    ("event", "tracking_source", "expected_source"),
+    [
+        ("push", None, "push"),
+        ("schedule", "release-qualification", "release-qualification"),
+        ("workflow_dispatch", "release-qualification", "release-qualification"),
+    ],
+)
 def test_entry_point_uses_the_exact_workflow_attempt(
-    mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    event: str,
+    tracking_source: str | None,
+    expected_source: str,
 ) -> None:
     for name, value in {
         "GITHUB_REPOSITORY": "example/project",
@@ -154,16 +233,20 @@ def test_entry_point_uses_the_exact_workflow_attempt(
         "GITHUB_RUN_ID": "987654",
         "GITHUB_RUN_NUMBER": "17",
         "GITHUB_RUN_ATTEMPT": "2",
-        "GITHUB_EVENT_NAME": "push",
+        "GITHUB_EVENT_NAME": event,
         "CI_GATE_RESULT": "failure",
     }.items():
         monkeypatch.setenv(name, value)
+    if tracking_source is None:
+        monkeypatch.delenv("CI_TRACKING_SOURCE", raising=False)
+    else:
+        monkeypatch.setenv("CI_TRACKING_SOURCE", tracking_source)
     reconcile = mocker.patch.object(alert, "reconcile")
 
     alert.main()
 
     reconcile.assert_called_once_with(
-        "push",
+        expected_source,
         {
             "number": 17,
             "attempt": 2,
