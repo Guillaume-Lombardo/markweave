@@ -2,7 +2,7 @@
 ticket: T119
 linear_id: G1L-649
 linear_url: https://linear.app/g1lom/issue/G1L-649/t119-add-a-live-preview-to-the-conversion-workspace
-status: Backlog
+status: Canceled
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -34,6 +34,8 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 
 - 2026-10-09: Created in Linear and mirrored here from the owner-accepted repository analysis.
   Not started.
+- 2026-11-25: Canceled in the backlog triage (owner decision, T161): no recorded specification
+  decision approves it, and it builds on the frozen Composer preview (D16).
 
 ## Synchronization
 

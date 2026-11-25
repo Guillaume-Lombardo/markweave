@@ -2,7 +2,7 @@
 ticket: T134
 linear_id: G1L-687
 linear_url: https://linear.app/g1lom/issue/G1L-687/t134-qualify-release-images-before-irreversible-python-publication
-status: In Progress
+status: Done
 priority: High
 project: Markdown to DOCX and PDF Converter
 ---
@@ -91,6 +91,21 @@ Every release job must finish well under 20 minutes, and only the publishing job
   covered by mutation tests. Not verifiable locally: a hosted release run (it requires a version
   transition on `main`); the first release after merge is the end-to-end evidence, and its job
   durations must be recorded against the 20-minute target.
+- 2026-11-25: Done by owner decision, synchronized by T161. Merged in #315 on 2026-10-21. The
+  first release after merge, 0.8.0, provided the hosted end-to-end evidence:
+  - Attempts [44856108166](https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/actions/runs/44856108166)
+    (`27e044a`) and [44859258976](https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/actions/runs/44859258976)
+    (`d13aa40`) failed in `container-qualify / stage` and `container-qualify / supply-chain`;
+    `create-release` and `publish` were skipped. Neither left a tag, GitHub Release, or PyPI
+    upload, and each correction retried 0.8.0 with the next release attempt (2, then 3).
+  - Run [44862851393](https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/actions/runs/44862851393)
+    at `1a33507` succeeded. The `v0.8.0` tag and Release point at that SHA, and PyPI received the
+    wheel and sdist only after the image set was qualified and staged.
+  - Job durations (minutes:seconds) from `gh run view 44862851393 --json jobs`, against the
+    20-minute target: `container-qualify / e2e (e2e-distributed-1)` 12:12 (longest),
+    `e2e-standalone-2` 11:25, `supply-chain` 9:45, `e2e-distributed-2` 8:33, `e2e-standalone-1`
+    7:39, `smoke` 7:12, `stage` 5:21, `container / publish` 3:55; every other job took under one
+    minute. The run took 23:46 from creation to completion.
 
 ## Synchronization
 

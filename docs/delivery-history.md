@@ -52,6 +52,23 @@ For D2, on 2026-10-10 the owner decided how clients find references.
 D15 (T108) was amended on 2026-11-20. On 2026-11-20 the owner restated the core product as
 Markdown to DOCX, PDF, and editable PPTX, amended D15, and added D16.
 
+### Tracking triage of 2026-11-25 (from sections 3.7, 11, 13, and 14)
+
+On 2026-11-25, after a three-model review of project tracking, the owner made these decisions
+(recorded by T161):
+
+- T134 is Done. Release 0.8.0 qualified the staged image set before any irreversible
+  mutation; two failed attempts left no tag, GitHub Release, or PyPI upload.
+- T74 is cancelled, because T107 removed the Kubernetes reverse backend from main.
+- T92 and T93 are cancelled under D16; 0.8.0 had shipped without T93. Section 14 previously
+  planned for T93 to move the version from 0.7.3 to 0.8.0.
+- T119, T123, T125, T126, and T127 are cancelled because no recorded decision approves them; D13
+  and D14 had kept T126 and T127 in the backlog. T115, T116, T117, and T122 stay open because D8
+  to D11 approve them.
+- Section 11 now allows manual release recovery to publish missing GHCR images from the exact
+  retained, qualified, and digest-verified bytes, as the release workflow and `docs/releasing.md`
+  already allowed. Until then, the specification limited recovery to evidence.
+
 ### Restore compatibility decision (from section 8.2)
 
 The section 8.2 rule that restore accepts recovery sets created at schema revision `20260829_14`

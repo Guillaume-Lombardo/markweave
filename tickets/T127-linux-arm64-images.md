@@ -2,7 +2,7 @@
 ticket: T127
 linear_id: G1L-660
 linear_url: https://linear.app/g1lom/issue/G1L-660/t127-publish-linuxarm64-images
-status: Backlog
+status: Canceled
 priority: Low
 project: Markdown to DOCX and PDF Converter
 ---
@@ -37,6 +37,8 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 - 2026-10-09: Created in Linear and mirrored here from the owner-accepted repository analysis.
   Not started.
 - 2026-10-09: Deferred by T96 decision D14; stays in the backlog.
+- 2026-11-25: Canceled in the backlog triage (owner decision, T161): D14 deferred ARM64 images
+  without approving them; Linux/AMD64 stays the only supported image platform.
 
 ## Synchronization
 
