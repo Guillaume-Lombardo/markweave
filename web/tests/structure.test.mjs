@@ -22,7 +22,8 @@ test("direct dependencies and package manager use exact reviewed versions", asyn
     workspaceManifest.packageManager,
     "pnpm@11.25.0+sha224.c69bc375107d8eef668fbe1ebab8b3a34253dc594dff6a0a36d8a16c",
   );
-  assert.equal(manifest.engines.node, "24.19.0");
+  assert.equal(manifest.engines.node, ">=24.19.0 <25");
+  assert.equal(workspaceManifest.engines.node, manifest.engines.node);
   assert.equal(manifest.dependencies.next, "16.4.6");
   assert.equal(manifest.devDependencies.typescript, "6.0.3");
   assert.equal(manifest.devDependencies.tailwindcss, "4.3.3");

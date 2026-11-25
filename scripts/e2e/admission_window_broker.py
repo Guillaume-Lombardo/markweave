@@ -169,14 +169,14 @@ def install_release_window(
     original = server_type.__init__
 
     def initialize(
-        server: mtls_transport.MtlsBrokerServer, *args: Any, **kwargs: Any
+        self: mtls_transport.MtlsBrokerServer, *args: Any, **kwargs: Any
     ) -> None:
-        original(server, *args, **kwargs)
+        original(self, *args, **kwargs)
         for slot in WINDOWED_SLOTS:
             setattr(
-                server,
+                self,
                 slot,
-                WindowedSlot(slot, getattr(server, slot), recorder, window_seconds),
+                WindowedSlot(slot, getattr(self, slot), recorder, window_seconds),
             )
 
     server_type.__init__ = initialize
