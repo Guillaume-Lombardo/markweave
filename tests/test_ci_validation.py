@@ -33,12 +33,6 @@ FULL_SHA_B = "b" * 40
 FULL_SHA_C = "c" * 40
 FULL_SHA_D = "d" * 40
 FULL_SHA_E = "e" * 40
-UPLOAD_ARTIFACT_PIN = (
-    "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2"
-)
-LEGACY_UPLOAD_ARTIFACT_PIN = (
-    "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2"
-)
 MISSING_LIGHT_SHARD_COMMAND = (
     "missing required workflow command: 'uv run python -m "
     'scripts.ci.engine_userns_gate -- uv run pytest -m "unit or light_coverage" '
@@ -368,25 +362,95 @@ def test_heavy_jobs_assert_the_preinstalled_podman_instead_of_installing_it() ->
 
 
 @pytest.mark.unit
-def test_ci_upload_artifact_pin_and_comment_are_canonical() -> None:
-    """Every retained-evidence upload uses the reviewed v7 pin."""
+def test_ci_evidence_uploads_are_archived() -> None:
     workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
-    upload_lines = [
-        line.strip()
-        for line in workflow.splitlines()
-        if "uses: actions/upload-artifact@" in line
-    ]
-    assert upload_lines == [f"uses: {UPLOAD_ARTIFACT_PIN}"] * 8
+    assert workflow.count("uses: actions/upload-artifact@") == 8
     assert "archive: false" not in workflow
 
-    drifted = workflow.replace(
-        UPLOAD_ARTIFACT_PIN,
-        LEGACY_UPLOAD_ARTIFACT_PIN,
-        1,
+
+def _action_pin(workflow: str, action: str) -> str:
+    return next(
+        line.strip().removeprefix("uses: ")
+        for line in workflow.splitlines()
+        if line.strip().startswith(f"uses: {action}@")
     )
-    assert any(
-        "do not match the reviewed canonical policy" in error
-        for error in validate_workflow_text(drifted)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("workflow_name", "action"),
+    [
+        ("ci.yml", "actions/setup-node"),
+        ("container-qualify.yml", "astral-sh/setup-uv"),
+        ("container-release.yml", "docker/login-action"),
+        ("mutation.yml", "actions/checkout"),
+        ("release.yml", "pypa/gh-action-pypi-publish"),
+    ],
+)
+def test_committed_workflow_accepts_action_pin_bumps(
+    tmp_path: Path, workflow_name: str, action: str
+) -> None:
+    workflow = Path(f".github/workflows/{workflow_name}").read_text(encoding="utf-8")
+    bumped = workflow.replace(
+        _action_pin(workflow, action), f"{action}@{FULL_SHA_A} # v99.0.0"
+    )
+    assert bumped != workflow
+    path = tmp_path / workflow_name
+    path.write_text(bumped, encoding="utf-8")
+
+    assert validate_workflow_files([path]) == []
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("replacement", "error"),
+    [
+        ("actions/checkout@v7 # v7.0.1", "must be pinned"),
+        ("actions/checkout@abc123 # v7.0.1", "not a full commit SHA"),
+        (f"third-party/checkout@{FULL_SHA_A} # v7.0.1", "not allowlisted"),
+        (f"actions/checkout@{FULL_SHA_A}", "must have an inline version comment"),
+        (
+            f"actions/checkout@{FULL_SHA_A} # latest",
+            "must have an inline version comment",
+        ),
+        (
+            f"actions/checkout@{FULL_SHA_A} # {{version}}",
+            "has inconsistent SHA and version pins",
+        ),
+    ],
+)
+def test_automatic_release_rejects_invalid_action_pin(
+    replacement: str, error: str
+) -> None:
+    workflow = Path(".github/workflows/release.yml").read_text(encoding="utf-8")
+    pin = _action_pin(workflow, "actions/checkout")
+    version = pin.partition(" # ")[2]
+    candidate = workflow.replace(pin, replacement.format(version=version), 1)
+    _assert_reports(validate_production_release_workflow_text(candidate), error)
+
+
+@pytest.mark.unit
+def test_ci_rejects_different_version_comments_for_the_same_sha() -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+    pin = _action_pin(workflow, "actions/upload-artifact")
+    reference, _, _ = pin.partition(" # ")
+    drifted = workflow.replace(pin, f"{reference} # v99.0.0", 1)
+
+    _assert_reports(
+        validate_workflow_text(drifted), "has inconsistent SHA and version pins"
+    )
+
+
+@pytest.mark.unit
+def test_alternate_allowlisted_action_still_changes_canonical_policy() -> None:
+    workflow = Path(".github/workflows/mutation.yml").read_text(encoding="utf-8")
+    original = _action_pin(workflow, "actions/setup-python")
+    other = _action_pin(workflow, "actions/upload-artifact")
+    candidate = workflow.replace(original, other, 1)
+
+    _assert_reports(
+        validate_workflow_text(candidate, workflow_name="mutation.yml"),
+        "do not match the reviewed canonical policy",
     )
 
 
@@ -455,7 +519,7 @@ def test_document_engine_job_installs_checksum_locked_document_engines() -> None
         "60b798232d7e331f8e8d5245fdc7ef6f188f2554e4987515e9773ed1f578a8d8" in workflow
     )
     assert 'PUPPETEER_SKIP_DOWNLOAD: "true"' in workflow
-    assert "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1" in workflow
+    assert _action_pin(workflow, "actions/setup-node")
     assert "node-version: 22.23.1" in workflow
     assert 'test "$(node --version)" = "v22.23.1"' in workflow
     assert (
@@ -533,17 +597,16 @@ def test_frontend_heavy_domain_uses_the_exact_pinned_node_runtime() -> None:
     assert "pnpm-11.25.0-${{ hashFiles('pnpm-lock.yaml') }}" in workflow
     assert "T67" not in workflow
     assert "rerun_t67_benchmark" not in workflow
+    node_pin = _action_pin(workflow, "actions/setup-node")
     weakened = workflow.replace(
         "- name: Set up pinned Node for frontend smoke\n"
         "        if: ${{ matrix.domain == 'frontend' }}\n"
-        "        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 "
-        "# v7.1.0\n"
+        f"        uses: {node_pin}\n"
         "        with:\n"
         "          node-version: 24.19.0",
         "- name: Set up pinned Node for frontend smoke\n"
         "        if: ${{ matrix.domain == 'frontend' }}\n"
-        "        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 "
-        "# v7.1.0\n"
+        f"        uses: {node_pin}\n"
         "        with:\n"
         "          node-version: 24",
     )
@@ -1272,9 +1335,10 @@ def test_container_attestation_requires_job_local_registry_authentication() -> N
     workflow = Path(".github/workflows/container-release.yml").read_text(
         encoding="utf-8"
     )
+    login_pin = _action_pin(workflow, "docker/login-action")
     weakened = workflow.replace(
         "      - name: Log in to GHCR for attestation publication\n"
-        "        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0\n"
+        f"        uses: {login_pin}\n"
         "        with:\n"
         "          registry: ghcr.io\n"
         "          username: ${{ github.actor }}\n"
@@ -1884,8 +1948,8 @@ def test_read_only_policy_rejects_unallowlisted_action_and_privileged_command() 
     """A pinned action or container command is not trusted merely because it is valid YAML."""
     workflow = Path(".github/workflows/mutation.yml").read_text(encoding="utf-8")
     weakened = workflow.replace(
-        "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
-        f"third-party/unknown@{FULL_SHA_A}",
+        _action_pin(workflow, "actions/setup-python"),
+        f"third-party/unknown@{FULL_SHA_A} # v1.0.0",
     ).replace("uv sync --locked --all-groups", "docker run --privileged image")
     errors = validate_workflow_text(weakened, workflow_name="mutation.yml")
     assert any("action is not allowlisted" in error for error in errors)
@@ -1897,11 +1961,11 @@ def test_read_only_policy_rejects_unallowlisted_action_and_privileged_command() 
 def test_action_pin_validation_uses_parsed_yaml(flow_style: bool) -> None:
     """Whitespace and flow mappings cannot hide a mutable action reference."""
     workflow = Path(".github/workflows/mutation.yml").read_text(encoding="utf-8")
-    pinned = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+    pinned = _action_pin(workflow, "actions/checkout")
     if flow_style:
         weakened = workflow.replace(
             "      - name: Check out reviewed source\n"
-            f"        uses: {pinned} # v7.0.1\n"
+            f"        uses: {pinned}\n"
             "        with:\n"
             "          persist-credentials: false",
             "      - {uses: actions/checkout@v7, with: {persist-credentials: false}}",

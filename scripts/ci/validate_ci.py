@@ -33,6 +33,11 @@ ACTION_REFERENCE = re.compile(
     r"^([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)?)@([0-9a-f]+)$"
 )
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
+ACTION_VERSION_COMMENT = re.compile(
+    r"[ \t]+#[ \t]+(?P<version>v[0-9]+\.[0-9]+\.[0-9]+"
+    r"(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
+    r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)[ \t]*(?=\r?\n|\Z)"
+)
 SIMPLE_RELEASE_LITERAL = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 SAFE_RELEASE_PATH = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
 ASCII_CONTROL_LIMIT = 32
@@ -219,17 +224,17 @@ class ReleaseWorkflowPolicy:
 
 
 CONTAINER_RELEASE_CANONICAL_DIGEST = (
-    "aef624d4bbd82ed8656ed7137dd72188fea3f96661eedb22171a687419489016"
+    "fa4447c2e77a46da607ec80bb01ac909542a7666a922d77438961124749725de"
 )
 CONTAINER_QUALIFY_CANONICAL_DIGEST = (
-    "5706f144d50bb4d15d2791bb3276f84d86282df1eb5ada2a68d08fa403e4ebd8"
+    "93cdad4718b4ea8b6983becba782d18ad2aaf9bc9b80a264a9eed5ff4bcde2e7"
 )
 CONTAINER_PAIR_PUBLISHER_CANONICAL_DIGEST = (
     "3a61c6bd75e47afe761ead42b77f73ae46cc0da2e8430f09e5dce0f74a7d6fdc"
 )
 RELEASE_IMAGE_ROLES = ("backend", "frontend", "reverse_attempt")
 PRODUCTION_RELEASE_CANONICAL_DIGEST = (
-    "ef68e9bcdd921d050e9fe65e812387e9848833a2a0a97bc759107785124e64d5"
+    "c215a73f107ba41e9754e4c2b9e3d8a5fd2e1eca6bd65a9e5e43e9c5f1d0716d"
 )
 
 
@@ -473,7 +478,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
             ),
             ("mutation", "Retain mutation evidence"): "${{ always() }}",
         },
-        canonical_digest="e1f400af9fca750b79106fc230e36b86b5aaf3d49d7f9da57f52754af2b958dc",
+        canonical_digest="9046d5fa60256c5b4ed7c3d40cca1a24b8d9803df1785d998d997999604dd3a3",
     ),
     "mutation.yml": WorkflowPolicy(
         triggers=frozenset({"schedule", "workflow_dispatch"}),
@@ -493,13 +498,17 @@ READ_ONLY_WORKFLOW_POLICIES = {
         },
         job_conditions={"mutation": TRUSTED_REPOSITORY_GUARD},
         step_conditions={("mutation", "Retain mutation evidence"): "${{ always() }}"},
-        canonical_digest="add670ada616ac584f3809e224f36939fd5a72f55ee0774cd6aa37781f296172",
+        canonical_digest="1a39e23c080b5fc6e376568e5f5b4509b7270ae712001817f00f81167705dadb",
     ),
 }
 
 
 class WorkflowLoader(yaml.SafeLoader):
     """Load GitHub workflow YAML using YAML 1.2 booleans and unique keys."""
+
+    def __init__(self, stream: str) -> None:
+        super().__init__(stream)
+        self.action_nodes: list[tuple[str, yaml.Node, yaml.Node]] = []
 
 
 WorkflowLoader.yaml_implicit_resolvers = {
@@ -528,7 +537,10 @@ def _construct_unique_mapping(
                 f"found duplicate key {key!r}",
                 key_node.start_mark,
             )
-        mapping[key] = loader.construct_object(value_node, deep=deep)
+        value = loader.construct_object(value_node, deep=deep)
+        mapping[key] = value
+        if key == "uses" and isinstance(value, str):
+            loader.action_nodes.append((value, key_node, value_node))
     return mapping
 
 
@@ -537,19 +549,69 @@ WorkflowLoader.add_constructor(
 )
 
 
-def _load_workflow(text: str) -> tuple[dict[str, Any] | None, list[str]]:
+def _normalize_action_pins(text: str, loader: WorkflowLoader, errors: list[str]) -> str:
+    versions: dict[tuple[str, str], str] = {}
+    revisions: dict[tuple[str, str], str] = {}
+    replacements: dict[int, tuple[int, str]] = {}
+    for reference, key_node, value_node in loader.action_nodes:
+        match = ACTION_REFERENCE.fullmatch(reference)
+        if match is None or FULL_SHA.fullmatch(match[2]) is None:
+            continue
+        action, revision = match.groups()
+        key_end = key_node.end_mark.index
+        start, end = value_node.start_mark.index, value_node.end_mark.index
+        source = text[start:end]
+        comment = ACTION_VERSION_COMMENT.match(text, end)
+        if (
+            re.fullmatch(r":[ \t]+", text[key_end:start]) is None
+            or source not in {reference, f"'{reference}'", f'"{reference}"'}
+            or comment is None
+        ):
+            errors.append(f"action {action!r} must have an inline version comment")
+            continue
+
+        version = comment["version"]
+        repository = "/".join(action.split("/")[:2])
+        if (
+            versions.setdefault((repository, revision), version) != version
+            or revisions.setdefault((repository, version), revision) != revision
+        ):
+            errors.append(f"action {action!r} has inconsistent SHA and version pins")
+        sha_start = start + source.index("@") + 1
+        version_start, version_end = comment.span("version")
+        replacements[sha_start] = (sha_start + len(revision), "<sha>")
+        replacements[version_start] = (version_end, "<version>")
+
+    # Source marks only cover parsed uses keys. Similar text in scripts stays hashed.
+    chunks: list[str] = []
+    previous_end = 0
+    for start, (end, placeholder) in sorted(replacements.items()):
+        chunks.extend((text[previous_end:start], placeholder))
+        previous_end = end
+    chunks.append(text[previous_end:])
+    return "".join(chunks)
+
+
+def _load_workflow(
+    text: str, *, normalize_pins: bool = False
+) -> tuple[dict[str, Any] | None, str, list[str]]:
     try:
-        loaded: Any = yaml.load(
-            text,
-            Loader=WorkflowLoader,  # noqa: S506 - no Python object constructors
-        )
+        loader = WorkflowLoader(text)
+        try:
+            loaded: Any = loader.get_single_data()
+        finally:
+            loader.dispose()
     except yaml.YAMLError as error:
-        return None, [f"invalid workflow YAML: {error}"]
+        return None, text, [f"invalid workflow YAML: {error}"]
     if not isinstance(loaded, dict):
-        return None, ["workflow root must be a mapping"]
+        return None, text, ["workflow root must be a mapping"]
     if not all(isinstance(key, str) for key in loaded):
-        return None, ["workflow root keys must be strings"]
-    return loaded, []
+        return None, text, ["workflow root keys must be strings"]
+    errors: list[str] = []
+    canonical_text = (
+        _normalize_action_pins(text, loader, errors) if normalize_pins else text
+    )
+    return loaded, canonical_text, errors
 
 
 def _mapping(value: object) -> dict[str, Any] | None:
@@ -825,11 +887,16 @@ def _validate_checkout_credentials(workflow: Mapping[str, Any]) -> list[str]:
 
 
 def _validate_read_only_workflow(
-    workflow: Mapping[str, Any], *, policy: WorkflowPolicy
+    workflow: Mapping[str, Any], *, policy: WorkflowPolicy, canonical_text: str
 ) -> list[str]:
     errors: list[str] = []
-    canonical = json.dumps(workflow, ensure_ascii=False, separators=(",", ":")).encode()
-    actual_digest = hashlib.sha256(canonical).hexdigest()
+    canonical, _, canonical_errors = _load_workflow(canonical_text)
+    if canonical_errors:
+        return canonical_errors
+    canonical_bytes = json.dumps(
+        canonical, ensure_ascii=False, separators=(",", ":")
+    ).encode()
+    actual_digest = hashlib.sha256(canonical_bytes).hexdigest()
     if actual_digest != policy.canonical_digest:
         errors.append(
             "workflow values, mapping order, jobs, and steps do not match the reviewed "
@@ -1490,8 +1557,9 @@ def _validate_ci_contract(workflow: Mapping[str, Any]) -> list[str]:
     )
     if (
         len(frontend_node_steps) != 1
-        or frontend_node_steps[0].get("uses")
-        != "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1"
+        or not str(frontend_node_steps[0].get("uses", "")).startswith(
+            "actions/setup-node@"
+        )
         or frontend_node_options
         != {
             "node-version": "24.19.0",
@@ -1556,14 +1624,18 @@ def _validate_ci_contract(workflow: Mapping[str, Any]) -> list[str]:
 
 def validate_workflow_text(text: str, *, workflow_name: str = "ci.yml") -> list[str]:
     """Return actionable errors for an allowlisted committed workflow."""
-    workflow, errors = _load_workflow(text)
+    workflow, canonical_text, errors = _load_workflow(text, normalize_pins=True)
     policy = READ_ONLY_WORKFLOW_POLICIES.get(workflow_name)
     if policy is None:
         errors.append(f"workflow has no explicit security policy: {workflow_name}")
         return errors
     if workflow is not None:
         errors.extend(_validate_scalar_security(workflow))
-        errors.extend(_validate_read_only_workflow(workflow, policy=policy))
+        errors.extend(
+            _validate_read_only_workflow(
+                workflow, policy=policy, canonical_text=canonical_text
+            )
+        )
     if workflow_name == "ci.yml" and workflow is not None:
         errors.extend(_validate_ci_contract(workflow))
     return errors
@@ -2107,7 +2179,7 @@ def validate_release_workflow_text(
     """Validate a future isolated release workflow under an approved trigger policy."""
     errors = _validate_release_policy(policy)
     publish_job_name = "publish"
-    workflow, loading_errors = _load_workflow(text)
+    workflow, _, loading_errors = _load_workflow(text)
     errors.extend(loading_errors)
     if workflow is None:
         return errors
@@ -2354,10 +2426,10 @@ def _validate_qualification_commands(workflow: Mapping[str, Any]) -> list[str]:
 
 def validate_container_qualify_workflow_text(text: str) -> list[str]:
     """Validate the read-only build-once, qualify-in-parallel release stage."""
-    workflow, errors = _load_workflow(text)
+    workflow, canonical_text, errors = _load_workflow(text, normalize_pins=True)
     if workflow is None:
         return errors
-    if hashlib.sha256(text.encode("utf-8")).hexdigest() != (
+    if hashlib.sha256(canonical_text.encode("utf-8")).hexdigest() != (
         CONTAINER_QUALIFY_CANONICAL_DIGEST
     ):
         errors.append(
@@ -2416,10 +2488,10 @@ def validate_container_release_workflow_text(  # noqa: PLR0912, PLR0915
     text: str,
 ) -> list[str]:
     """Validate the exact least-privilege container publication contract."""
-    workflow, errors = _load_workflow(text)
+    workflow, canonical_text, errors = _load_workflow(text, normalize_pins=True)
     if workflow is None:
         return errors
-    if hashlib.sha256(text.encode("utf-8")).hexdigest() != (
+    if hashlib.sha256(canonical_text.encode("utf-8")).hexdigest() != (
         CONTAINER_RELEASE_CANONICAL_DIGEST
     ):
         errors.append("container release workflow differs from the reviewed policy")
@@ -2728,10 +2800,10 @@ def validate_production_release_workflow_text(  # noqa: PLR0912, PLR0915
     text: str,
 ) -> list[str]:
     """Validate the exact trusted-main automatic publication orchestrator."""
-    workflow, errors = _load_workflow(text)
+    workflow, canonical_text, errors = _load_workflow(text, normalize_pins=True)
     if workflow is None:
         return errors
-    if hashlib.sha256(text.encode("utf-8")).hexdigest() != (
+    if hashlib.sha256(canonical_text.encode("utf-8")).hexdigest() != (
         PRODUCTION_RELEASE_CANONICAL_DIGEST
     ):
         errors.append("automatic release workflow differs from the reviewed policy")
