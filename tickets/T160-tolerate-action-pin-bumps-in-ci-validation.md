@@ -26,7 +26,9 @@ Allow routine GitHub Actions version bumps without validator edits while retaini
 
 ## Progress
 
-- Started implementation against the five committed workflow policies.
+- Replayed the exact PR #356 patch in local-only commit `e8359f7`. All 287 targeted tests and the CI validator entry point passed.
+- Verified Ruff formatting and lint, ty, and 95.31% coverage of changed executable validator lines. The changed test lines reached 100% coverage.
+- Addressed the independent review finding by rejecting partial bumps within a workflow, including across sub-actions of the same upstream repository. The follow-up review approved the change.
 
 ## Synchronization
 
