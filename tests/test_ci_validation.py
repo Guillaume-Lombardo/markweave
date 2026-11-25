@@ -417,6 +417,10 @@ def test_committed_workflow_accepts_action_pin_bumps(
             f"actions/checkout@{FULL_SHA_A} # {{version}}",
             "has inconsistent SHA and version pins",
         ),
+        (
+            f"actions/checkout@{FULL_SHA_A} # v99.0.0",
+            "has inconsistent SHA and version pins",
+        ),
     ],
 )
 def test_automatic_release_rejects_invalid_action_pin(

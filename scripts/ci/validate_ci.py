@@ -550,8 +550,7 @@ WorkflowLoader.add_constructor(
 
 
 def _normalize_action_pins(text: str, loader: WorkflowLoader, errors: list[str]) -> str:
-    versions: dict[tuple[str, str], str] = {}
-    revisions: dict[tuple[str, str], str] = {}
+    pins: dict[str, tuple[str, str]] = {}
     replacements: dict[int, tuple[int, str]] = {}
     for reference, key_node, value_node in loader.action_nodes:
         match = ACTION_REFERENCE.fullmatch(reference)
@@ -572,10 +571,8 @@ def _normalize_action_pins(text: str, loader: WorkflowLoader, errors: list[str])
 
         version = comment["version"]
         repository = "/".join(action.split("/")[:2])
-        if (
-            versions.setdefault((repository, revision), version) != version
-            or revisions.setdefault((repository, version), revision) != revision
-        ):
+        pin = (revision, version)
+        if pins.setdefault(repository, pin) != pin:
             errors.append(f"action {action!r} has inconsistent SHA and version pins")
         sha_start = start + source.index("@") + 1
         version_start, version_end = comment.span("version")
