@@ -2,7 +2,7 @@
 ticket: T102
 linear_id: G1L-621
 linear_url: https://linear.app/g1lom/issue/G1L-621/t102-rename-the-github-repository-to-markweave
-status: Backlog
+status: In Progress
 priority: Low
 project: Markdown to DOCX and PDF Converter
 ---
@@ -19,9 +19,9 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 
 - Owner renames the GitHub repository; GitHub redirects remain in place.
 - Update project URLs in `pyproject.toml`, README, docs, SECURITY/SUPPORT policies, OCI image labels, CLI help, quickstart clone commands and tests that assert URLs.
-- Before the rename, add the new repository name as a second PyPI Trusted Publisher; remove the old publisher only after a successful release from the renamed repository.
-- Keep the GHCR image name `md-converter` (owner decision 2026-10-09); no image migration.
-- Rename the Linear project if the owner wants the names aligned.
+- Verify published releases against their original signing identity and bind future releases to the renamed repository.
+- The owner adds `markweave` (`release.yml`, `pypi`) as a second PyPI Trusted Publisher. Remove the old publisher only after the first successful release from the renamed repository.
+- Keep the PyPI project `markweave`, the GHCR images `md-converter` and `md-converter-web`, and the Linear project name. Do not change `project.version` in this ticket.
 
 ## Dependencies
 
@@ -29,13 +29,18 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 
 ## Blocking points
 
-- Owner-only actions: GitHub repository rename and PyPI Trusted Publisher update; publication fails until the publisher matches the new repository name.
+- The owner has renamed the GitHub repository and owns the PyPI Trusted Publisher update. Future Python publication requires the new publisher.
 - Do not schedule during a release-adoption window.
 
 ## Progress
 
 - 2026-10-09: Created in Linear and mirrored here from the owner-accepted repository analysis.
   Not started.
+- 2026-11-26: Started on the renamed GitHub repository. The owner retains responsibility for PyPI
+  Trusted Publishing.
+- 2026-11-26: Updated the live repository references and verified public release alignment through
+  the canonical GitHub endpoints. All three 0.8.0 GHCR receipts and attestations verified against
+  the published digests and their original signing identity.
 
 ## Synchronization
 

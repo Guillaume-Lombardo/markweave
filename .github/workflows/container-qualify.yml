@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   stage:
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.sha == inputs.source-sha }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.sha == inputs.source-sha }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -107,7 +107,7 @@ jobs:
 
   smoke:
     needs: stage
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.sha == inputs.source-sha }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.sha == inputs.source-sha }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -194,7 +194,7 @@ jobs:
 
   supply-chain:
     needs: stage
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.sha == inputs.source-sha }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.sha == inputs.source-sha }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -278,7 +278,7 @@ jobs:
   e2e:
     name: e2e (${{ matrix.domain }})
     needs: stage
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.sha == inputs.source-sha }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.sha == inputs.source-sha }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:

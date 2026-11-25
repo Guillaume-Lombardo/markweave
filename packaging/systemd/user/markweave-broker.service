@@ -1,6 +1,6 @@
 [Unit]
 Description=Markweave rootless Podman isolation broker
-Documentation=https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/blob/main/docs/reverse-broker-deployment.md
+Documentation=https://github.com/Guillaume-Lombardo/markweave/blob/main/docs/reverse-broker-deployment.md
 
 [Service]
 Type=exec

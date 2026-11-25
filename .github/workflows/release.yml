@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   detect:
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -77,7 +77,7 @@ jobs:
 
   build-and-verify:
     needs: detect
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.changed == 'true' }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.changed == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -128,7 +128,7 @@ jobs:
 
   container-qualify:
     needs: detect
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.changed == 'true' }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.changed == 'true' }}
     uses: ./.github/workflows/container-qualify.yml
     with:
       version: ${{ needs.detect.outputs.version }}
@@ -137,7 +137,7 @@ jobs:
 
   create-release:
     needs: [detect, build-and-verify, container-qualify]
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.changed == 'true' }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.changed == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -175,7 +175,7 @@ jobs:
 
   publish:
     needs: [detect, build-and-verify, container-qualify, create-release]
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.changed == 'true' }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.changed == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: pypi
@@ -203,7 +203,7 @@ jobs:
 
   container:
     needs: [detect, container-qualify, create-release]
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.changed == 'true' }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.changed == 'true' }}
     permissions:
       actions: read
       attestations: write
@@ -218,7 +218,7 @@ jobs:
 
   adopt-receipts:
     needs: [detect, publish, container]
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.changed == 'true' && needs.publish.result == 'success' && needs.container.result == 'success' }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.changed == 'true' && needs.publish.result == 'success' && needs.container.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -256,7 +256,7 @@ jobs:
 
   report-incomplete-publication:
     needs: [detect, publish, container]
-    if: ${{ !cancelled() && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.detect.result == 'failure' || (needs.detect.outputs.changed == 'true' && (needs.publish.result != 'success' || needs.container.result != 'success'))) }}
+    if: ${{ !cancelled() && github.repository == 'Guillaume-Lombardo/markweave' && github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.detect.result == 'failure' || (needs.detect.outputs.changed == 'true' && (needs.publish.result != 'success' || needs.container.result != 'success'))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}

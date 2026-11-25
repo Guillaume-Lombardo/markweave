@@ -21,10 +21,13 @@ reviewed Chromium seccomp profile, then choose one of these local-evaluation pat
 The simple path needs no `sudo` and is the easiest way to try Markweave:
 
 ```bash
-git clone https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter.git
-cd simple-md-to-docx-converter
+git clone https://github.com/Guillaume-Lombardo/markweave.git
+cd markweave
 scripts/quickstart-simple.sh up
 ```
+
+To verify provenance for the published images, follow the
+[release guide](releasing.md#verify-container-provenance).
 
 The helper automatically prefers a working Docker Compose installation and otherwise selects
 rootless Podman Compose. Set `MARKWEAVE_SIMPLE_RUNTIME=docker` or

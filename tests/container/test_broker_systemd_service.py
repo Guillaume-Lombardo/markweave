@@ -113,7 +113,7 @@ def test_systemd_user_unit_has_exact_bounded_process_contract() -> None:
     assert UNIT.read_text(encoding="ascii") == (
         "[Unit]\n"
         "Description=Markweave rootless Podman isolation broker\n"
-        "Documentation=https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/"
+        "Documentation=https://github.com/Guillaume-Lombardo/markweave/"
         "blob/main/docs/reverse-broker-deployment.md\n"
         "\n"
         "[Service]\n"

@@ -72,11 +72,11 @@ markweave = "markweave.cli.main:main"
 markweave-broker = "markweave.broker_process:main"
 
 [project.urls]
-Documentation = "https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/blob/main/docs/index.md"
-Issues = "https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/issues"
-Repository = "https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter"
-Source = "https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter"
-Support = "https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/discussions"
+Documentation = "https://github.com/Guillaume-Lombardo/markweave/blob/main/docs/index.md"
+Issues = "https://github.com/Guillaume-Lombardo/markweave/issues"
+Repository = "https://github.com/Guillaume-Lombardo/markweave"
+Source = "https://github.com/Guillaume-Lombardo/markweave"
+Support = "https://github.com/Guillaume-Lombardo/markweave/discussions"
 
 [dependency-groups]
 build = ["hatchling==1.33.0"]
