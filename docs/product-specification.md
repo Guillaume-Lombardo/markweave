@@ -446,8 +446,9 @@ download capability, and every administrator access follows the existing audit c
 
 ### 3.6 Composer workspace (T88–T93)
 
-Composer is feature-frozen by decision D16 in section 3.7. The scope D16 lists as paused is not
-dropped; every requirement below that applies to a delivered capability still holds.
+Composer is feature-frozen by decision D16 in section 3.7. Requirements below for the scope D16
+cancels apply only if a new owner decision reopens it; every requirement that applies to a
+delivered capability still holds.
 
 Composer is an optional guided workspace adjacent to Convert. The header has an explicit English
 **Convert | Composer** selector near the logo. Convert retains the independent `2docx`, `2pptx`,
@@ -538,8 +539,9 @@ profiles continue to receive the same external operator-managed key across API a
 processes, and backup/restore preserves that key separately through the operator's secret manager.
 
 The real qualification endpoint `https://litellm.g1lom.xyz` and a cost-conscious model selected
-from its actual catalog are an operational test preference for T93, not a hardcoded provider,
-default model, or product requirement. No credential or model name is inferred from that URL.
+from its actual catalog are an operational test preference for real-provider qualification, not a
+hardcoded provider, default model, or product requirement. No credential or model name is inferred
+from that URL.
 
 #### 3.6.2 Conversation, proposals, and human control
 
@@ -721,13 +723,13 @@ the [delivery history](delivery-history.md).
   filters, so an administrator-supplied filter would be arbitrary code on the worker. Only the
   internal filters of D5 and T111 are allowed. T124 is cancelled.
 - **D13 – Interface languages (T126).** Deferred. The English-only user-interface rule in AGENTS.md
-  remains in force; T126 stays in the backlog.
+  remains in force. T126 is cancelled; resuming interface languages needs a new owner decision.
 - **D14 – Linux/ARM64 images (T127).** Deferred. Linux/AMD64 remains the only supported image
-  platform; T127 stays in the backlog.
+  platform. T127 is cancelled; resuming ARM64 images needs a new owner decision.
 - **D15 – Reverse conversion freeze (T108, amended).** Experimental reverse conversion
   is kept, stays experimental, requires the external isolation broker, and is feature-frozen under
-  the freeze rule below. OCR, Firecrawl's hosted Parse fallback, formats beyond the T69 matrix,
-  and the T74 Kubernetes backend (archived by T107) remain paused.
+  the freeze rule below. OCR, Firecrawl's hosted Parse fallback, and formats beyond the T69
+  matrix remain paused. The T74 Kubernetes backend, archived by T107, is cancelled.
 
 The core product is Markdown to DOCX, PDF, and editable PPTX. The **freeze rule** applies to both
 optional workspaces: only bug fixes, security fixes, dependency updates that pass the existing
@@ -739,10 +741,10 @@ ticket (such as T107) may delete the tests that belong only to the code it remov
   scope: T89–T91 and the T92 increments merged on main (DOCX and PPTX text edits, model-proposed
   text edits with browser and CLI controls, the permissioned cited library, and paragraph-style,
   slide-order, and image-replacement structure edits). The remaining T92 scope and the T93
-  real-provider qualification are paused; the 0.8.0 release does not wait for T93. Composer stays
-  optional: model-assisted operations still require a configured, enabled, and authorized LLM
-  connection as section 2 states, retained drafts, revisions, and exports stay accessible without
-  one, and ordinary conversion never depends on it.
+  real-provider qualification are cancelled; reopening either needs a new owner decision.
+  Composer stays optional: model-assisted operations still require a configured, enabled, and
+  authorized LLM connection as section 2 states, retained drafts, revisions, and exports stay
+  accessible without one, and ordinary conversion never depends on it.
 
 ## 4. Input contract
 
@@ -1028,8 +1030,9 @@ provider outage/invalid responses, disclosure filtering before LLM calls, prompt
 tool misuse, human edits versus stale model results, exact revision/artifact pairing, atomic
 publication and recovery, regeneration without a provider, long-document preview behavior, and
 non-target DOCX/PPTX preservation. Run real component integration and final-rootless-image E2E in
-both profiles. T93 qualifies the real authorized LLM endpoint and exact final images; synthetic
-providers alone do not satisfy its provider acceptance. Each qualified iteration updates the
+both profiles. Real-provider acceptance requires the real authorized LLM endpoint and exact final
+images; synthetic providers alone do not satisfy it. D16 cancelled the T93 real-provider
+qualification, so no real-provider acceptance is claimed. Each qualified iteration updates the
 docker-box test deployment with a verified matched candidate and rollback evidence.
 
 The completed T06 and T12 sequencing exceptions for final-image E2E coverage are recorded in the
@@ -1041,7 +1044,7 @@ Use selective path/domain detection while keeping one required `CI / gate` resul
 
 Light draft checks include formatting, lint, types, unit tests, coverage, and cheap security checks. Run the unchanged `unit or light_coverage` Python selection in two deterministic, complementary partitions on separate jobs. Require both successful partitions and their same-run, same-attempt raw coverage artifacts before enforcing aggregate total, branch-only and changed-line coverage at 90%. Keep rapid checks separate and require every stage through `CI / gate`; missing artifacts or skipped partitions fail closed. Ready pull requests add affected functional, integration, container, and E2E domains. Run the full two-profile matrix on schedule, for release checks, in the merge queue, and on manual dispatch. Publish the image, SBOM, and provenance only for releases.
 
-Use an isolated release workflow to publish the `markweave` Python distribution with the matching public import `markweave`. A protected pull-request merge to `main` is the sole human gate. A trusted main push that changes `pyproject.toml` must compare `project.version` and the positive integer `tool.markweave.release.attempt` at the exact before and head SHAs. An unchanged version and attempt is a no-op. After an infrastructure failure leaves a run impossible to close or rerun and creates no tag, GitHub Release, PyPI version, or GHCR version tag, a protected recovery pull request may increment the attempt by exactly one to retry the same final version; decreases, skipped attempts, and a non-reset attempt on a new version fail closed. An invalid, non-canonical, pre-release, development, local, epoch, or lower-precedence version also fails closed. A changed canonical spelling with equal PEP 440 precedence remains a valid transition. For a real final-version or protected retry transition, reject an existing `v<version>` tag, matching GitHub Release, or already-published PyPI version. Build the sdist and wheel once from the reviewed main SHA, validate metadata, installation, the documented public import, and artifact integrity, then publish those exact files without rebuilding. Before any irreversible external mutation (tag, GitHub Release, PyPI upload, or GHCR copy), build each container image once from the same SHA, qualify that exact staged image set in read-only parallel jobs that load it only by verified image ID (final-image smokes, SBOM and Critical-vulnerability gate, and every final-image E2E shard of both storage profiles), and retain the complete staging artifact; a qualification failure leaves no tag, GitHub Release, PyPI version, or GHCR tag (T134). Atomically create `v<version>` at that SHA before publishing the matching GitHub Release automatically; a failed-job rerun may reuse partial tag or Release state only after verifying its exact identity. Publish the dynamically tagged GHCR image, provenance, SBOM, and evidence from the same trusted push through a secretless reusable workflow that verifies the Release identity before idempotent evidence attachment. Derive the actual registry digest before remote publication by serializing once into a private local `dir:` transport, validate that digest against the exact staged manifest bytes, and copy only those bytes to GHCR. Authenticated preflight must reject every observed conflicting source-SHA or version tag, same-digest state is idempotent, every copy must be followed by exact digest verification, and workflow/repository concurrency must prevent the automation from racing itself. Because GHCR conditional manifest creation is not established, document the narrow residual race with another principal holding `packages: write`; do not claim immutable or conditional tag creation. Retain a receipt relating the internally bound OCI-archive digest to the registry digest used for provenance. Use PyPI Trusted Publishing through the `pypi` environment with no long-lived token. Grant `contents: write` only to tag/Release creation, evidence attachment, and post-publication adoption branch creation. The adoption job alone receives `actions: write` to dispatch CI for that branch and prints the command for a maintainer to open the pull request. Grant `id-token: write` only to PyPI upload and container attestation, pin actions by full SHA, and prevent pull requests, forks, tag pushes, Release events, and every other untrusted context from publishing. Manual dispatch must never rebuild or republish Python or container artifacts. It may only recover provenance, SBOM, and GitHub Release evidence for an already-published exact Release from a retained artifact produced by a successful upstream build job. Before attestation or attachment, bind the selected run to this upstream repository, workflow file, and the current trusted `main` history by requiring both the release source to be an ancestor of the selected run SHA and that run SHA to be an ancestor of the current workflow SHA; require that every qualification job of that run succeeded and that it retained the staging artifact; download the single non-expired bounded artifact by immutable artifact ID; verify its exact regular-file set, checksum manifest, internal OCI identity, publication receipt, version, tag, source SHA, and anonymously readable public GHCR digest; then pass that digest to the existing attestation job and the unchanged evidence files to the existing Release attachment job. Version `0.3.0` maps to the first derived tag `v0.3.0`; future versions are never hardcoded in workflow logic.
+Use an isolated release workflow to publish the `markweave` Python distribution with the matching public import `markweave`. A protected pull-request merge to `main` is the sole human gate. A trusted main push that changes `pyproject.toml` must compare `project.version` and the positive integer `tool.markweave.release.attempt` at the exact before and head SHAs. An unchanged version and attempt is a no-op. After an infrastructure failure leaves a run impossible to close or rerun and creates no tag, GitHub Release, PyPI version, or GHCR version tag, a protected recovery pull request may increment the attempt by exactly one to retry the same final version; decreases, skipped attempts, and a non-reset attempt on a new version fail closed. An invalid, non-canonical, pre-release, development, local, epoch, or lower-precedence version also fails closed. A changed canonical spelling with equal PEP 440 precedence remains a valid transition. For a real final-version or protected retry transition, reject an existing `v<version>` tag, matching GitHub Release, or already-published PyPI version. Build the sdist and wheel once from the reviewed main SHA, validate metadata, installation, the documented public import, and artifact integrity, then publish those exact files without rebuilding. Before any irreversible external mutation (tag, GitHub Release, PyPI upload, or GHCR copy), build each container image once from the same SHA, qualify that exact staged image set in read-only parallel jobs that load it only by verified image ID (final-image smokes, SBOM and Critical-vulnerability gate, and every final-image E2E shard of both storage profiles), and retain the complete staging artifact; a qualification failure leaves no tag, GitHub Release, PyPI version, or GHCR tag (T134). Atomically create `v<version>` at that SHA before publishing the matching GitHub Release automatically; a failed-job rerun may reuse partial tag or Release state only after verifying its exact identity. Publish the dynamically tagged GHCR image, provenance, SBOM, and evidence from the same trusted push through a secretless reusable workflow that verifies the Release identity before idempotent evidence attachment. Derive the actual registry digest before remote publication by serializing once into a private local `dir:` transport, validate that digest against the exact staged manifest bytes, and copy only those bytes to GHCR. Authenticated preflight must reject every observed conflicting source-SHA or version tag, same-digest state is idempotent, every copy must be followed by exact digest verification, and workflow/repository concurrency must prevent the automation from racing itself. Because GHCR conditional manifest creation is not established, document the narrow residual race with another principal holding `packages: write`; do not claim immutable or conditional tag creation. Retain a receipt relating the internally bound OCI-archive digest to the registry digest used for provenance. Use PyPI Trusted Publishing through the `pypi` environment with no long-lived token. Grant `contents: write` only to tag/Release creation, evidence attachment, and post-publication adoption branch creation. The adoption job alone receives `actions: write` to dispatch CI for that branch and prints the command for a maintainer to open the pull request. Grant `id-token: write` only to PyPI upload and container attestation, pin actions by full SHA, and prevent pull requests, forks, tag pushes, Release events, and every other untrusted context from publishing. Manual dispatch must never build or rebuild a container image, never build or publish Python artifacts, and never hold OIDC permission or enter the PyPI environment. It may only complete the container publication and recover provenance, SBOM, and GitHub Release evidence for an existing exact tag and Release from the retained staging artifact of a failed release or recovery run whose qualification jobs all succeeded. It may publish to GHCR only the exact retained, qualified, digest-verified bytes of a missing image role: it preflights every role before any copy, accepts an already-correct role idempotently, rejects any conflicting digest, and verifies every exact digest after the copy. Before attestation or attachment, bind the selected run to this upstream repository, workflow file, and the current trusted `main` history by requiring both the release source to be an ancestor of the selected run SHA and that run SHA to be an ancestor of the current workflow SHA; require that every qualification job of that run succeeded and that it retained the staging artifact; download the single non-expired bounded artifact by immutable artifact ID; verify its exact regular-file set, checksum manifest, internal OCI identity, publication receipt, version, tag, source SHA, and anonymously readable public GHCR digest; then pass that digest to the existing attestation job and the unchanged evidence files to the existing Release attachment job. Version `0.3.0` maps to the first derived tag `v0.3.0`; future versions are never hardcoded in workflow logic.
 
 Release `0.6.0` is the sole skipped-container exception: neither manual recovery nor any workflow
 may rebuild or publish `0.6.0`. Its history and the earlier receipt pins are in the
@@ -1083,17 +1086,11 @@ priority notes are in the non-normative [delivery history](delivery-history.md).
 
 Only one ticket edits this specification at a time.
 
-Open tickets on 2026-11-21 (status neither Done nor Canceled in the ticket mirrors of this
-revision):
+Open tickets on 2026-11-25 (status neither Done nor Canceled in the ticket mirrors of this
+revision, excluding T161, which produces this revision):
 
 | Ticket | Outcome | Status | Depends on |
 |---|---|---|---|
-| T23 | Complete user, developer, and operations documentation | In Progress | T22 |
-| T63 | Migrate administration and session settings to Next.js | In Progress | T17, T59, T61, T65, T66 |
-| T74 | Design and implement the Kubernetes reverse-isolation backend (archived by T107; paused by D15) | Backlog | T70, T71 |
-| T92 | Deliver bounded Office editing tools and a cited document library (remaining scope frozen by D16) | Backlog | T91 |
-| T93 | Qualify Composer and publish the minor release with verified image receipts (frozen by D16) | Backlog | T92 |
-| T95 | Correct retention-aware restore object verification | In Progress | T18, T37 |
 | T102 | Rename the GitHub repository to markweave | Backlog | — |
 | T105 | Allow a sanitized inline HTML subset | Backlog | T96 |
 | T111 | Add table of contents, section numbering and page breaks | Backlog | T96 |
@@ -1104,16 +1101,12 @@ revision):
 | T116 | Add signed job-completion webhooks | Backlog | T96, T114 |
 | T117 | Add an MCP server for AI agents | Backlog | T96, T114 |
 | T118 | Add PDF/A and tagged accessible PDF output | Backlog | T96 |
-| T119 | Add a live preview to the conversion workspace | Backlog | T90 |
 | T120 | Add batch conversion and a CLI watch mode | Backlog | T106 |
 | T121 | Provide a GitHub Action and a pre-commit hook | Backlog | T106 |
 | T122 | Add self-contained HTML and ODT outputs (EPUB deferred by D11) | Backlog | T96 |
-| T123 | Add deterministic data-driven DOCX template filling | Backlog | T91 |
-| T125 | Add VS Code and Obsidian integrations | Backlog | T104, T114 |
-| T126 | Internationalize the browser interface (deferred by D13) | Backlog | T96 |
-| T127 | Publish Linux/ARM64 images (deferred by D14) | Backlog | T96 |
-| T134 | Qualify release images before irreversible Python publication | In Progress | T133, T135 |
-| T145 | Audit the release-after-close slot pattern in the metrics server and Kubernetes attester transport | Backlog | T141 |
+| T131 | Show the stable failure reason of Composer generations (bug fixes only under D16) | Backlog | — |
+| T132 | Restore distributed recovery sets with jobs on superseded template versions | Backlog | T128 |
+| T145 | Audit the release-after-close slot pattern in the metrics server | Backlog | T141 |
 | T148 | Spike: shorten reverse worker leases in the E2E runtime | Backlog | T137 |
 | T149 | Investigate E2E worker containers that need SIGKILL to stop | Backlog | — |
 
@@ -1157,9 +1150,9 @@ revision):
   Markdown/assets package builder. T71 may configure reviewed budgets and persist the stable unit
   identity/proof and resulting package, but must not introduce a second broker, runner, parser,
   renderer adapter, or manifest serializer.
-- T74 remains deferred until a concrete Kubernetes deployment need justifies it. If T74
-  resumes, restore the optional Kubernetes reverse-isolation prototype from
-  `archive/t74-kubernetes-backend`. Follow the detailed node and proof requirements in the
+- T74 is cancelled (section 3.7, D15). A Kubernetes reverse-isolation backend needs a new ticket
+  with an explicit owner decision. Such a ticket restores the optional prototype from
+  `archive/t74-kubernetes-backend`. It follows the detailed node and proof requirements in the
   archived specification and the [T74 acceptance criteria](../tickets/T74-kubernetes-reverse-isolation.md).
   Qualify the separately reviewed node attester, exact-method CRI read proxy, digest-attested
   unpeered dummy-interface CNI, and RuntimeClass-scoped workspace mount hook on a dedicated,
@@ -1178,19 +1171,20 @@ Do not silently resolve deferred parameters in unrelated implementation work.
 
 ### Composer programme and decision gates
 
-Decision D16 freezes this programme at its delivered scope. The gates below govern the paused
-T92 and T93 work only if a new owner decision resumes it.
+Decision D16 freezes this programme at its delivered scope and cancels the remaining T92 and T93
+scope. The gates below govern only Composer work that a new owner decision reopens.
 
 T88 fixes the reviewable contract in section 3.6 and records reproducible real-file qualification
 before T89 production work. T88 may complete with measured real-file feasibility, explicit
 unsupported and unmeasured cases, and assigned downstream proof gates; it does not certify a
 production viewer, complete Composer workflow, or every Office edit family. T90 qualifies and
-delivers the native viewer/workflow, T92 qualifies each edit family, and T93 verifies the complete
-programme. T89–T92 form four cohesive implementation iterations; each requires an
-independent review, applicable canonical and final-image evidence, and a matched docker-box test
-deployment before the next iteration is treated as accepted. T93 closes cross-cutting acceptance,
-then changes the minor version from the current 0.7.3 baseline to 0.8.0. After the protected merge
-triggers publication, monitor PyPI and the complete matched GHCR image set through terminal success.
+delivers the native viewer/workflow. A reopened edit family is qualified by its own ticket, and a
+reopened programme closes with a ticket that verifies cross-cutting acceptance. Each Composer
+implementation iteration requires an independent review, applicable canonical and final-image
+evidence, and a matched docker-box test deployment before the next iteration is treated as
+accepted. A version change that follows Composer acceptance uses the release process of section 11.
+After the protected merge triggers publication, monitor PyPI and the complete matched GHCR image
+set through terminal success.
 Only then may the immediately following adoption pull request pin the exact published receipt
 digests in Compose/quickstarts and complete any release-owned command migration. Deploy that exact
 matched set and verify it. Never pre-pin an unpublished image or infer a registry digest.
@@ -1216,7 +1210,7 @@ worker; the exact editable OOXML subset if real-file
 preservation cannot be shown; a default sharing/access policy for instance connections, authors,
 or library entries beyond private-by-default; numerical resource/retention limits; and whether a
 specific fidelity threshold is acceptable for DOCX pagination. Keep harmless numerical limits
-configurable pending T88/T93 measurements. The requested real LiteLLM test endpoint is authorized
+configurable pending measured evidence. The requested real LiteLLM test endpoint is authorized
 for qualification, while its actual models and credential source are resolved operationally; no
 provider-specific product promise follows. Visual comparison, preview section selection, and
 ONLYOFFICE remain deferred.

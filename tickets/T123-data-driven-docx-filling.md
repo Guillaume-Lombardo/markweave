@@ -2,7 +2,7 @@
 ticket: T123
 linear_id: G1L-654
 linear_url: https://linear.app/g1lom/issue/G1L-654/t123-add-deterministic-data-driven-docx-template-filling
-status: Backlog
+status: Canceled
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -34,6 +34,8 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 
 - 2026-10-09: Created in Linear and mirrored here from the owner-accepted repository analysis.
   Not started.
+- 2026-11-25: Canceled in the backlog triage (owner decision, T161): no recorded specification
+  decision approves it, and it builds on the frozen Composer typed templates (D16).
 
 ## Synchronization
 

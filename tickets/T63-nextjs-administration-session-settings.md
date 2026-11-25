@@ -2,7 +2,7 @@
 ticket: T63
 linear_id: G1L-527
 linear_url: https://linear.app/g1lom/issue/G1L-527/t63-migrate-administration-and-session-settings-to-nextjs
-status: In Progress
+status: Done
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -69,6 +69,8 @@ Migrate template, user, and session-policy administration to the Next.js fronten
 * 2026-09-02: Hosted run `33669906424` passed the complete administration journey in both profiles, then deterministically failed the later T62 restart-recovery assertion. Both artifacts show the recovery job succeeded, but a cleanup cycle marked it expired after the administration journey pushed its age beyond the harness's deliberate 60-second result-retention window; the API remained healthy and returned the authoritative expired job. The administration invocation and its once-per-profile cookie regression now run adjacently after the unchanged T62 conversion, failure, admission, and restart-recovery sequence. This preserves the 60-second expiration proof, durable-result assertion, and canonical cookie-test reachability instead of increasing retention or accepting expiration. Focused harness and syntax checks pass locally; run `33671544994` was cancelled because it did not include the reviewed adjacency correction, and a fresh hosted both-profile rerun remains required.
 * 2026-09-02: Hosted run `33671969547` passed the complete standalone final-image suite but showed the historical conversion, failure, and admission sequence can still age the original recovery result past 60 seconds on the distributed runner before restart. Restart recovery now has a separate post-admission preparation journey: it reuses the established conversion identity, creates and waits for a new authoritative succeeded result, records its server-provided future expiration, and is immediately followed by the application restart. The recovery browser fails explicitly if that checkpoint has expired. Harness tests lock one preparation per profile, exact preparation/restart ordering, authoritative success, and expiration evidence; result retention and cleanup remain unchanged. The complete frontend check passes all 179 tests and coverage thresholds; production build/runtime, 109 focused harness/OpenAPI/documentation/CI-selection tests, browser/Bash syntax, formatting, Ruff, ty, ShellCheck with established exclusions, and diff checks pass locally.
 * 2026-09-02: Completed after PR #175 merged approved head `1614a4fb7227d8035bf9bf62a4802bd956ffb40e` as exact `main` squash `22b41f8f9c894367cc42050512a4a836aaabd02f`. Exact-head run `33673648959` and exact-main run `33675105850` passed all 11 jobs and the final gate, including both standalone and distributed final-image E2E suites.
+* 2026-11-25: Mirror synchronized with Linear (Done) by T161. The UI follow-up was delivered in
+  #265.
 
 ## Synchronization
 

@@ -33,13 +33,13 @@ decision.
   Delivered: guided drafts, reviewed proposals, revisions, private previews, author knowledge,
   typed templates, DOCX and PPTX text edits, model-proposed text edits, the permissioned cited
   reference library, and paragraph-style, slide-order, and image-replacement structure edits.
-  Paused: the remaining T92 edit families (DOCX tables and sections; PPTX tables, styles, and
+  Cancelled: the remaining T92 edit families (DOCX tables and sections; PPTX tables, styles, and
   objects; model tools for structural edits) and the T93 real-provider Composer qualification.
-  The 0.8.0 release ships the core simplification without waiting for T93.
+  Reopening either needs a new owner decision.
 - **2md** stays experimental and requires the external isolation broker. Paused: OCR for scanned
   or image-only inputs, Firecrawl's hosted Parse fallback, formats beyond the approved matrix,
-  PDF images and layout, original-source recovery and a full visual round trip for edited PPTX,
-  and the T74 Kubernetes isolation backend, archived by T107 under the tag
+  PDF images and layout, and original-source recovery and a full visual round trip for edited
+  PPTX. Cancelled: the T74 Kubernetes isolation backend, archived by T107 under the tag
   `archive/t74-kubernetes-backend`.
 
 ## Guides by role

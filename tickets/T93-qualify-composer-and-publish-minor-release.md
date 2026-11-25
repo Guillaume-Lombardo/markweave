@@ -2,7 +2,7 @@
 ticket: T93
 linear_id: G1L-592
 linear_url: https://linear.app/g1lom/issue/G1L-592/t93-qualify-composer-and-publish-the-minor-release-with-verified-image
-status: Backlog
+status: Canceled
 priority: High
 project: Markdown to DOCX and PDF Converter
 ---
@@ -43,6 +43,8 @@ T92.
   claimed.
 - 2026-11-20: Frozen by owner decision (T155); delivered parts remain; remaining scope needs a new
   owner decision.
+- 2026-11-25: Canceled by owner decision (T161): frozen by D16; 0.8.0 shipped without it. Reopening
+  needs a new owner decision.
 
 ## Synchronization
 

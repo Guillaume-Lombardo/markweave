@@ -74,6 +74,10 @@
 
 - Follow trunk-based development: `main` is the only long-lived branch; all work uses a short-lived branch and a pull request.
 - Never push directly to `main`.
+- Treat a red `main` as a blocker. Before starting work, check the latest main CI result with
+  `gh run list --branch main --workflow CI --limit 1` and the `Main CI is failing` tracking issue
+  with `gh issue list --label ci-main-failure --state open`. While main CI is red, no feature work
+  starts or merges; only the fix for that failure does.
 - Branch names must never contain `codex`, an agent name, or an automation-tool name.
 - Name every branch with a short Conventional Commit type and subject, such as `feat/<issue>-<subject>`, `fix/<issue>-<subject>`, `docs/<issue>-<subject>`, or `chore/<issue>-<subject>`; use `chore`, never `chores`.
 - Keep pull requests cohesive and reviewable. Use squash merge only after required checks and an independent review.

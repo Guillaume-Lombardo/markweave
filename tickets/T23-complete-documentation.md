@@ -2,7 +2,7 @@
 ticket: T23
 linear_id: G1L-333
 linear_url: https://linear.app/g1lom/issue/G1L-333/
-status: In Progress
+status: Done
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -195,6 +195,7 @@ Complete English user, template, administrator, API, operations, storage, queue,
 - 2026-09-22: Broker-test correction validated with 34 targeted real Unix transport/package/documentation tests, 10 consecutive isolated saturation-regression runs, Ruff formatting/lint, ty and git diff --check. The rejection still requires bounded EOF/reset and zero dispatch; production broker behavior is unchanged.
 
 - 2026-09-22: Independent CodeRabbit review of 74ec18993fd13f00c17c01d307ca15fa035a021a found one minor documentation issue and no other actionable findings. Clarified that the Migration 19 upgrade guidance applies only when the source database revision predates Migration 19; retained backup and verification requirements. All nine documentation tests and git diff --check pass.
+- 2026-11-25: Mirror synchronized with Linear (Done since 2026-09-22) by T161. Delivered in #264.
 
 ## Synchronization
 

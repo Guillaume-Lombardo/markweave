@@ -2,7 +2,7 @@
 ticket: T95
 linear_id: G1L-594
 linear_url: https://linear.app/g1lom/issue/G1L-594/t95-correct-retention-aware-restore-object-verification
-status: In Progress
+status: Done
 priority: High
 project: Markdown to DOCX and PDF Converter
 ---
@@ -99,6 +99,8 @@ service was restored and verified. T91 deployment remains blocked.
   smoke, and both-profile image qualification remain valid because this commit changes only the
   web test. A new exact-head hosted run, protected merge, and main verification remain pending;
   T95 stays In Progress and T91 deployment remains blocked.
+- 2026-11-25: Mirror synchronized with Linear (Done since 2026-09-27) by T161. Delivered in #272;
+  T91 is now Done, so its deployment is no longer blocked by this ticket.
 
 ## Synchronization
 
