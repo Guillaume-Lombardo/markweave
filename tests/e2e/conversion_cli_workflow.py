@@ -22,6 +22,9 @@ _MANIFEST = "/tmp/markweave-t33-manifest.json"  # noqa: S108 - container tmpfs
 _LOCAL_IMAGES = "/tmp/markweave-t104"  # noqa: S108 - container tmpfs
 _MISSING_IMAGE = "Markdown image is missing or unapproved."
 _ESCAPING_IMAGE = "Markdown image path escapes the archive."
+_WIDE_IMAGE_WARNING = (
+    "Image 'assets/wide.png' resized from 2500\u00d71000 to 2000\u00d7800."
+)
 _LOCAL_IMAGE_SETUP = """
 import io, zipfile
 from pathlib import Path
@@ -38,7 +41,7 @@ def png(width, height):
 
 (project / "assets" / "pixel.png").write_bytes(png(12, 8))
 (project / "assets" / "unused.png").write_bytes(png(4, 4))
-(project / "assets" / "wide.png").write_bytes(png(2001, 1))
+(project / "assets" / "wide.png").write_bytes(png(2500, 1000))
 (project / "assets" / "large.png").write_bytes(b"\\x89PNG" + bytes(1_000_001))
 (root / "outside.png").write_bytes(png(4, 4))
 texts = {{
@@ -242,61 +245,73 @@ def _exercise_local_images(  # noqa: PLR0911 - bounded E2E assertions
     if setup.returncode != 0:
         return "local image setup"
     project = f"{_LOCAL_IMAGES}/project"
-    packaged = _json_result(
-        _run([*prefix, "--json", "convert", f"{project}/report.md"])
-    )
-    if (
-        packaged is None
-        or packaged.get("packaged_images") != 1
-        or packaged.get("source_filename") != "source.zip"
+    for name, dimensions, warnings in (
+        ("report", (12, 8), []),
+        ("wide", (2000, 800), [_WIDE_IMAGE_WARNING]),
     ):
-        return "local image packaging"
-    job_id = str(packaged.get("id"))
-    if _wait(prefix, job_id).get("state") != "succeeded":
-        return "local image conversion"
-    result = f"{_LOCAL_IMAGES}/report.docx"
-    downloaded = _json_result(
-        _run([*prefix, "--json", "jobs", "download", job_id, result])
-    )
-    if downloaded is None or downloaded.get("status") != "downloaded":
-        return "local image download"
-    media = _inside(
-        container,
-        "import zipfile; "
-        f"z = zipfile.ZipFile({result!r}); "
-        "media = [n for n in z.namelist() if n.startswith('word/media/')]; "
-        "assert len(media) == 1, media; "
-        "assert z.read(media[0]).startswith(b'\\x89PNG')",
-    )
-    if media.returncode != 0:
-        return "local image media"
-    for name, code, message in (
-        ("missing.md", "validation", _MISSING_IMAGE),
-        ("escape.md", "validation", _ESCAPING_IMAGE),
-        ("large.md", "conversion_request_invalid", None),
+        packaged = _json_result(
+            _run([*prefix, "--json", "convert", f"{project}/{name}.md"])
+        )
+        if (
+            packaged is None
+            or packaged.get("packaged_images") != 1
+            or packaged.get("source_filename") != "source.zip"
+        ):
+            return f"local image packaging {name}"
+        job_id = str(packaged.get("id"))
+        finished = _wait(prefix, job_id)
+        if (
+            finished.get("state") != "succeeded"
+            or finished.get("warnings", []) != warnings
+        ):
+            return f"local image conversion or warnings {name}"
+        result = f"{_LOCAL_IMAGES}/{name}.docx"
+        downloaded = _json_result(
+            _run([*prefix, "--json", "jobs", "download", job_id, result])
+        )
+        if downloaded is None or downloaded.get("status") != "downloaded":
+            return f"local image download {name}"
+        media = _inside(
+            container,
+            "import io, zipfile; from PIL import Image; "
+            f"z = zipfile.ZipFile({result!r}); "
+            "media = [n for n in z.namelist() if n.startswith('word/media/')]; "
+            "assert len(media) == 1, media; "
+            "image = Image.open(io.BytesIO(z.read(media[0]))); "
+            f"assert image.format == 'PNG' and image.size == {dimensions!r}, image.size",
+        )
+        if media.returncode != 0:
+            return f"local image media {name}"
+    for name, message in (
+        ("missing.md", _MISSING_IMAGE),
+        ("escape.md", _ESCAPING_IMAGE),
     ):
         error = _json_error(_run([*prefix, "--json", "convert", f"{project}/{name}"]))
-        if (
-            error is None
-            or error.get("code") != code
-            or (message is not None and error.get("message") != message)
-        ):
+        if error != {"code": "validation", "message": message}:
             return f"local image refusal {name}"
-    for source, message in (
-        (f"{project}/wide.md", "Document image exceeds configured limits."),
-        (f"{_LOCAL_IMAGES}/bypass-missing.zip", _MISSING_IMAGE),
-        (f"{_LOCAL_IMAGES}/bypass-traversal.zip", "Document archive is invalid."),
+    large = f"{project}/large.md"
+    error = _json_error(_run([*prefix, "--json", "convert", large]))
+    if (
+        error is None
+        or error.get("code") != "archive_size_confirmation_required"
+        or "--allow-large-archive" not in str(error.get("message"))
     ):
-        submitted = _json_result(_run([*prefix, "--json", "convert", source]))
+        return "local image archive confirmation required"
+    for arguments, message in (
+        ([large, "--allow-large-archive"], "Document image exceeds configured limits."),
+        ([f"{_LOCAL_IMAGES}/bypass-missing.zip"], _MISSING_IMAGE),
+        ([f"{_LOCAL_IMAGES}/bypass-traversal.zip"], "Document archive is invalid."),
+    ):
+        submitted = _json_result(_run([*prefix, "--json", "convert", *arguments]))
         if submitted is None:
-            return f"local image service submission {source}"
+            return f"local image service submission {arguments[0]}"
         failed = _wait(prefix, str(submitted.get("id")))
         if (
             failed.get("state") != "failed"
             or failed.get("error_code") != "validation"
             or failed.get("error_message") != message
         ):
-            return f"local image service validation {source}"
+            return f"local image service validation {arguments[0]}"
     return None
 
 

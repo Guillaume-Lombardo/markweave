@@ -1760,7 +1760,10 @@ def test_runner_invokes_local_image_packaging_in_both_profiles() -> None:
         "packaged_images",
         "bypass-missing.zip",
         "bypass-traversal.zip",
-        "conversion_request_invalid",
+        "archive_size_confirmation_required",
+        "--allow-large-archive",
+        "resized from 2500",
+        "image.size",
         "Document image exceeds configured limits.",
     ):
         assert scenario in workflow
