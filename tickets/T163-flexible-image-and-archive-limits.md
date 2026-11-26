@@ -28,6 +28,9 @@ T18 (G1L-328) resource budgets.
 ## Progress
 
 - 2026-11-26: Started implementation on `feat/t163-flexible-image-and-archive-limits`.
+- 2026-11-26: Implemented confirmed admission, immutable override auditing, and raster resizing
+  with result warnings. Added API, CLI, browser, OpenXML, and final-image regression coverage.
+  The preview and conversion worker now use the same raster decoding ceiling.
 
 ## Synchronization
 
