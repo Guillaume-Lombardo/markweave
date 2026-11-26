@@ -8,7 +8,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-from typing import Literal, Never
+from typing import TYPE_CHECKING, Literal, Never
 from xml.etree import ElementTree
 
 from defusedxml import ElementTree as DefusedElementTree
@@ -28,6 +28,11 @@ from tinycss2.ast import (
 
 from markweave.conversion.errors import ConversionError, validation_error
 from markweave.conversion.raster_headers import gif_canvas, webp_dimensions
+
+if TYPE_CHECKING:
+    from markweave.config import Settings
+    from markweave.conversion.local_settings import LocalConversionSettings
+
 
 _SVG_NAMESPACE = "http://www.w3.org/2000/svg"
 _XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
@@ -67,6 +72,21 @@ class ImageLimits:
     max_svg_elements: int
     max_svg_depth: int
     max_decode_pixels: int | None = None
+
+    @classmethod
+    def from_conversion_settings(
+        cls, settings: Settings | LocalConversionSettings
+    ) -> ImageLimits:
+        """Build the shared image budget for forward conversion and preview."""
+        return cls(
+            settings.conversion_image_max_source_bytes,
+            settings.conversion_image_max_width_pixels,
+            settings.conversion_image_max_height_pixels,
+            settings.conversion_image_max_pixels,
+            settings.conversion_image_max_svg_elements,
+            settings.conversion_image_max_svg_depth,
+            max_decode_pixels=settings.conversion_image_decode_max_pixels,
+        )
 
     def __post_init__(self) -> None:
         for value in (

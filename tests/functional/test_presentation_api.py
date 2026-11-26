@@ -196,19 +196,29 @@ def test_worker_source_bundle_and_default_reference_boundary(
 
 
 @pytest.mark.parametrize("format_name", ["GIF", "WEBP"])
+@pytest.mark.parametrize("ceiling", ["width", "decode_pixels"])
 def test_plan_rejects_oversized_raster_before_pillow_open(
-    tmp_path, mocker, format_name
+    tmp_path, mocker, format_name, ceiling
 ):
     from PIL import Image  # noqa: PLC0415
 
     image = io.BytesIO()
-    Image.new("RGB", (2_001, 1), "blue").save(image, format=format_name)
+    dimensions = (2_001, 1) if ceiling == "width" else (20, 10)
+    Image.new("RGB", dimensions, "blue").save(image, format=format_name)
     filename = f"picture.{format_name.lower()}"
     source = io.BytesIO()
     with zipfile.ZipFile(source, "w") as archive:
         archive.writestr("document.md", f"![Picture]({filename})")
         archive.writestr(filename, image.getvalue())
-    with client_for(tmp_path) as client:
+    settings = settings_for(tmp_path)
+    if ceiling == "decode_pixels":
+        settings = settings.model_copy(
+            update={"conversion_image_decode_max_pixels": 100}
+        )
+    with TestClient(
+        create_app(settings, scanner=TrustingUploadScanner()),
+        base_url="https://testserver",
+    ) as client:
         headers = authenticate(client)
         open_image = mocker.patch.object(Image, "open")
         response = client.post(

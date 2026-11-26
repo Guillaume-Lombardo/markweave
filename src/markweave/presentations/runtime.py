@@ -27,14 +27,7 @@ def preparation_limits(settings: Settings) -> tuple[ArchiveLimits, ImageLimits]:
             settings.conversion_max_images,
             settings.conversion_max_files,
         ),
-        ImageLimits(
-            settings.conversion_image_max_source_bytes,
-            settings.conversion_image_max_width_pixels,
-            settings.conversion_image_max_height_pixels,
-            settings.conversion_image_max_pixels,
-            settings.conversion_image_max_svg_elements,
-            settings.conversion_image_max_svg_depth,
-        ),
+        ImageLimits.from_conversion_settings(settings),
     )
 
 

@@ -325,15 +325,7 @@ def build_document_engines(
     """Compose the validation, archive, image, Mermaid, Pandoc, and PDF adapters."""
 
     workspace = settings.template_engine_workspace_root
-    image_limits = ImageLimits(
-        settings.conversion_image_max_source_bytes,
-        settings.conversion_image_max_width_pixels,
-        settings.conversion_image_max_height_pixels,
-        settings.conversion_image_max_pixels,
-        settings.conversion_image_max_svg_elements,
-        settings.conversion_image_max_svg_depth,
-        max_decode_pixels=settings.conversion_image_decode_max_pixels,
-    )
+    image_limits = ImageLimits.from_conversion_settings(settings)
     archive_limits = ArchiveLimits(
         max_archive_bytes=settings.conversion_upload_max_bytes,
         max_entries=settings.conversion_max_files,
