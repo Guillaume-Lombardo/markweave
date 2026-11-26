@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -125,8 +125,32 @@ def capacity_error_responses(*status_codes: int) -> dict[int | str, dict[str, An
     return responses
 
 
+class ConversionRequestTooLarge(HTTPException):
+    """Abort multipart parsing when the conversion body exceeds its ceiling."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail="The conversion request is too large.",
+        )
+
+
 def install_error_handlers(app: FastAPI) -> None:
     """Install sanitized functional and request-validation error handlers."""
+
+    @app.exception_handler(ConversionRequestTooLarge)
+    def conversion_request_size_handler(
+        _request: Request, error: ConversionRequestTooLarge
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=error.status_code,
+            content={
+                "error": {
+                    "code": "CONVERSION_REQUEST_TOO_LARGE",
+                    "message": error.detail,
+                }
+            },
+        )
 
     @app.exception_handler(ConversionSizeError)
     def conversion_size_error_handler(

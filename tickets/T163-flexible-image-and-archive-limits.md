@@ -31,6 +31,11 @@ T18 (G1L-328) resource budgets.
 - 2026-11-26: Implemented confirmed admission, immutable override auditing, and raster resizing
   with result warnings. Added API, CLI, browser, OpenXML, and final-image regression coverage.
   The preview and conversion worker now use the same raster decoding ceiling.
+- 2026-11-26: Restored the restricted reverse-attempt package import and added PNG
+  and JPEG header checks. Forward uploads now authenticate before streaming bounded
+  multipart data. SQLite tests verify that rejected overrides leave jobs and audit
+  records untouched. A global budget for concurrent authenticated uploads remains
+  a follow-up.
 
 ## Synchronization
 

@@ -27,7 +27,12 @@ from tinycss2.ast import (
 )
 
 from markweave.conversion.errors import ConversionError, validation_error
-from markweave.conversion.raster_headers import gif_canvas, webp_dimensions
+from markweave.conversion.raster_headers import (
+    gif_canvas,
+    jpeg_canvas,
+    png_canvas,
+    webp_dimensions,
+)
 
 if TYPE_CHECKING:
     from markweave.config import Settings
@@ -154,13 +159,17 @@ def _check_decode_dimensions(width: int, height: int, limits: ImageLimits) -> No
         _reject_image("Document image exceeds the hard decoding limit.")
 
 
-def _check_allocating_headers(
+def _check_raster_headers(
     source: bytes, suffix: str, limits: ImageLimits, *, strict: bool = False
 ) -> None:
     if suffix == ".gif":
         dimensions = (gif_canvas(source),)
     elif suffix == ".webp":
         dimensions = webp_dimensions(source)
+    elif suffix == ".png":
+        dimensions = (png_canvas(source),)
+    elif suffix in {".jpg", ".jpeg"}:
+        dimensions = (jpeg_canvas(source),)
     else:
         return
     for width, height in dimensions:
@@ -185,7 +194,7 @@ def _normalized_png(image: Image.Image, limits: ImageLimits) -> bytes:
 
 
 def _normalize_raster(source: bytes, suffix: str, limits: ImageLimits) -> bytes:
-    _check_allocating_headers(source, suffix, limits, strict=True)
+    _check_raster_headers(source, suffix, limits, strict=True)
     try:
         with Image.open(
             io.BytesIO(source), formats=sorted(_RASTER_FORMATS[suffix])
@@ -439,7 +448,7 @@ def normalize_conversion_image(
         return NormalizedImage(normalize_image(path, source, limits))
     if not source or len(source) > limits.max_source_bytes:
         _reject_image("Document image exceeds configured limits.")
-    _check_allocating_headers(source, suffix, limits)
+    _check_raster_headers(source, suffix, limits)
     formats = sorted(_RASTER_FORMATS[suffix])
     try:
         with Image.open(io.BytesIO(source), formats=formats) as probe:
@@ -513,7 +522,7 @@ def validate_resized_raster(
     """Recheck bounded raster format and dimensions at the document boundary."""
     suffix = path.suffix.casefold()
     formats = _RASTER_FORMATS.get(suffix, frozenset())
-    _check_allocating_headers(source, suffix, limits)
+    _check_raster_headers(source, suffix, limits, strict=True)
     try:
         with Image.open(io.BytesIO(source), formats=list(formats)) as image:
             if _RASTER_MEDIA_TYPES.get(image.format or "") != media_type:
@@ -532,6 +541,7 @@ def validate_normalized_png(source: bytes, limits: ImageLimits) -> None:
 
     if type(source) is not bytes or not source:
         _reject_image()
+    _check_raster_headers(source, ".png", limits, strict=True)
     try:
         with Image.open(io.BytesIO(source), formats=["PNG"]) as image:
             if image.info:

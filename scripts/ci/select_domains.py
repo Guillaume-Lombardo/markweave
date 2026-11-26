@@ -49,6 +49,7 @@ CONTAINER_PATTERNS = (
     "src/markweave/conversion/__init__.py",
     "src/markweave/conversion/errors.py",
     "src/markweave/conversion/images.py",
+    "src/markweave/conversion/raster_headers.py",
     "src/markweave/cli/commands/recovery.py",
     "src/markweave/cli/commands/local_conversion.py",
     "src/markweave/cli/local_outputs.py",

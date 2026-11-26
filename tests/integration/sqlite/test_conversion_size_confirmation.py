@@ -12,13 +12,14 @@ from sqlalchemy.exc import DatabaseError
 
 from markweave.app import create_app
 from markweave.config import Settings
-from markweave.malware import TrustingUploadScanner
+from markweave.malware import MalwareDetectedError, TrustingUploadScanner
 from markweave.persistence.retention import SqlRetentionRepository
 from markweave.persistence.sql import create_database_engine, standalone_database_url
 from tests.functional.test_conversion_api import login
 from tests.settings import template_settings
 
 pytestmark = [pytest.mark.integration, pytest.mark.light_coverage]
+ADMIN_PASSWORD = "admin-" + "password"
 
 
 def _source(member_bytes: int, *, compression: int) -> bytes:
@@ -31,11 +32,12 @@ def _source(member_bytes: int, *, compression: int) -> bytes:
 
 @pytest.fixture
 def service(tmp_path: Path):
-    password = "admin-" + "password"
     settings = Settings(
-        **template_settings(conversion_max_decompressed_bytes=600),
+        **template_settings(
+            conversion_max_decompressed_bytes=600, job_active_limit_per_user=1
+        ),
         initial_admin_username="admin",
-        initial_admin_password=password,
+        initial_admin_password=ADMIN_PASSWORD,
         argon2_memory_cost=8,
         argon2_time_cost=1,
         storage_profile="standalone",
@@ -51,7 +53,7 @@ def service(tmp_path: Path):
     with TestClient(
         create_app(settings, scanner=scanner), base_url="https://testserver"
     ) as client:
-        actor = login(client, "admin", password)
+        actor = login(client, "admin", ADMIN_PASSWORD)
         yield client, actor, settings
 
 
@@ -206,4 +208,56 @@ def test_confirmed_archive_cannot_raise_its_entry_limit(service) -> None:
     )
     assert response.status_code == 422
     assert client.get("/api/v1/conversions").json()["total"] == 0
+    assert _override_audit(client) == []
+
+
+@pytest.mark.parametrize(
+    ("scenario", "status", "code"),
+    [
+        ("unconfirmed", 413, "ARCHIVE_SIZE_CONFIRMATION_REQUIRED"),
+        ("disabled", 413, "CONVERSION_SIZE_LIMIT_EXCEEDED"),
+        ("quota", 429, "CONVERSION_USER_QUOTA_EXCEEDED"),
+        ("malware", 422, "UPLOAD_MALWARE_DETECTED"),
+    ],
+)
+def test_standard_user_admission_preserves_jobs_and_audit_when_denied(
+    service, scenario, status, code, mocker
+) -> None:
+    client, admin, settings = service
+    password = "alice-" + "password"
+    created = client.post(
+        "/api/v1/admin/users",
+        headers={"X-CSRF-Token": admin["csrf_token"]},
+        json={"username": "alice", "password": password},
+    )
+    assert created.status_code == 201
+    user = login(client, "alice", password)
+    assert user["user"]["role"] == "user"
+    headers = {"X-CSRF-Token": user["csrf_token"]}
+    if scenario == "disabled":
+        settings.conversion_large_archive_override = False
+    if scenario == "quota":
+        previous = client.post(
+            "/api/v1/conversions",
+            headers=headers,
+            files={"source": ("source.md", b"# Existing job")},
+            data={"output": "docx"},
+        )
+        assert previous.status_code == 202
+    if scenario == "malware":
+        mocker.patch.object(
+            TrustingUploadScanner, "scan", side_effect=MalwareDetectedError
+        )
+    path = "/api/v1/conversions"
+    before = client.get(path).json()
+    response = client.post(
+        path,
+        headers=headers,
+        files={"source": ("source.zip", _source(180, compression=zipfile.ZIP_STORED))},
+        data={"output": "docx", "allow_large_archive": str(scenario != "unconfirmed")},
+    )
+    assert response.status_code == status
+    assert response.json()["error"]["code"] == code
+    assert client.get(path).json() == before
+    login(client, "admin", ADMIN_PASSWORD)
     assert _override_audit(client) == []

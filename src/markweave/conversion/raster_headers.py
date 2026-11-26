@@ -1,4 +1,4 @@
-"""Inspect canvas dimensions for formats whose decoders allocate on open."""
+"""Inspect raster dimensions without opening a decoder."""
 
 from __future__ import annotations
 
@@ -7,6 +7,17 @@ from collections.abc import Iterator
 
 from markweave.conversion.errors import ConversionError, validation_error
 
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+_PNG_HEADER_BYTES = 33
+_PNG_CHUNK_HEADER = struct.Struct(">I4s")
+_PNG_CRC_BYTES = 4
+_JPEG_SOI = b"\xff\xd8"
+_JPEG_MARKER_PREFIX = 0xFF
+_JPEG_START_OF_SCAN = 0xDA
+_JPEG_TEMPORARY = 0x01
+_JPEG_FRAME_MARKERS = frozenset(range(0xC0, 0xD0)) - {0xC4, 0xC8, 0xCC}
+_JPEG_FRAME_BYTES = 8
+_JPEG_LENGTH_BYTES = 2
 _GIF_SCREEN = struct.Struct("<HHB")
 _GIF_FRAME = struct.Struct("<HHHHB")
 _GIF_HEADER_BYTES = 13
@@ -21,6 +32,56 @@ _VP8L_SIGNATURE = 0x2F
 _WEBP_CHUNK_HEADER = struct.Struct("<4sI")
 _WEBP_FLAG_ANIMATED = 0x02
 _VP8_DIMENSION_MASK = (1 << 14) - 1
+
+
+def png_canvas(data: bytes) -> tuple[int, int]:
+    """Read IHDR and rule out a second canvas header before the image data."""
+    if len(data) < _PNG_HEADER_BYTES or not data.startswith(
+        _PNG_SIGNATURE + b"\x00\x00\x00\x0dIHDR"
+    ):
+        raise _invalid_image()
+    offset = _PNG_HEADER_BYTES
+    while offset + _PNG_CHUNK_HEADER.size <= len(data):
+        length, kind = _PNG_CHUNK_HEADER.unpack_from(data, offset)
+        offset += _PNG_CHUNK_HEADER.size + length + _PNG_CRC_BYTES
+        if offset > len(data) or kind in {b"IHDR", b"IEND", b"fdAT"}:
+            break
+        if kind == b"IDAT":
+            return struct.unpack_from(">II", data, 16)
+    raise _invalid_image()
+
+
+def jpeg_canvas(data: bytes) -> tuple[int, int]:
+    """Read the frame dimensions from marker segments before the first scan."""
+    if not data.startswith(_JPEG_SOI):
+        raise _invalid_image()
+    offset = len(_JPEG_SOI)
+    dimensions = None
+    while offset < len(data) and data[offset] == _JPEG_MARKER_PREFIX:
+        while offset < len(data) and data[offset] == _JPEG_MARKER_PREFIX:
+            offset += 1
+        if offset >= len(data):
+            break
+        marker = data[offset]
+        offset += 1
+        if marker == _JPEG_TEMPORARY:
+            continue
+        if marker in {0x00, 0xD8, 0xD9} or offset + _JPEG_LENGTH_BYTES > len(data):
+            break
+        length = int.from_bytes(data[offset : offset + _JPEG_LENGTH_BYTES], "big")
+        if length < _JPEG_LENGTH_BYTES or offset + length > len(data):
+            break
+        if marker == _JPEG_START_OF_SCAN:
+            if dimensions is not None:
+                return dimensions
+            break
+        if marker in _JPEG_FRAME_MARKERS:
+            if dimensions is not None or length < _JPEG_FRAME_BYTES:
+                break
+            height, width = struct.unpack_from(">HH", data, offset + 3)
+            dimensions = width, height
+        offset += length
+    raise _invalid_image()
 
 
 def gif_canvas(data: bytes) -> tuple[int, int]:

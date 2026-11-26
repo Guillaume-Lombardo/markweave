@@ -92,20 +92,15 @@ def test_reject_policy_and_source_byte_limit() -> None:
         normalize_conversion_image(path, b"invalid", IMAGE_LIMITS, "resize")
 
 
-def test_header_ceiling_is_checked_before_verification_and_decode(mocker) -> None:
+def test_pillow_ceiling_is_checked_before_open(mocker) -> None:
     source = raster((120, 80))
     mocker.patch.object(Image, "MAX_IMAGE_PIXELS", 8_000)
-    verify = mocker.patch("PIL.PngImagePlugin.PngImageFile.verify")
-    load = mocker.patch("PIL.PngImagePlugin.PngImageFile.load")
-    with (
-        pytest.warns(Image.DecompressionBombWarning),
-        pytest.raises(ConversionError, match="hard decoding limit"),
-    ):
+    open_image = mocker.patch.object(Image, "open")
+    with pytest.raises(ConversionError, match="hard decoding limit"):
         normalize_conversion_image(
             PurePosixPath("photo.png"), source, IMAGE_LIMITS, "resize"
         )
-    verify.assert_not_called()
-    load.assert_not_called()
+    open_image.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -203,18 +198,6 @@ def test_confirmed_extraction_keeps_member_and_hard_total_limits() -> None:
     )
 
 
-@pytest.mark.parametrize("policy", ["resize", "reject"])
-def test_configured_decode_ceiling_applies_under_either_policy(policy, mocker) -> None:
-    source = raster((120, 80))
-    limits = replace(IMAGE_LIMITS, max_decode_pixels=8_000)
-    verify = mocker.patch("PIL.PngImagePlugin.PngImageFile.verify")
-    load = mocker.patch("PIL.PngImagePlugin.PngImageFile.load")
-    with pytest.raises(ConversionError, match="hard decoding limit"):
-        normalize_conversion_image(PurePosixPath("photo.png"), source, limits, policy)
-    verify.assert_not_called()
-    load.assert_not_called()
-
-
 def test_exif_rotation_keeps_display_aspect_ratio_and_source_limit() -> None:
     source = io.BytesIO()
     image = Image.new("RGB", (100, 50), "blue")
@@ -231,8 +214,8 @@ def test_exif_rotation_keeps_display_aspect_ratio_and_source_limit() -> None:
 
 
 @pytest.mark.parametrize("policy", ["resize", "reject"])
-@pytest.mark.parametrize("encoding", ["GIF", "WEBP"])
-def test_allocating_formats_are_checked_before_pillow_open(
+@pytest.mark.parametrize("encoding", ["GIF", "JPEG", "PNG", "WEBP"])
+def test_configured_decode_ceiling_is_checked_before_pillow_open(
     policy, encoding, mocker
 ) -> None:
     source = raster((120, 80), encoding)
@@ -311,14 +294,34 @@ def test_static_gif_extensions_are_read_before_the_first_frame() -> None:
     assert result.warning is not None
 
 
-@pytest.mark.parametrize("format_name", ["GIF", "WEBP"])
-def test_malformed_allocating_headers_reject_before_open(format_name, mocker) -> None:
+@pytest.mark.parametrize("format_name", ["GIF", "JPEG", "PNG", "WEBP"])
+def test_truncated_raster_header_rejects_before_open(format_name, mocker) -> None:
     source = raster((120, 80), format_name)
     open_image = mocker.patch.object(Image, "open")
     with pytest.raises(ConversionError, match="invalid image"):
         normalize_conversion_image(
             PurePosixPath(f"photo.{format_name.lower()}"),
             source[:13],
+            IMAGE_LIMITS,
+            "resize",
+        )
+    open_image.assert_not_called()
+
+
+@pytest.mark.parametrize("encoding", ["JPEG", "PNG"])
+def test_duplicate_raster_canvas_header_rejects_before_open(encoding, mocker) -> None:
+    source = raster((30, 10), encoding)
+    if encoding == "JPEG":
+        offset = source.index(b"\xff\xc0")
+        end = offset + 2 + int.from_bytes(source[offset + 2 : offset + 4], "big")
+    else:
+        offset, end = 8, 33
+    malformed = source[:end] + source[offset:end] + source[end:]
+    open_image = mocker.patch.object(Image, "open")
+    with pytest.raises(ConversionError, match="invalid image"):
+        normalize_conversion_image(
+            PurePosixPath(f"photo.{encoding.lower()}"),
+            malformed,
             IMAGE_LIMITS,
             "resize",
         )

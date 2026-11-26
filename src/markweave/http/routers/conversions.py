@@ -1,7 +1,8 @@
 """Conversion submission, lifecycle, and result routes."""
 
+from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any, cast
 from urllib.parse import quote
 from uuid import UUID
 
@@ -17,7 +18,9 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.routing import APIRoute
 from starlette.concurrency import run_in_threadpool
+from starlette.types import Message
 
 from markweave.auth.models import Role, User
 from markweave.conversion.archive import conversion_size_limits
@@ -29,7 +32,7 @@ from markweave.conversion.size_policy import (
     require_size_confirmation,
 )
 from markweave.http.dependencies import HttpDependencies
-from markweave.http.errors import error_responses
+from markweave.http.errors import ConversionRequestTooLarge, error_responses
 from markweave.http.responses import conversion_response, template_response
 from markweave.http.schemas import (
     ConversionOptionsResponse,
@@ -57,6 +60,57 @@ _RESULT_EXTENSIONS = {
     JobOutput.PPTX: "pptx",
     JobOutput.PPTX_BUNDLE: "zip",
 }
+
+
+def _upload_route(dependencies: HttpDependencies) -> type[APIRoute]:
+    class ConversionUploadRoute(APIRoute):
+        def get_route_handler(
+            self,
+        ) -> Callable[[Request], Coroutine[Any, Any, Response]]:
+            handler = super().get_route_handler()
+
+            async def handle_upload(request: Request) -> Response:
+                maximum_bytes = dependencies.settings.conversion_hard_request_max_bytes
+                length = request.headers.get("Content-Length", "0")
+                try:
+                    declared_bytes = int(length)
+                except ValueError:
+                    raise JobRequestError from None
+                if declared_bytes < 0:
+                    raise JobRequestError
+                if declared_bytes > maximum_bytes:
+                    raise ConversionRequestTooLarge
+
+                # FastAPI parses form fields before resolving endpoint dependencies.
+                request.state.conversion_upload_actor = await run_in_threadpool(
+                    dependencies.mutation_actor,
+                    request,
+                    request.headers.get("X-CSRF-Token"),
+                )
+                received_bytes = 0
+
+                async def receive() -> Message:
+                    nonlocal received_bytes
+                    message = await request.receive()
+                    received_bytes += len(message.get("body", b""))
+                    if received_bytes > maximum_bytes:
+                        raise ConversionRequestTooLarge
+                    return message
+
+                return await handler(Request(request.scope, receive))
+
+            return handle_upload
+
+    return ConversionUploadRoute
+
+
+def _upload_actor(
+    request: Request,
+    csrf_token: Annotated[str | None, Header(alias="X-CSRF-Token")] = None,
+) -> User:
+    # The route already validated the header. Declare it here for OpenAPI.
+    del csrf_token
+    return cast("User", request.state.conversion_upload_actor)
 
 
 def _result_content_disposition(
@@ -89,11 +143,15 @@ async def _admit_source(
     settings = dependencies.settings
     hard_upload = settings.effective_conversion_upload_hard_max_bytes
     try:
-        content = await source.read(hard_upload + 1)
+        # Multipart parsing has already counted the file bytes. Avoid reading an
+        # oversized spooled file back into memory just to reject it.
+        content = (
+            b""
+            if source.size is not None and source.size > hard_upload
+            else await source.read(hard_upload + 1)
+        )
     finally:
         await source.close()
-    if not content:
-        raise JobRequestError
     upload = SizeLimit(
         "upload",
         source.size if source.size is not None else len(content),
@@ -102,6 +160,8 @@ async def _admit_source(
     )
     if upload.actual_bytes > hard_upload:
         raise ConversionSizeError(upload, confirmation_required=False)
+    if not content:
+        raise JobRequestError
     await run_in_threadpool(dependencies.components.scanner.scan, content)
     try:
         limits = await run_in_threadpool(
@@ -157,17 +217,10 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
             selection_source=source,
         )
 
-    @router.post(
-        "/api/v1/conversions",
-        response_model=ConversionResponse,
-        status_code=status.HTTP_202_ACCEPTED,
-        tags=["conversions"],
-        responses=error_responses(401, 403, 409, 413, 422, 429, 503),
-    )
     async def create_conversion(  # noqa: PLR0913, PLR0917 - FastAPI fields
         request: Request,
         response: Response,
-        actor: Annotated[User, Depends(dependencies.mutation_actor)],
+        actor: Annotated[User, Depends(_upload_actor)],
         source: Annotated[UploadFile, File()],
         output: Annotated[JobOutput, Form()],
         template_id: Annotated[UUID | None, Form()] = None,
@@ -224,6 +277,17 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
         response.headers[CORRELATION_HEADER] = job.correlation_id
         response.headers["Retry-After"] = str(settings.conversion_retry_after_seconds)
         return conversion_response(job)
+
+    router.add_api_route(
+        "/api/v1/conversions",
+        create_conversion,
+        methods=["POST"],
+        route_class_override=_upload_route(dependencies),
+        response_model=ConversionResponse,
+        status_code=status.HTTP_202_ACCEPTED,
+        tags=["conversions"],
+        responses=error_responses(401, 403, 409, 413, 422, 429, 503),
+    )
 
     @router.get(
         "/api/v1/conversions",

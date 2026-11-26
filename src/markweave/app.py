@@ -72,7 +72,6 @@ def create_app(  # noqa: PLR0913 - explicit lifecycle composition inputs
     app.add_middleware(
         BoundedRequestBody,
         conversion_maximum_bytes=resolved_settings.conversion_request_max_bytes,
-        conversion_hard_maximum_bytes=resolved_settings.conversion_hard_request_max_bytes,
         reversion_maximum_bytes=(
             resolved_settings.reversion_request_max_bytes
             if resolved_components.reversions is not None
