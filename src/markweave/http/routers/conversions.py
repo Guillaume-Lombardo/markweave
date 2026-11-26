@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime
-from typing import Annotated, Any, cast
+from typing import Annotated, Any
 from urllib.parse import quote
 from uuid import UUID
 
@@ -41,6 +41,7 @@ from markweave.http.schemas import (
 )
 from markweave.jobs.errors import JobRequestError
 from markweave.jobs.models import (
+    ConversionJob,
     JobOutput,
     JobOutputFamily,
     JobPage,
@@ -82,7 +83,7 @@ def _upload_route(dependencies: HttpDependencies) -> type[APIRoute]:
                     raise ConversionRequestTooLarge
 
                 # FastAPI parses form fields before resolving endpoint dependencies.
-                request.state.conversion_upload_actor = await run_in_threadpool(
+                await run_in_threadpool(
                     dependencies.mutation_actor,
                     request,
                     request.headers.get("X-CSRF-Token"),
@@ -102,15 +103,6 @@ def _upload_route(dependencies: HttpDependencies) -> type[APIRoute]:
             return handle_upload
 
     return ConversionUploadRoute
-
-
-def _upload_actor(
-    request: Request,
-    csrf_token: Annotated[str | None, Header(alias="X-CSRF-Token")] = None,
-) -> User:
-    # The route already validated the header. Declare it here for OpenAPI.
-    del csrf_token
-    return cast("User", request.state.conversion_upload_actor)
 
 
 def _result_content_disposition(
@@ -220,7 +212,6 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
     async def create_conversion(  # noqa: PLR0913, PLR0917 - FastAPI fields
         request: Request,
         response: Response,
-        actor: Annotated[User, Depends(_upload_actor)],
         source: Annotated[UploadFile, File()],
         output: Annotated[JobOutput, Form()],
         template_id: Annotated[UUID | None, Form()] = None,
@@ -229,6 +220,7 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
         presentation_dialect: Annotated[PresentationDialect | None, Form()] = None,
         slide_level: Annotated[int | None, Form(ge=1, le=6)] = None,
         allow_large_archive: Annotated[bool, Form()] = False,
+        csrf_token: Annotated[str | None, Header(alias="X-CSRF-Token")] = None,
     ) -> ConversionResponse:
         correlation_id = getattr(request.state, CORRELATION_STATE_KEY)
         if source.filename is None:
@@ -243,9 +235,11 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
         content, size_override = await _admit_source(
             dependencies, source, source_kind, confirmed=allow_large_archive
         )
-        try:
-            job, _replayed = await run_in_threadpool(
-                components.jobs.submit,
+
+        def submit() -> tuple[ConversionJob, bool]:
+            # The session may have been revoked while the body was read or scanned.
+            actor = dependencies.mutation_actor(request, csrf_token)
+            return components.jobs.submit(
                 JobRequest(
                     owner_id=actor.id,
                     source=content,
@@ -271,6 +265,9 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
                 ),
                 idempotency_key,
             )
+
+        try:
+            job, _replayed = await run_in_threadpool(submit)
         except ValueError:
             raise JobRequestError from None
         response.headers["Location"] = f"/api/v1/conversions/{job.id}"

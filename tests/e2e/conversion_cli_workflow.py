@@ -43,6 +43,10 @@ def png(width, height):
 (project / "assets" / "unused.png").write_bytes(png(4, 4))
 (project / "assets" / "wide.png").write_bytes(png(2500, 1000))
 (project / "assets" / "large.png").write_bytes(b"\\x89PNG" + bytes(1_000_001))
+# The 40-megapixel PNG fits the byte budget and exceeds the 32-megapixel ceiling.
+with io.BytesIO() as encoded:
+    Image.new("1", (8000, 5000), 1).save(encoded, format="PNG")
+    (project / "assets" / "over-pixel-limit.png").write_bytes(encoded.getvalue())
 (root / "outside.png").write_bytes(png(4, 4))
 texts = {{
     "report.md": "# Local images\\n\\n![Pixel](assets/pixel.png)\\n",
@@ -50,6 +54,7 @@ texts = {{
     "escape.md": "![Escape](../outside.png)\\n",
     "large.md": "![Large](assets/large.png)\\n",
     "wide.md": "![Wide](assets/wide.png)\\n",
+    "over-pixel-limit.md": "![Large canvas](assets/over-pixel-limit.png)\\n",
 }}
 for name, text in texts.items():
     (project / name).write_text(text, encoding="utf-8")
@@ -299,6 +304,10 @@ def _exercise_local_images(  # noqa: PLR0911 - bounded E2E assertions
         return "local image archive confirmation required"
     for arguments, message in (
         ([large, "--allow-large-archive"], "Document image exceeds configured limits."),
+        (
+            [f"{project}/over-pixel-limit.md"],
+            "Document image exceeds the hard decoding limit.",
+        ),
         ([f"{_LOCAL_IMAGES}/bypass-missing.zip"], _MISSING_IMAGE),
         ([f"{_LOCAL_IMAGES}/bypass-traversal.zip"], "Document archive is invalid."),
     ):

@@ -14,6 +14,7 @@ _PNG_CRC_BYTES = 4
 _JPEG_SOI = b"\xff\xd8"
 _JPEG_MARKER_PREFIX = 0xFF
 _JPEG_START_OF_SCAN = 0xDA
+_JPEG_DEFINE_HIERARCHY = 0xDE
 _JPEG_TEMPORARY = 0x01
 _JPEG_FRAME_MARKERS = frozenset(range(0xC0, 0xD0)) - {0xC4, 0xC8, 0xCC}
 _JPEG_FRAME_BYTES = 8
@@ -66,6 +67,8 @@ def jpeg_canvas(data: bytes) -> tuple[int, int]:
         offset += 1
         if marker == _JPEG_TEMPORARY:
             continue
+        if marker == _JPEG_DEFINE_HIERARCHY:
+            break  # Hierarchical JPEG can supply a second canvas size.
         if marker in {0x00, 0xD8, 0xD9} or offset + _JPEG_LENGTH_BYTES > len(data):
             break
         length = int.from_bytes(data[offset : offset + _JPEG_LENGTH_BYTES], "big")

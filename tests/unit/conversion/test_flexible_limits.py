@@ -328,6 +328,24 @@ def test_duplicate_raster_canvas_header_rejects_before_open(encoding, mocker) ->
     open_image.assert_not_called()
 
 
+def test_hierarchical_jpeg_is_rejected_before_open(mocker) -> None:
+    source = raster((30, 10), "JPEG")
+    start = source.index(b"\xff\xc0")
+    end = start + 2 + int.from_bytes(source[start + 2 : start + 4], "big")
+    hierarchy = bytearray(source[start:end])
+    hierarchy[1] = 0xDE  # Define hierarchical progression.
+    hierarchy[5:9] = b"\x01\x00\x01\x00"  # 256 by 256 pixels.
+    open_image = mocker.spy(Image, "open")
+    with pytest.raises(ConversionError):
+        normalize_conversion_image(
+            PurePosixPath("photo.jpg"),
+            source[:end] + hierarchy + source[end:],
+            replace(IMAGE_LIMITS, max_decode_pixels=8_000),
+            "resize",
+        )
+    open_image.assert_not_called()
+
+
 def test_animated_gif_remains_rejected_under_resize_policy() -> None:
     source = io.BytesIO()
     frame = Image.new("RGB", (30, 10), "blue")

@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.exc import DatabaseError
+from starlette import formparsers
 
 from markweave.app import create_app
 from markweave.config import Settings
@@ -195,6 +196,34 @@ def _override_audit(client: TestClient) -> list[dict]:
         for record in client.get("/api/v1/audit").json()
         if record["operation"] == "large_archive_override"
     ]
+
+
+def test_revoked_session_cannot_submit_confirmed_upload(service, mocker) -> None:
+    client, actor, settings = service
+    session_token = client.cookies[settings.session_cookie_name]
+    spool = mocker.spy(formparsers, "SpooledTemporaryFile")
+
+    def revoke_session(_content: bytes) -> None:
+        client.app.state.components.authentication.logout(session_token)
+
+    scan = mocker.patch.object(
+        TrustingUploadScanner, "scan", side_effect=revoke_session
+    )
+    path = "/api/v1/conversions"
+    before = client.get(path).json()
+    response = client.post(
+        path,
+        headers={"X-CSRF-Token": actor["csrf_token"]},
+        files={"source": ("source.zip", _source(180, compression=zipfile.ZIP_STORED))},
+        data={"output": "docx", "allow_large_archive": "true"},
+    )
+    scan.assert_called_once()
+    assert spool.spy_return.closed
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTHENTICATION_REQUIRED"
+    login(client, "admin", ADMIN_PASSWORD)
+    assert client.get(path).json() == before
+    assert _override_audit(client) == []
 
 
 def test_confirmed_archive_cannot_raise_its_entry_limit(service) -> None:
