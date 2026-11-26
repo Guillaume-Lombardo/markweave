@@ -159,6 +159,7 @@ def _confirm_source_size(
     confirmed: bool,
 ) -> bool:
     from markweave.conversion.archive import conversion_size_limits  # noqa: PLC0415
+    from markweave.conversion.errors import ConversionError  # noqa: PLC0415
     from markweave.conversion.size_policy import (  # noqa: PLC0415
         ConversionSizeError,
         SizeLimit,
@@ -171,9 +172,11 @@ def _confirm_source_size(
         settings.conversion_upload_max_bytes,
         settings.effective_conversion_upload_hard_max_bytes,
     )
-    limits = conversion_size_limits(source, upload, settings, archive=archive)
     try:
+        limits = conversion_size_limits(source, upload, settings, archive=archive)
         return require_size_confirmation(limits, confirmed=confirmed)
+    except ConversionError as error:
+        raise CliError(error.code.value, str(error)) from None
     except ConversionSizeError as error:
         if not error.confirmation_required:
             raise CliError("conversion_size_limit_exceeded", str(error)) from None

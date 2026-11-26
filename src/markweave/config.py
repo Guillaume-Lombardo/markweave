@@ -74,6 +74,7 @@ class ConversionLimitSettings(BaseSettings):
     conversion_upload_hard_max_bytes: int | None = Field(default=None, gt=0)
     conversion_large_archive_override: bool = True
     conversion_max_decompressed_bytes: int = Field(gt=0)
+    conversion_max_files: int = Field(gt=0)
     conversion_hard_max_decompressed_bytes: int | None = Field(default=None, gt=0)
     conversion_image_oversize_policy: Literal["resize", "reject"] = "resize"
     conversion_image_decode_max_pixels: int = Field(default=32_000_000, gt=0)
@@ -224,7 +225,6 @@ class Settings(ConversionLimitSettings):
     reversion_worker_reconciliation_ack_batch_size: int | None = Field(
         default=None, gt=0
     )
-    conversion_max_files: int = Field(gt=0)
     conversion_max_images: int = Field(gt=0)
     conversion_max_diagrams: int = Field(gt=0)
     conversion_max_compression_ratio: float = Field(ge=1.0, allow_inf_nan=False)

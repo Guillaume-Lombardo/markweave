@@ -90,6 +90,24 @@
             "title": "Owner Id",
             "type": "string"
           },
+          "sizes": {
+            "default": [],
+            "items": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "title": "Sizes",
+            "type": "array"
+          },
           "target_id": {
             "format": "uuid",
             "title": "Target Id",
@@ -399,6 +417,11 @@
       },
       "Body_create_conversion_api_v1_conversions_post": {
         "properties": {
+          "allow_large_archive": {
+            "default": false,
+            "title": "Allow Large Archive",
+            "type": "boolean"
+          },
           "output": {
             "$ref": "#/components/schemas/JobOutput"
           },
@@ -3305,6 +3328,18 @@
       "ConversionOptionsResponse": {
         "description": "Authoritative limits and immutable template selection for conversion.",
         "properties": {
+          "conversion_upload_hard_max_bytes": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversion Upload Hard Max Bytes"
+          },
           "conversion_upload_max_bytes": {
             "exclusiveMinimum": 0.0,
             "title": "Conversion Upload Max Bytes",
@@ -3525,6 +3560,14 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "warnings": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
           }
         },
         "required": [
@@ -3616,13 +3659,61 @@
       "ErrorDetail": {
         "description": "Stable machine-readable functional error detail.",
         "properties": {
+          "actual_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Bytes"
+          },
           "code": {
             "title": "Code",
             "type": "string"
           },
+          "dimension": {
+            "anyOf": [
+              {
+                "enum": [
+                  "upload",
+                  "decompressed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimension"
+          },
+          "hard_limit_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hard Limit Bytes"
+          },
           "message": {
             "title": "Message",
             "type": "string"
+          },
+          "soft_limit_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Soft Limit Bytes"
           }
         },
         "required": [

@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import math
 import stat
+import struct
 import unicodedata
 import zipfile
 import zlib
@@ -26,6 +27,15 @@ from markweave.conversion.size_policy import SizeLimit
 
 _READ_CHUNK_BYTES = 64 * 1024
 _ZIP_SYSTEM_UNIX = 3
+_DIRECTORY_HEADER = struct.Struct("<4s24xHHH12x")
+_CENTRAL_DIRECTORY_SIGNATURE = b"PK\x01\x02"
+_END_OF_CENTRAL_DIRECTORY = b"PK\x05\x06"
+_ZIP64_END_SIGNATURE = b"PK\x06\x06"
+_ZIP64_END_AND_LOCATOR_BYTES = 56 + 20
+# CPython's EOCD record includes its location after the comment.
+_EOCD_SIGNATURE = 0
+_EOCD_DIRECTORY_SIZE = 5
+_EOCD_LOCATION = 9
 _SUPPORTED_COMPRESSION = frozenset({zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED})
 
 
@@ -303,7 +313,11 @@ def _read_member_bounded(
 def conversion_size_limits(
     data: bytes, upload: SizeLimit, settings: ConversionLimitSettings, *, archive: bool
 ) -> tuple[SizeLimit, ...]:
-    total = _archive_uncompressed_size(data) if archive else None
+    total = (
+        _archive_uncompressed_size(data, settings.conversion_max_files)
+        if archive
+        else None
+    )
     if total is None:
         return (upload,)
     return (
@@ -317,13 +331,49 @@ def conversion_size_limits(
     )
 
 
-def _archive_uncompressed_size(data: bytes) -> int | None:
+def _check_directory_entry_count(
+    data: bytes, stream: io.BytesIO, max_entries: int
+) -> None:
+    # Reuse the pinned Python ZIP reader's EOCD and ZIP64 locator handling.
+    end_record = zipfile._EndRecData(stream)  # ty: ignore[missing-attribute] - pinned CPython
+    if end_record is None:
+        raise zipfile.BadZipFile("Missing central directory")
+    end = end_record[_EOCD_LOCATION]
+    if end_record[_EOCD_SIGNATURE] == _ZIP64_END_SIGNATURE and data.startswith(
+        _END_OF_CENTRAL_DIRECTORY, end
+    ):
+        # Earlier Python 3.14 patch releases report the ZIP32 record location
+        # for ZIP64 too. Match the offset their ZipFile parser then uses.
+        end -= _ZIP64_END_AND_LOCATOR_BYTES
+    offset = end - end_record[_EOCD_DIRECTORY_SIZE]
+    if offset < 0 or end > len(data):
+        raise zipfile.BadZipFile("Invalid central directory size")
+    for _ in range(max_entries):
+        if offset == end:
+            return
+        if offset + _DIRECTORY_HEADER.size > end:
+            raise zipfile.BadZipFile("Invalid central directory entry")
+        signature, name_length, extra_length, comment_length = (
+            _DIRECTORY_HEADER.unpack_from(data, offset)
+        )
+        if signature != _CENTRAL_DIRECTORY_SIGNATURE:
+            raise zipfile.BadZipFile("Invalid central directory signature")
+        offset += _DIRECTORY_HEADER.size + name_length + extra_length + comment_length
+        if offset > end:
+            raise zipfile.BadZipFile("Invalid central directory entry length")
+    if offset != end:
+        _archive_limit()
+
+
+def _archive_uncompressed_size(data: bytes, max_entries: int) -> int | None:
     """Read the ZIP directory without inflating any member.
 
     Malformed packages are left to the worker's existing validation path.
     """
     try:
-        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        stream = io.BytesIO(data)
+        _check_directory_entry_count(data, stream, max_entries)
+        with zipfile.ZipFile(stream) as archive:
             return sum(info.file_size for info in archive.infolist())
     except OSError, zipfile.BadZipFile, UnicodeError, NotImplementedError:
         return None

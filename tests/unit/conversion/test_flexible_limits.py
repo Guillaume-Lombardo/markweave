@@ -135,6 +135,7 @@ def test_hard_total_rejection_wins_over_upload_confirmation() -> None:
 
 def test_override_defaults_and_admin_disable() -> None:
     fields = {
+        "conversion_max_files": 10,
         "conversion_upload_max_bytes": 100,
         "conversion_max_decompressed_bytes": 200,
     }
@@ -217,3 +218,98 @@ def test_exif_rotation_keeps_display_aspect_ratio_and_source_limit() -> None:
     with Image.open(io.BytesIO(normalized.content)) as raster_image:
         assert raster_image.size == (30, 60)
         assert not raster_image.getexif()
+
+
+@pytest.mark.parametrize("policy", ["resize", "reject"])
+@pytest.mark.parametrize("encoding", ["GIF", "WEBP"])
+def test_allocating_formats_are_checked_before_pillow_open(
+    policy, encoding, mocker
+) -> None:
+    source = raster((120, 80), encoding)
+    limits = replace(IMAGE_LIMITS, max_decode_pixels=8_000)
+    open_image = mocker.patch.object(Image, "open")
+    with pytest.raises(ConversionError, match="hard decoding limit"):
+        normalize_conversion_image(
+            PurePosixPath(f"photo.{encoding.lower()}"), source, limits, policy
+        )
+    open_image.assert_not_called()
+
+
+@pytest.mark.parametrize("lossless", [False, True])
+def test_extended_webp_with_alpha_can_be_resized(lossless) -> None:
+    source = io.BytesIO()
+    Image.new("RGBA", (120, 80), (10, 20, 30, 128)).save(
+        source, format="WEBP", lossless=lossless
+    )
+    result = normalize_conversion_image(
+        PurePosixPath("photo.webp"), source.getvalue(), IMAGE_LIMITS, "resize"
+    )
+    with Image.open(io.BytesIO(result.content)) as image:
+        assert image.size == (60, 40)
+        assert image.getchannel("A").getpixel((0, 0)) == 128
+
+
+def test_entry_count_is_bounded_before_zip_members_are_materialized(mocker) -> None:
+    from markweave.conversion.archive import conversion_size_limits  # noqa: PLC0415
+
+    settings = ConversionLimitSettings(
+        conversion_upload_max_bytes=300,
+        conversion_max_decompressed_bytes=300,
+        conversion_max_files=1,
+    )
+    source = io.BytesIO()
+    with zipfile.ZipFile(source, "w") as archive:
+        archive.writestr("document.md", "one")
+        archive.writestr("other.md", "two")
+    data = source.getvalue()
+    open_archive = mocker.patch("zipfile.ZipFile")
+    with pytest.raises(ConversionError, match="exceeds configured limits"):
+        conversion_size_limits(
+            data, SizeLimit("upload", len(data), 300, 1200), settings, archive=True
+        )
+    open_archive.assert_not_called()
+
+
+def test_zip64_admission_counts_the_central_directory(mocker) -> None:
+    from markweave.conversion.archive import conversion_size_limits  # noqa: PLC0415
+
+    settings = ConversionLimitSettings(
+        conversion_upload_max_bytes=400,
+        conversion_max_decompressed_bytes=300,
+        conversion_max_files=1,
+    )
+    mocker.patch("zipfile.ZIP64_LIMIT", 1)
+    source = io.BytesIO()
+    with zipfile.ZipFile(source, "w") as archive:
+        archive.writestr("document.md", b"three")
+    data = source.getvalue()
+    upload_limit = SizeLimit("upload", len(data), 400, 1600)
+    assert conversion_size_limits(data, upload_limit, settings, archive=True) == (
+        upload_limit,
+        SizeLimit("decompressed", 5, 300, 1200),
+    )
+
+
+def test_static_gif_extensions_are_read_before_the_first_frame() -> None:
+    source = io.BytesIO()
+    Image.new("RGB", (120, 80), "blue").save(
+        source, format="GIF", loop=0, duration=200, comment=b"Photo"
+    )
+    result = normalize_conversion_image(
+        PurePosixPath("photo.gif"), source.getvalue(), IMAGE_LIMITS, "resize"
+    )
+    assert result.warning is not None
+
+
+@pytest.mark.parametrize("format_name", ["GIF", "WEBP"])
+def test_malformed_allocating_headers_reject_before_open(format_name, mocker) -> None:
+    source = raster((120, 80), format_name)
+    open_image = mocker.patch.object(Image, "open")
+    with pytest.raises(ConversionError, match="invalid image"):
+        normalize_conversion_image(
+            PurePosixPath(f"photo.{format_name.lower()}"),
+            source[:13],
+            IMAGE_LIMITS,
+            "resize",
+        )
+    open_image.assert_not_called()

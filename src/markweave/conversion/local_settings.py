@@ -38,7 +38,6 @@ class LocalConversionSettings(ConversionLimitSettings):
         extra="ignore",
     )
 
-    conversion_max_files: int = Field(gt=0)
     conversion_max_images: int = Field(gt=0)
     conversion_max_diagrams: int = Field(gt=0)
     conversion_max_compression_ratio: float = Field(ge=1.0, allow_inf_nan=False)

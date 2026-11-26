@@ -203,7 +203,7 @@ def test_application_has_disk_workspace_and_memory_headroom() -> None:
 def test_published_compose_uses_only_canonical_environment_names() -> None:
     environment = _compose()["services"]["markweave"]["environment"]
 
-    assert len(environment) == 73
+    assert len(environment) == 78
     assert all(key.startswith("MARKWEAVE_") for key in environment)
 
 

@@ -21,6 +21,7 @@ from starlette.concurrency import run_in_threadpool
 
 from markweave.auth.models import Role, User
 from markweave.conversion.archive import conversion_size_limits
+from markweave.conversion.errors import ConversionError
 from markweave.conversion.runtime_manifest import COMPONENT_VERSIONS
 from markweave.conversion.size_policy import (
     ConversionSizeError,
@@ -102,13 +103,16 @@ async def _admit_source(
     if upload.actual_bytes > hard_upload:
         raise ConversionSizeError(upload, confirmation_required=False)
     await run_in_threadpool(dependencies.components.scanner.scan, content)
-    limits = await run_in_threadpool(
-        conversion_size_limits,
-        content,
-        upload,
-        settings,
-        archive=source_kind is SourceKind.ARCHIVE,
-    )
+    try:
+        limits = await run_in_threadpool(
+            conversion_size_limits,
+            content,
+            upload,
+            settings,
+            archive=source_kind is SourceKind.ARCHIVE,
+        )
+    except ConversionError:
+        raise JobRequestError from None
     override = require_size_confirmation(limits, confirmed=confirmed)
     return content, limits if override else ()
 

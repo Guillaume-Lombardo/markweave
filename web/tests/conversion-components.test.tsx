@@ -612,17 +612,19 @@ test("a recent conversion opened during a deferred read wins over saved history"
       }),
   );
   const opened = { ...conversionJob, state: "succeeded" as const };
-  const json = vi
-    .fn()
-    .mockResolvedValueOnce({
-      conversion_upload_max_bytes: 1_000_000,
-      resolved_template: null,
-      selection_source: "pandoc_default",
-      template_version_id: null,
-    })
-    .mockResolvedValueOnce({ items: [opened], limit: 10, offset: 0, total: 1 })
-    .mockResolvedValueOnce(opened)
-    .mockResolvedValue({ items: [], limit: 20, offset: 0, total: 0 });
+  const json = vi.fn(async (path: string) => {
+    if (path === "/api/v1/conversion-options")
+      return {
+        conversion_upload_max_bytes: 1_000_000,
+        resolved_template: null,
+        selection_source: "pandoc_default",
+        template_version_id: null,
+      };
+    if (path === `/api/v1/conversions/${opened.id}`) return opened;
+    if (path.startsWith("/api/v1/conversions?"))
+      return { items: [opened], limit: 10, offset: 0, total: 1 };
+    return { items: [], limit: 20, offset: 0, total: 0 };
+  });
   const { conversion } = renderWorkspace({ json });
   const recent = await screen.findByRole("button", {
     name: /report.md · succeeded/,

@@ -199,10 +199,7 @@ def test_client_precheck_and_service_validation_share_stable_errors(
     )
     code, submitted = _submit(crafted, capsys)
     assert code == 0, submitted
-    _process(
-        application,
-        settings.model_copy(update={"conversion_image_oversize_policy": "reject"}),
-    )
+    _process(application, settings)
     capsys.readouterr()
     failed = _job(submitted["id"], capsys)
     assert failed["state"] == "failed"
@@ -256,7 +253,10 @@ def test_oversize_packages_and_images_keep_the_service_limits(
     wide.write_text("![w](wide.png)", encoding="utf-8")
     code, submitted = _submit(wide, capsys)
     assert code == 0, submitted
-    _process(application, settings)
+    _process(
+        application,
+        settings.model_copy(update={"conversion_image_oversize_policy": "reject"}),
+    )
     capsys.readouterr()
     failed = _job(submitted["id"], capsys)
     assert (failed["state"], failed["error_code"], failed["error_message"]) == (

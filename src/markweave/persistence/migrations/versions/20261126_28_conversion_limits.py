@@ -68,5 +68,25 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("conversion_size_audit")
-    op.drop_column("conversion_jobs", "warnings")
-    op.drop_column("conversion_jobs", "large_archive_confirmed")
+    bind = op.get_bind()
+    sqlite = bind.dialect.name == "sqlite"
+    # SQLite 3.34 needs a table copy. Preserve triggers both on the jobs
+    # table and on other tables that reference its name during the rename.
+    triggers = (
+        bind.exec_driver_sql(
+            "SELECT name, sql FROM sqlite_master "
+            "WHERE type = 'trigger' AND sql IS NOT NULL ORDER BY name"
+        ).all()
+        if sqlite
+        else []
+    )
+    for name, _ in triggers:
+        quoted = bind.dialect.identifier_preparer.quote(name)
+        op.execute(f"DROP TRIGGER {quoted}")
+    with op.batch_alter_table(
+        "conversion_jobs", recreate="always" if sqlite else "auto"
+    ) as batch:
+        batch.drop_column("warnings")
+        batch.drop_column("large_archive_confirmed")
+    for _, definition in triggers:
+        op.execute(definition)

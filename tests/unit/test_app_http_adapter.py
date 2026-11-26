@@ -1115,7 +1115,7 @@ def test_conversion_body_is_bounded_before_authentication_and_multipart_parsing(
     with client:
         response = client.post(
             "/api/v1/conversions",
-            content=b"x" * 1_100_001,
+            content=b"x" * 4_100_001,
             headers={"Content-Type": "multipart/form-data; boundary=private"},
         )
     assert response.status_code == 413
@@ -1264,7 +1264,7 @@ def test_conversion_http_adapter_delegates_all_safe_routes(
                 files={"source": ("source.md", b"x" * 1_000_001)},
                 data=data,
             ).status_code
-            == 422
+            == 413
         )
         assert (
             client.post(

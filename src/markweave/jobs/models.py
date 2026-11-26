@@ -230,9 +230,9 @@ class ConversionJob:
     source_sha256: str | None = None
     source_size: int | None = None
     result_manifest_object_id: UUID | None = None
+    presentation_options: PresentationOptions | None = None
     large_archive_confirmed: bool = False
     warnings: tuple[str, ...] = ()
-    presentation_options: PresentationOptions | None = None
 
     def __post_init__(self) -> None:
         correlation_id = self.correlation_id or str(self.id)

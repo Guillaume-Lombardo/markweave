@@ -84,8 +84,6 @@ def _request_digest(
             .canonical_json()
             .encode("utf-8")
         )
-    if request.size_override:
-        fields.append(b"large_archive_confirmed")
     return _digest(b"\0".join(fields))
 
 
