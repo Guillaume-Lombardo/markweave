@@ -321,6 +321,26 @@ Index(
 )
 
 
+class ConversionSizeAuditRow(Base):
+    """Immutable evidence of a confirmed soft size-limit override."""
+
+    __tablename__ = "conversion_size_audit"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    actor_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    sizes: Mapped[str] = mapped_column(String, nullable=False)
+
+
+Index(
+    "ix_conversion_size_audit_retention",
+    ConversionSizeAuditRow.created_at,
+    ConversionSizeAuditRow.id,
+)
+
+
 class ConversionJobRow(Base):
     """Durable queue row shared by embedded and external workers."""
 
@@ -393,6 +413,10 @@ class ConversionJobRow(Base):
     )
     result_object_id: Mapped[str | None] = mapped_column(String(36))
     result_manifest_object_id: Mapped[str | None] = mapped_column(String(36))
+    large_archive_confirmed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    warnings: Mapped[str] = mapped_column(String, nullable=False, default="[]")
     error_code: Mapped[str | None] = mapped_column(String(128))
     error_message: Mapped[str | None] = mapped_column(String(1024))
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

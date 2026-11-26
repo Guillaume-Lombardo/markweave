@@ -84,6 +84,8 @@ def _request_digest(
             .canonical_json()
             .encode("utf-8")
         )
+    if request.size_override:
+        fields.append(b"large_archive_confirmed")
     return _digest(b"\0".join(fields))
 
 
@@ -138,6 +140,7 @@ class JobService:
                 source_sha256=source_sha256,
                 source_size=source_size,
                 presentation_options=request.presentation_options,
+                size_override=request.size_override,
             )
         )
         if replayed:

@@ -48,6 +48,8 @@ export type ConversionState = {
   planning: boolean;
   packaging: boolean;
   maximumBytes?: number;
+  hardMaximumBytes?: number;
+  archiveConfirmation?: string;
   source?: File;
   output: JobOutput;
   selection?: TemplateSelection;
@@ -86,6 +88,7 @@ export class ConversionController {
   private pollTimer?: ReturnType<typeof setTimeout>;
   private pollDelay = POLL_START_MS;
   private idempotencyKey?: string;
+  private archiveConfirmed = false;
   private inputGeneration = 0;
   private composerRequest?: AbortController;
   private composerGeneration = 0;
@@ -134,6 +137,7 @@ export class ConversionController {
         ...initialState(this.presentation),
         phase: "ready",
         maximumBytes: options.conversion_upload_max_bytes,
+        hardMaximumBytes: options.conversion_upload_hard_max_bytes ?? undefined,
         selection: selectionFromOptions(options),
         recent,
       });
@@ -473,16 +477,32 @@ export class ConversionController {
     }
   }
 
-  async submit(): Promise<void> {
+  async submit(confirmArchive = false): Promise<void> {
     if (
       this.state.phase !== "ready" ||
       this.state.submitting ||
       this.state.packaging
     )
       return;
-    const invalid = validateSource(this.state.source, this.state.maximumBytes);
+    const {
+      source,
+      maximumBytes,
+      hardMaximumBytes = maximumBytes,
+    } = this.state;
+    const invalid = validateSource(source, hardMaximumBytes);
     if (invalid) {
       this.publish({ ...this.state, error: invalid, notice: undefined });
+      return;
+    }
+    if (confirmArchive && this.state.archiveConfirmation)
+      this.archiveConfirmed = true;
+    if (!this.archiveConfirmed && maximumBytes && source!.size > maximumBytes) {
+      this.publish({
+        ...this.state,
+        archiveConfirmation: `Upload is ${source!.size} bytes. The standard limit is ${maximumBytes} bytes and the hard limit is ${hardMaximumBytes} bytes.`,
+        error: undefined,
+        notice: undefined,
+      });
       return;
     }
     const request = new AbortController();
@@ -493,6 +513,7 @@ export class ConversionController {
     const form = new FormData();
     form.append("source", this.state.source!);
     form.append("output", this.state.output);
+    if (this.archiveConfirmed) form.append("allow_large_archive", "true");
     if (this.presentation) {
       form.append("presentation_dialect", this.state.dialect);
       form.append("slide_level", String(this.state.slideLevel));
@@ -504,6 +525,7 @@ export class ConversionController {
     this.publish({
       ...this.state,
       submitting: true,
+      archiveConfirmation: undefined,
       error: undefined,
       notice: "Submitting your conversion…",
     });
@@ -532,6 +554,7 @@ export class ConversionController {
           "The service returned an unexpected response.",
         );
       this.idempotencyKey = undefined;
+      this.archiveConfirmed = false;
       this.publish({
         ...this.state,
         submitting: false,
@@ -546,6 +569,20 @@ export class ConversionController {
     } catch (error) {
       if (generation !== this.submissionGeneration || isAbort(error)) return;
       if (this.authoritativeExpiry(error)) return;
+      if (
+        !this.archiveConfirmed &&
+        error instanceof ApiError &&
+        error.status === 413 &&
+        error.code === "ARCHIVE_SIZE_CONFIRMATION_REQUIRED"
+      ) {
+        this.publish({
+          ...this.state,
+          submitting: false,
+          notice: undefined,
+          archiveConfirmation: error.message,
+        });
+        return;
+      }
       const definitiveRejection = isDefinitiveSubmissionRejection(error);
       if (definitiveRejection) this.idempotencyKey = undefined;
       this.publish({
@@ -721,7 +758,13 @@ export class ConversionController {
     this.invalidateComposer();
     this.planGeneration += 1;
     this.planRequest?.abort();
-    this.state = { ...this.state, plan: undefined, planning: false };
+    this.archiveConfirmed = false;
+    this.state = {
+      ...this.state,
+      archiveConfirmation: undefined,
+      plan: undefined,
+      planning: false,
+    };
     this.submissionGeneration += 1;
     this.submissionRequest?.abort();
     this.idempotencyKey = undefined;

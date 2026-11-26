@@ -219,6 +219,7 @@ class JobPublicationService:
                     finished_at,
                     finished_at + timedelta(seconds=self.result_retention_seconds),
                     result_manifest_object_id=manifest_id,
+                    **({"warnings": result.warnings} if result.warnings else {}),
                 )
                 heartbeat.request_stop()
         except BaseException:

@@ -1,7 +1,7 @@
 """Stable request and response schemas for the HTTP contract."""
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -136,6 +136,7 @@ class ConversionResponse(BaseModel):
     template_version_id: UUID | None
     output: JobOutput
     presentation_options: PresentationOptions | None = None
+    warnings: tuple[str, ...] = Field(default=(), exclude_if=lambda value: not value)
     component_versions: tuple[tuple[str, str], ...]
     correlation_id: str
     state: str
@@ -179,6 +180,9 @@ class ConversionOptionsResponse(BaseModel):
     """Authoritative limits and immutable template selection for conversion."""
 
     conversion_upload_max_bytes: Annotated[int, Field(strict=True, gt=0)]
+    conversion_upload_hard_max_bytes: (
+        Annotated[int, Field(strict=True, gt=0)] | None
+    ) = None
     resolved_template: TemplateResponse | None
     template_version_id: UUID | None
     selection_source: TemplateSelectionSource
@@ -340,6 +344,9 @@ class AuditRecordResponse(BaseModel):
     version_id: UUID | None
     administrator_intervention: bool
     created_at: datetime
+    sizes: tuple[dict[str, str | int], ...] = Field(
+        default=(), exclude_if=lambda value: not value
+    )
     old_user_idle_minutes: int | None = Field(
         default=None, exclude_if=lambda value: value is None
     )
@@ -364,6 +371,10 @@ class ErrorDetail(BaseModel):
 
     code: str
     message: str
+    dimension: Literal["upload", "decompressed"] | None = None
+    actual_bytes: int | None = None
+    soft_limit_bytes: int | None = None
+    hard_limit_bytes: int | None = None
 
 
 class ErrorResponse(BaseModel):

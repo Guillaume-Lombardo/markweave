@@ -27,6 +27,7 @@ export const vAuditRecordResponse = v.object({
     old_user_idle_minutes: v.nullish(v.pipe(v.number(), v.integer())),
     operation: v.string(),
     owner_id: v.pipe(v.string(), v.uuid()),
+    sizes: v.optional(v.array(v.object({})), []),
     target_id: v.pipe(v.string(), v.uuid()),
     target_type: v.string(),
     target_version: v.nullable(v.string()),
@@ -674,8 +675,12 @@ export const vCredentialWriteRequest = v.object({
  * Stable machine-readable functional error detail.
  */
 export const vErrorDetail = v.object({
+    actual_bytes: v.nullish(v.pipe(v.number(), v.integer())),
     code: v.string(),
-    message: v.string()
+    dimension: v.nullish(v.picklist(['upload', 'decompressed'])),
+    hard_limit_bytes: v.nullish(v.pipe(v.number(), v.integer())),
+    message: v.string(),
+    soft_limit_bytes: v.nullish(v.pipe(v.number(), v.integer()))
 });
 
 /**
@@ -1114,6 +1119,7 @@ export const vPresentationDialect = v.picklist([
  * Body_create_conversion_api_v1_conversions_post
  */
 export const vBodyCreateConversionApiV1ConversionsPost = v.object({
+    allow_large_archive: v.optional(v.boolean(), false),
     output: vJobOutput,
     presentation_dialect: v.nullish(vPresentationDialect),
     slide_level: v.nullish(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(6))),
@@ -1466,7 +1472,8 @@ export const vConversionResponse = v.object({
     template_id: v.nullable(v.pipe(v.string(), v.uuid())),
     template_mode: vTemplateMode,
     template_version_id: v.nullable(v.pipe(v.string(), v.uuid())),
-    updated_at: v.pipe(v.string(), v.isoTimestamp())
+    updated_at: v.pipe(v.string(), v.isoTimestamp()),
+    warnings: v.optional(v.array(v.string()), [])
 });
 
 /**
@@ -1522,6 +1529,7 @@ export const vTemplateResponse = v.object({
  * Authoritative limits and immutable template selection for conversion.
  */
 export const vConversionOptionsResponse = v.object({
+    conversion_upload_hard_max_bytes: v.nullish(v.pipe(v.number(), v.integer(), v.gtValue(0))),
     conversion_upload_max_bytes: v.pipe(v.number(), v.integer(), v.gtValue(0)),
     resolved_template: v.nullable(vTemplateResponse),
     selection_source: vTemplateSelectionSource,

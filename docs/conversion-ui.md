@@ -52,9 +52,11 @@ symbolic-link exposure of its own.
 
 Missing, escaping, or invalid image references are refused before upload with the service's stable
 messages, for example "Markdown image is missing or unapproved." or "Markdown image path escapes
-the archive." The packaged ZIP must also fit the configured upload limit. These checks only give
-early feedback: the HTTP input contract is unchanged, and the service applies every archive, path,
-image, SVG, size, count, and malware-scanning rule to the uploaded package.
+the archive." If a file exceeds the standard upload limit, the workspace shows its size and asks
+for confirmation before sending it. A ZIP whose contents exceed the standard uncompressed limit
+can also trigger confirmation after the first upload. Files above the hard limits are rejected.
+The service applies the same archive, path, image, SVG, count, and malware-scanning rules to
+every upload.
 
 ## Status, cancellation, and downloads
 
@@ -65,6 +67,7 @@ use an owner-authorized API route and preserve the uploaded filename stem while 
 extension with `.docx`, `.pdf`, or `.zip`. Jobs without persisted source metadata instead use
 `conversion-<job-id>` as the filename stem. Their responses also enforce `nosniff` and a private
 no-store cache policy. Page text and errors are announced through accessible live regions.
+Successful jobs show a warning with the original and final dimensions for each resized image.
 
 If the session expires, sign in again. Browser mutations send the session-bound CSRF value from the
 Secure, SameSite=Lax `__Host-md_converter_csrf` cookie as `X-CSRF-Token`. The opaque session cookie

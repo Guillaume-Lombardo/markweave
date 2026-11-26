@@ -9,15 +9,20 @@ import unicodedata
 import zipfile
 import zlib
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import PurePosixPath
+from typing import Literal
 
+from markweave.config import ConversionLimitSettings
 from markweave.conversion.errors import ConversionError, validation_error
 from markweave.conversion.images import (
     SUPPORTED_IMAGE_SUFFIXES,
     ImageLimits,
+    NormalizedImage,
+    normalize_conversion_image,
     normalize_image,
 )
+from markweave.conversion.size_policy import SizeLimit
 
 _READ_CHUNK_BYTES = 64 * 1024
 _ZIP_SYSTEM_UNIX = 3
@@ -36,6 +41,19 @@ class ArchiveLimits:
     max_markdown_bytes: int
     max_images: int
     max_files: int | None = None
+    hard_archive_bytes: int | None = None
+    hard_total_uncompressed_bytes: int | None = None
+
+    def for_confirmed_archive(self, confirmed: bool) -> ArchiveLimits:
+        if not confirmed:
+            return self
+        return replace(
+            self,
+            max_archive_bytes=self.hard_archive_bytes or self.max_archive_bytes,
+            max_total_uncompressed_bytes=(
+                self.hard_total_uncompressed_bytes or self.max_total_uncompressed_bytes
+            ),
+        )
 
     def __post_init__(self) -> None:
         integer_limits = (
@@ -71,7 +89,7 @@ class ArchiveLimits:
 
 @dataclass(frozen=True)
 class ApprovedResource:
-    """One image normalized to safe PNG bytes at its logical package path."""
+    """One image normalized to safe raster bytes at its logical package path."""
 
     path: PurePosixPath
     content: bytes
@@ -86,6 +104,7 @@ class ApprovedDocument:
     entrypoint: PurePosixPath
     resources: tuple[ApprovedResource, ...]
     image_limits: ImageLimits | None = None
+    warnings: tuple[str, ...] = ()
 
 
 ImageNormalizer = Callable[[PurePosixPath, bytes, ImageLimits], bytes]
@@ -281,12 +300,42 @@ def _read_member_bounded(
     return bytes(payload), total_read + actual_size
 
 
+def conversion_size_limits(
+    data: bytes, upload: SizeLimit, settings: ConversionLimitSettings, *, archive: bool
+) -> tuple[SizeLimit, ...]:
+    total = _archive_uncompressed_size(data) if archive else None
+    if total is None:
+        return (upload,)
+    return (
+        upload,
+        SizeLimit(
+            "decompressed",
+            total,
+            settings.conversion_max_decompressed_bytes,
+            settings.effective_conversion_hard_max_decompressed_bytes,
+        ),
+    )
+
+
+def _archive_uncompressed_size(data: bytes) -> int | None:
+    """Read the ZIP directory without inflating any member.
+
+    Malformed packages are left to the worker's existing validation path.
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            return sum(info.file_size for info in archive.infolist())
+    except OSError, zipfile.BadZipFile, UnicodeError, NotImplementedError:
+        return None
+
+
 def prepare_archive(
     data: bytes,
     limits: ArchiveLimits,
     image_limits: ImageLimits,
     *,
     image_normalizer: ImageNormalizer = normalize_image,
+    raster_policy: Literal["resize", "reject"] | None = None,
 ) -> ApprovedDocument:
     """Validate a ZIP entirely before returning selected Markdown and safe images."""
 
@@ -318,11 +367,24 @@ def prepare_archive(
     except UnicodeDecodeError:
         raise validation_error("Document Markdown is not valid UTF-8.") from None
     resources: list[ApprovedResource] = []
+    warnings: list[str] = []
     for path in sorted(payloads, key=str):
         if path.suffix.casefold() not in SUPPORTED_IMAGE_SUFFIXES:
             continue
-        normalized = image_normalizer(path, payloads[path], image_limits)
-        if type(normalized) is not bytes or not normalized:
+        normalized = (
+            NormalizedImage(image_normalizer(path, payloads[path], image_limits))
+            if raster_policy is None
+            else normalize_conversion_image(
+                path, payloads[path], image_limits, raster_policy
+            )
+        )
+        if type(normalized.content) is not bytes or not normalized.content:
             raise validation_error("Document contains an invalid image.")
-        resources.append(ApprovedResource(path, normalized))
-    return ApprovedDocument(markdown, entrypoint, tuple(resources), image_limits)
+        resources.append(
+            ApprovedResource(path, normalized.content, normalized.media_type)
+        )
+        if normalized.warning is not None:
+            warnings.append(normalized.warning)
+    return ApprovedDocument(
+        markdown, entrypoint, tuple(resources), image_limits, tuple(warnings)
+    )

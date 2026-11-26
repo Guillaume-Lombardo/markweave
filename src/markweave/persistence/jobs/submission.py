@@ -29,6 +29,7 @@ from markweave.persistence.job_admission import (
 from markweave.persistence.jobs.common import _job, _SqlJobStore
 from markweave.persistence.schema import (
     ConversionJobRow,
+    ConversionSizeAuditRow,
     TemplateRow,
     TemplateVersionRow,
 )
@@ -76,6 +77,7 @@ class _JobSubmissionRepository(_SqlJobStore):
             updated_at=submission.created_at,
             attempt=0,
             source_ready=False,
+            large_archive_confirmed=bool(submission.size_override),
             cancel_requested=False,
             cleanup_completed=False,
         )
@@ -114,6 +116,21 @@ class _JobSubmissionRepository(_SqlJobStore):
                         raise JobRequestError
                 self._enforce_admission(database, submission.owner_id)
                 database.add(row)
+                if submission.size_override:
+                    database.add(
+                        ConversionSizeAuditRow(
+                            id=row.id,
+                            actor_id=row.owner_id,
+                            created_at=row.created_at,
+                            sizes=json.dumps(
+                                [
+                                    limit.audit_fields()
+                                    for limit in submission.size_override
+                                ],
+                                separators=(",", ":"),
+                            ),
+                        )
+                    )
                 database.flush()
                 return _job(row), False
         except JobRequestError:

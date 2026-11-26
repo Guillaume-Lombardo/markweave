@@ -59,6 +59,7 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
                 archive=kind is SourceKind.ARCHIVE,
                 archive_limits=archive_limits,
                 image_limits=image_limits,
+                raster_policy=settings.conversion_image_oversize_policy,
             )
             plan = await run_in_threadpool(
                 plan_presentation, document, PresentationOptions(dialect, slide_level)
@@ -69,7 +70,7 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
             dialect=plan.options.dialect,
             slide_level=slide_level,
             titles=plan.titles,
-            warnings=plan.warnings,
+            warnings=(*plan.warnings, *document.warnings),
             explicit_breaks=plan.explicit_breaks,
         )
 

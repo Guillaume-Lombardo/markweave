@@ -16,9 +16,13 @@ class BoundedRequestBody:
         template_maximum_bytes: int,
         template_metadata_maximum_bytes: int,
         composer_maximum_bytes: int | None = None,
+        conversion_hard_maximum_bytes: int | None = None,
     ) -> None:
         self._app = app
         self._conversion_maximum_bytes = conversion_maximum_bytes
+        self._conversion_hard_maximum_bytes = (
+            conversion_hard_maximum_bytes or conversion_maximum_bytes
+        )
         self._reversion_maximum_bytes = reversion_maximum_bytes
         self._template_maximum_bytes = template_maximum_bytes
         self._template_metadata_maximum_bytes = template_metadata_maximum_bytes
@@ -38,7 +42,11 @@ class BoundedRequestBody:
             "/api/v1/conversions",
             "/api/v1/presentation-plan",
         }:
-            maximum_bytes = self._conversion_maximum_bytes
+            maximum_bytes = (
+                self._conversion_hard_maximum_bytes
+                if path == "/api/v1/conversions"
+                else self._conversion_maximum_bytes
+            )
             error_code = "CONVERSION_REQUEST_TOO_LARGE"
             error_message = "The conversion request is too large."
         elif method == "POST" and path == "/api/v1/reversions":

@@ -79,7 +79,9 @@ def local(tmp_path: Path, mocker) -> Path:
     mocker.patch.object(
         LocalConversionSettings,
         "load",
-        return_value=local_conversion_settings(conversion_upload_max_bytes=64),
+        return_value=local_conversion_settings(
+            conversion_upload_max_bytes=64, conversion_upload_hard_max_bytes=64
+        ),
     )
     (tmp_path / "out").mkdir()
     (tmp_path / "doc.md").write_text("# Local\n", encoding="utf-8")

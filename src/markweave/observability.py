@@ -429,6 +429,7 @@ class AuditRecord:
     old_admin_idle_minutes: int | None = None
     new_user_idle_minutes: int | None = None
     new_admin_idle_minutes: int | None = None
+    sizes: tuple[dict[str, str | int], ...] = ()
 
 
 class AuditReader(Protocol):

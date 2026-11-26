@@ -7,7 +7,7 @@ import os
 import warnings
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Literal, Self
 from uuid import UUID
 
 from pydantic import (
@@ -67,7 +67,57 @@ class ReversionBrokerTransport(StrEnum):
     MTLS = "mtls"
 
 
-class Settings(BaseSettings):
+class ConversionLimitSettings(BaseSettings):
+    """Size limits shared by service and local conversion settings."""
+
+    conversion_upload_max_bytes: int = Field(gt=0)
+    conversion_upload_hard_max_bytes: int | None = Field(default=None, gt=0)
+    conversion_large_archive_override: bool = True
+    conversion_max_decompressed_bytes: int = Field(gt=0)
+    conversion_hard_max_decompressed_bytes: int | None = Field(default=None, gt=0)
+    conversion_image_oversize_policy: Literal["resize", "reject"] = "resize"
+    conversion_image_decode_max_pixels: int = Field(default=32_000_000, gt=0)
+
+    @field_validator(
+        "conversion_upload_hard_max_bytes",
+        "conversion_hard_max_decompressed_bytes",
+        mode="before",
+    )
+    @classmethod
+    def unset_optional_ceiling(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @property
+    def effective_conversion_upload_hard_max_bytes(self) -> int:
+        if not self.conversion_large_archive_override:
+            return self.conversion_upload_max_bytes
+        return (
+            self.conversion_upload_hard_max_bytes
+            or 4 * self.conversion_upload_max_bytes
+        )
+
+    @property
+    def effective_conversion_hard_max_decompressed_bytes(self) -> int:
+        if not self.conversion_large_archive_override:
+            return self.conversion_max_decompressed_bytes
+        return (
+            self.conversion_hard_max_decompressed_bytes
+            or 4 * self.conversion_max_decompressed_bytes
+        )
+
+    @model_validator(mode="after")
+    def validate_conversion_ceilings(self) -> Self:
+        if (
+            self.effective_conversion_upload_hard_max_bytes
+            < self.conversion_upload_max_bytes
+            or self.effective_conversion_hard_max_decompressed_bytes
+            < self.conversion_max_decompressed_bytes
+        ):
+            raise ValueError("Conversion hard ceilings must cover their soft limits")
+        return self
+
+
+class Settings(ConversionLimitSettings):
     """Security-sensitive application settings."""
 
     model_config = SettingsConfigDict(
@@ -90,7 +140,6 @@ class Settings(BaseSettings):
     session_cookie_name: str = Field(default="md_converter_session", min_length=1)
     public_origin: AnyHttpUrl | None = None
     insecure_evaluation_mode: bool = False
-    conversion_upload_max_bytes: int = Field(gt=0)
     conversion_request_max_bytes: int = Field(gt=0)
     reversion_upload_max_bytes: int | None = Field(default=None, gt=0)
     reversion_request_max_bytes: int | None = Field(default=None, gt=0)
@@ -175,7 +224,6 @@ class Settings(BaseSettings):
     reversion_worker_reconciliation_ack_batch_size: int | None = Field(
         default=None, gt=0
     )
-    conversion_max_decompressed_bytes: int = Field(gt=0)
     conversion_max_files: int = Field(gt=0)
     conversion_max_images: int = Field(gt=0)
     conversion_max_diagrams: int = Field(gt=0)
@@ -314,6 +362,13 @@ class Settings(BaseSettings):
     def parse_composer_allowlists(cls, value: Any) -> Any:
         """Decode explicit JSON allowlists from operator configuration."""
         return json.loads(value) if isinstance(value, str) else value
+
+    @property
+    def conversion_hard_request_max_bytes(self) -> int:
+        multipart_overhead = (
+            self.conversion_request_max_bytes - self.conversion_upload_max_bytes
+        )
+        return self.effective_conversion_upload_hard_max_bytes + multipart_overhead
 
     @model_validator(mode="after")
     def validate_lifetimes(self) -> Self:

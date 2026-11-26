@@ -154,6 +154,7 @@ def test_inprocess_sql_repository_control_flow() -> None:
         "composer_revisions",
         "composer_sources",
         "conversion_jobs",
+        "conversion_size_audit",
         "idle_session_policy",
         "idle_session_policy_audit_records",
         "retention_cleanup_runs",

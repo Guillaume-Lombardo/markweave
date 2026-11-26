@@ -20,7 +20,13 @@ from fastapi import (
 from starlette.concurrency import run_in_threadpool
 
 from markweave.auth.models import Role, User
+from markweave.conversion.archive import conversion_size_limits
 from markweave.conversion.runtime_manifest import COMPONENT_VERSIONS
+from markweave.conversion.size_policy import (
+    ConversionSizeError,
+    SizeLimit,
+    require_size_confirmation,
+)
 from markweave.http.dependencies import HttpDependencies
 from markweave.http.errors import error_responses
 from markweave.http.responses import conversion_response, template_response
@@ -35,6 +41,7 @@ from markweave.jobs.models import (
     JobOutputFamily,
     JobPage,
     JobRequest,
+    SourceKind,
     source_kind_for_filename,
 )
 from markweave.observability import CORRELATION_HEADER, CORRELATION_STATE_KEY
@@ -71,6 +78,41 @@ def _result_content_disposition(
     return f'attachment; filename="{filename}"'
 
 
+async def _admit_source(
+    dependencies: HttpDependencies,
+    source: UploadFile,
+    source_kind: SourceKind,
+    *,
+    confirmed: bool,
+) -> tuple[bytes, tuple[SizeLimit, ...]]:
+    settings = dependencies.settings
+    hard_upload = settings.effective_conversion_upload_hard_max_bytes
+    try:
+        content = await source.read(hard_upload + 1)
+    finally:
+        await source.close()
+    if not content:
+        raise JobRequestError
+    upload = SizeLimit(
+        "upload",
+        source.size if source.size is not None else len(content),
+        settings.conversion_upload_max_bytes,
+        hard_upload,
+    )
+    if upload.actual_bytes > hard_upload:
+        raise ConversionSizeError(upload, confirmation_required=False)
+    await run_in_threadpool(dependencies.components.scanner.scan, content)
+    limits = await run_in_threadpool(
+        conversion_size_limits,
+        content,
+        upload,
+        settings,
+        archive=source_kind is SourceKind.ARCHIVE,
+    )
+    override = require_size_confirmation(limits, confirmed=confirmed)
+    return content, limits if override else ()
+
+
 def build_router(dependencies: HttpDependencies) -> APIRouter:
     """Build conversion routes bound to one application."""
 
@@ -101,6 +143,7 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
             raise PersistenceError
         return ConversionOptionsResponse(
             conversion_upload_max_bytes=settings.conversion_upload_max_bytes,
+            conversion_upload_hard_max_bytes=settings.effective_conversion_upload_hard_max_bytes,
             resolved_template=(
                 template_response(template, dependencies.authentication)
                 if template is not None
@@ -128,6 +171,7 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
         idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
         presentation_dialect: Annotated[PresentationDialect | None, Form()] = None,
         slide_level: Annotated[int | None, Form(ge=1, le=6)] = None,
+        allow_large_archive: Annotated[bool, Form()] = False,
     ) -> ConversionResponse:
         correlation_id = getattr(request.state, CORRELATION_STATE_KEY)
         if source.filename is None:
@@ -139,13 +183,9 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
         except ValueError:
             await source.close()
             raise JobRequestError from None
-        try:
-            content = await source.read(settings.conversion_upload_max_bytes + 1)
-        finally:
-            await source.close()
-        if not content or len(content) > settings.conversion_upload_max_bytes:
-            raise JobRequestError
-        await run_in_threadpool(components.scanner.scan, content)
+        content, size_override = await _admit_source(
+            dependencies, source, source_kind, confirmed=allow_large_archive
+        )
         try:
             job, _replayed = await run_in_threadpool(
                 components.jobs.submit,
@@ -160,6 +200,7 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
                     correlation_id=correlation_id,
                     source_filename=source_filename,
                     source_kind=source_kind,
+                    size_override=size_override,
                     presentation_options=(
                         PresentationOptions(
                             presentation_dialect or PresentationDialect.AUTO,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from uuid import UUID
 
@@ -96,11 +97,13 @@ class _JobTerminalRepository(_SqlJobStore):
         now: datetime,
         expires_at: datetime,
         result_manifest_object_id: UUID | None = None,
+        warnings: tuple[str, ...] = (),
     ) -> ConversionJob:
         values = {
             "state": JobState.SUCCEEDED.value,
             "step": JobStep.COMPLETE.value,
             "progress": 100,
+            "warnings": json.dumps(warnings, separators=(",", ":")),
             "result_object_id": str(result_object_id),
             "result_manifest_object_id": (
                 str(result_manifest_object_id)

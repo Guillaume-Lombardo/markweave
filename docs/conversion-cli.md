@@ -118,6 +118,13 @@ cancelled, unavailable, and expired jobs retain the server's safe error contract
 never prints the destination or source name; JSON output reports only job, byte-count, result type,
 status, and a validated correlation identifier when the response provides one.
 
+## Confirm a larger input
+
+The CLI prompts on a terminal when an upload or uncompressed ZIP exceeds the standard
+limit. In a script, pass `--allow-large-archive` to confirm in advance. Hard ceilings still
+apply. `markweave jobs show` and `markweave jobs wait` display image resizing warnings on
+standard error, or in the `warnings` field with `--json`.
+
 ## Convert locally without a server
 
 `markweave convert SOURCE --local` converts your own local file on this host without the HTTP API,
@@ -163,7 +170,8 @@ traceability records its digest. A missing, invalid, conflicting, or removed var
 
 `SOURCE` is a `.md` file or a `.zip` archive in the [approved layout](archive-images.md). The local
 file is read without following a final symbolic link, must be a non-empty regular file, and is
-bounded by `MARKWEAVE_CONVERSION_UPLOAD_MAX_BYTES`. A standalone Markdown file must not reference
+bounded by `MARKWEAVE_CONVERSION_UPLOAD_MAX_BYTES` by default. Local mode also honors
+`--allow-large-archive` and the configured hard ceilings. A standalone Markdown file must not reference
 local images; package it with its images as a ZIP archive. `--template` accepts a `.docx` reference
 document bounded by `MARKWEAVE_TEMPLATE_MAX_ARCHIVE_BYTES`; it passes the same static package,
 active-content, relationship, style, and approved-font checks as template activation. Without

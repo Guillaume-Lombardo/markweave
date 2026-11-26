@@ -33,6 +33,7 @@ from markweave.composer.revisions import (
 )
 from markweave.composer.secrets import SecretError
 from markweave.composer.typed_templates import TypedTemplateError
+from markweave.conversion.size_policy import ConversionSizeError
 from markweave.jobs.errors import (
     JobConflictError,
     JobNotFoundError,
@@ -126,6 +127,25 @@ def capacity_error_responses(*status_codes: int) -> dict[int | str, dict[str, An
 
 def install_error_handlers(app: FastAPI) -> None:
     """Install sanitized functional and request-validation error handlers."""
+
+    @app.exception_handler(ConversionSizeError)
+    def conversion_size_error_handler(
+        _request: Request, error: ConversionSizeError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            content={
+                "error": {
+                    "code": (
+                        "ARCHIVE_SIZE_CONFIRMATION_REQUIRED"
+                        if error.confirmation_required
+                        else "CONVERSION_SIZE_LIMIT_EXCEEDED"
+                    ),
+                    "message": str(error),
+                    **error.limit.audit_fields(),
+                }
+            },
+        )
 
     @app.exception_handler(AuthenticationError)
     def authentication_error_handler(

@@ -144,3 +144,44 @@ def test_real_archive_never_materializes_traversal_member(tmp_path: Path) -> Non
     with pytest.raises(ConversionError, match="archive is invalid"):
         prepare_archive(archive, INPUT_LIMITS, IMAGE_LIMITS)
     assert not outside.exists()
+
+
+@pytest.mark.requires_pandoc
+@pytest.mark.parametrize(
+    "format_name, extension",
+    [("PNG", "png"), ("JPEG", "jpg"), ("GIF", "gif"), ("WEBP", "webp")],
+)
+def test_oversized_raster_is_resized_in_openxml(
+    tmp_path: Path, format_name: str, extension: str
+) -> None:
+    from dataclasses import replace  # noqa: PLC0415
+
+    source = io.BytesIO()
+    Image.new("RGB", (120, 80), "blue").save(source, format=format_name)
+    entry = f"assets/photo.{extension}"
+    archive = _zip_bytes(
+        [("document.md", f"![Example]({entry})\n".encode()), (entry, source.getvalue())]
+    )
+    document = prepare_archive(
+        archive,
+        INPUT_LIMITS,
+        replace(IMAGE_LIMITS, max_width_pixels=60),
+        raster_policy="resize",
+    )
+    engine = PandocDocxConverter(
+        PandocConfig("pandoc", 30.0, 2.0, tmp_path), os.environ
+    )
+    result = DocxConversionService(engine).convert_document(document, None)
+    snapshot = inspect_docx(result, DOCX_LIMITS)
+    (media,) = [
+        name for name in snapshot.binary_sha256 if name.startswith("word/media/")
+    ]
+    with (
+        zipfile.ZipFile(io.BytesIO(result)) as docx,
+        Image.open(io.BytesIO(docx.read(media))) as raster,
+    ):
+        assert raster.size == (60, 40)
+        assert raster.format == format_name
+    assert document.warnings == (
+        f"Image '{entry}' resized from 120\u00d780 to 60\u00d740.",
+    )

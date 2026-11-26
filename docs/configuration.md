@@ -77,9 +77,12 @@ row and its immutable audits in database backup, restore, and rollback procedure
 
 | Environment variable | Requirement | Applies to / constraint |
 | --- | --- | --- |
-| `MARKWEAVE_CONVERSION_UPLOAD_MAX_BYTES` | Required positive integer | Both profiles |
-| `MARKWEAVE_CONVERSION_REQUEST_MAX_BYTES` | Required positive integer | Both; must exceed upload limit |
-| `MARKWEAVE_CONVERSION_MAX_DECOMPRESSED_BYTES` | Required positive integer | Both |
+| `MARKWEAVE_CONVERSION_UPLOAD_MAX_BYTES` | Required positive integer | Standard forward upload limit |
+| `MARKWEAVE_CONVERSION_UPLOAD_HARD_MAX_BYTES` | Optional, defaults to four times the standard upload limit | Absolute forward upload ceiling, at least the standard limit |
+| `MARKWEAVE_CONVERSION_REQUEST_MAX_BYTES` | Required positive integer | Must exceed the standard upload limit. The difference is the multipart overhead added to the effective hard upload ceiling |
+| `MARKWEAVE_CONVERSION_MAX_DECOMPRESSED_BYTES` | Required positive integer | Standard uncompressed archive total and absolute limit for each ZIP member |
+| `MARKWEAVE_CONVERSION_HARD_MAX_DECOMPRESSED_BYTES` | Optional, defaults to four times the standard total | Absolute uncompressed archive total, at least the standard limit |
+| `MARKWEAVE_CONVERSION_LARGE_ARCHIVE_OVERRIDE` | Boolean, defaults to `true` | Set to `false` to use the standard limits as the hard ceilings |
 | `MARKWEAVE_CONVERSION_MAX_FILES` | Required positive integer | Both |
 | `MARKWEAVE_CONVERSION_MAX_IMAGES` | Required positive integer | Both |
 | `MARKWEAVE_CONVERSION_MAX_DIAGRAMS` | Required positive integer | Both |
@@ -87,7 +90,9 @@ row and its immutable audits in database backup, restore, and rollback procedure
 | `MARKWEAVE_CONVERSION_IMAGE_MAX_SOURCE_BYTES` | Required positive integer | Both |
 | `MARKWEAVE_CONVERSION_IMAGE_MAX_WIDTH_PIXELS` | Required positive integer | Both |
 | `MARKWEAVE_CONVERSION_IMAGE_MAX_HEIGHT_PIXELS` | Required positive integer | Both |
-| `MARKWEAVE_CONVERSION_IMAGE_MAX_PIXELS` | Required positive integer | Both |
+| `MARKWEAVE_CONVERSION_IMAGE_MAX_PIXELS` | Required positive integer | Forward output area. Also the strict area limit for SVG |
+| `MARKWEAVE_CONVERSION_IMAGE_OVERSIZE_POLICY` | `resize` (default) or `reject` | Forward conversion only. The hard raster decoding ceiling applies in either mode |
+| `MARKWEAVE_CONVERSION_IMAGE_DECODE_MAX_PIXELS` | Positive integer, defaults to 32,000,000 | Hard forward raster limit checked before decoding. Pillow's own ceiling also applies |
 | `MARKWEAVE_CONVERSION_IMAGE_MAX_SVG_ELEMENTS` | Required positive integer | Both |
 | `MARKWEAVE_CONVERSION_IMAGE_MAX_SVG_DEPTH` | Required integer from 1 to 64 | Both |
 | `MARKWEAVE_CONVERSION_MERMAID_MAX_SOURCE_BYTES` | Required positive integer | Both; per diagram |
