@@ -1965,7 +1965,7 @@ e2e_phase_service() {
     --artifact-dir "$temporary_directory/browser-artifacts" \
     --api-metrics-url "$base_url/metrics" "${worker_metrics[@]}"
 
-  MARKWEAVE_E2E_CONVERSION_URL="$base_url" uv run pytest -o addopts="" \
+  MARKWEAVE_E2E_CONVERSION_URL="$base_url" uv run pytest --no-cov \
     tests/e2e/test_flexible_conversion_limits.py
 
   uv run python -m tests.e2e.cli_workflow --container "$application_name" --profile "$profile"
