@@ -52,7 +52,7 @@ def service(tmp_path: Path):
         create_app(settings, scanner=scanner), base_url="https://testserver"
     ) as client:
         actor = login(client, "admin", password)
-        yield client, actor
+        yield client, actor, settings
 
 
 @pytest.mark.parametrize(
@@ -65,7 +65,7 @@ def service(tmp_path: Path):
 def test_confirmation_admits_once_and_writes_immutable_audit(
     service, tmp_path, dimension, source, limits
 ) -> None:
-    client, actor = service
+    client, actor, settings = service
     soft, hard = limits
     headers = {"X-CSRF-Token": actor["csrf_token"], "Idempotency-Key": "same-source"}
     options = client.get("/api/v1/conversion-options").json()
@@ -102,6 +102,13 @@ def test_confirmation_admits_once_and_writes_immutable_audit(
     assert accepted.status_code == 202
     job = accepted.json()
     assert submit(True).json()["id"] == job["id"]
+    # A replay remains the same request after the administrator raises both
+    # standard limits and the same bytes no longer require an override.
+    settings.conversion_upload_max_bytes = 1_000
+    settings.conversion_max_decompressed_bytes = 1_000
+    replay = submit(True)
+    assert replay.status_code == 202
+    assert replay.json()["id"] == job["id"]
     audit = _override_audit(client)
     assert len(audit) == 1
     assert (audit[0]["operation"], audit[0]["actor_id"], audit[0]["target_id"]) == (
@@ -156,7 +163,7 @@ def test_confirmation_admits_once_and_writes_immutable_audit(
 def test_confirmation_cannot_exceed_either_hard_limit(
     service, source, dimension, actual, hard
 ) -> None:
-    client, actor = service
+    client, actor, _settings = service
     response = client.post(
         "/api/v1/conversions",
         headers={"X-CSRF-Token": actor["csrf_token"]},

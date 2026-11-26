@@ -134,12 +134,19 @@ def _check_decode_dimensions(width: int, height: int, limits: ImageLimits) -> No
         _reject_image("Document image exceeds the hard decoding limit.")
 
 
-def _check_allocating_headers(source: bytes, suffix: str, limits: ImageLimits) -> None:
+def _check_allocating_headers(
+    source: bytes, suffix: str, limits: ImageLimits, *, strict: bool = False
+) -> None:
     if suffix == ".gif":
-        _check_decode_dimensions(*gif_canvas(source), limits)
+        dimensions = (gif_canvas(source),)
     elif suffix == ".webp":
-        for width, height in webp_dimensions(source):
-            _check_decode_dimensions(width, height, limits)
+        dimensions = webp_dimensions(source)
+    else:
+        return
+    for width, height in dimensions:
+        _check_decode_dimensions(width, height, limits)
+        if strict:
+            _check_dimensions(width, height, limits)
 
 
 def _normalized_png(image: Image.Image, limits: ImageLimits) -> bytes:
@@ -158,6 +165,7 @@ def _normalized_png(image: Image.Image, limits: ImageLimits) -> bytes:
 
 
 def _normalize_raster(source: bytes, suffix: str, limits: ImageLimits) -> bytes:
+    _check_allocating_headers(source, suffix, limits, strict=True)
     try:
         with Image.open(
             io.BytesIO(source), formats=sorted(_RASTER_FORMATS[suffix])
@@ -165,8 +173,8 @@ def _normalize_raster(source: bytes, suffix: str, limits: ImageLimits) -> bytes:
             image_format = probe.format
             if image_format not in _RASTER_FORMATS[suffix]:
                 _reject_image()
-            if limits.max_decode_pixels is not None:
-                _check_decode_dimensions(*probe.size, limits)
+            _check_decode_dimensions(*probe.size, limits)
+            _check_dimensions(*probe.size, limits)
             probe.verify()
         with Image.open(
             io.BytesIO(source), formats=sorted(_RASTER_FORMATS[suffix])
@@ -407,13 +415,11 @@ def normalize_conversion_image(
     """Keep the original raster encoding when resizing an oversized input."""
 
     suffix = path.suffix.casefold()
-    if suffix not in _RASTER_FORMATS:
+    if policy == "reject" or suffix not in _RASTER_FORMATS:
         return NormalizedImage(normalize_image(path, source, limits))
     if not source or len(source) > limits.max_source_bytes:
         _reject_image("Document image exceeds configured limits.")
     _check_allocating_headers(source, suffix, limits)
-    if policy == "reject":
-        return NormalizedImage(normalize_image(path, source, limits))
     formats = sorted(_RASTER_FORMATS[suffix])
     try:
         with Image.open(io.BytesIO(source), formats=formats) as probe:

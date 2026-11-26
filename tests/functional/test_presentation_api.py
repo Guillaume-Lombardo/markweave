@@ -193,3 +193,45 @@ def test_worker_source_bundle_and_default_reference_boundary(
             )
         assert converted.call_args.args[1] is None
         assert callable(converted.call_args.kwargs["cancellation_requested"])
+
+
+@pytest.mark.parametrize("format_name", ["GIF", "WEBP"])
+def test_plan_rejects_oversized_raster_before_pillow_open(
+    tmp_path, mocker, format_name
+):
+    from PIL import Image  # noqa: PLC0415
+
+    image = io.BytesIO()
+    Image.new("RGB", (2_001, 1), "blue").save(image, format=format_name)
+    filename = f"picture.{format_name.lower()}"
+    source = io.BytesIO()
+    with zipfile.ZipFile(source, "w") as archive:
+        archive.writestr("document.md", f"![Picture]({filename})")
+        archive.writestr(filename, image.getvalue())
+    with client_for(tmp_path) as client:
+        headers = authenticate(client)
+        open_image = mocker.patch.object(Image, "open")
+        response = client.post(
+            "/api/v1/presentation-plan",
+            headers=headers,
+            files={"source": ("slides.zip", source.getvalue())},
+        )
+        assert response.status_code == 422
+        open_image.assert_not_called()
+
+
+def test_plan_bounds_entry_count_before_zipfile(tmp_path, mocker):
+    source = io.BytesIO()
+    with zipfile.ZipFile(source, "w") as archive:
+        for index in range(101):
+            archive.writestr(f"{index}.md", "# Slide")
+    with client_for(tmp_path) as client:
+        headers = authenticate(client)
+        open_archive = mocker.patch.object(zipfile, "ZipFile")
+        response = client.post(
+            "/api/v1/presentation-plan",
+            headers=headers,
+            files={"source": ("slides.zip", source.getvalue())},
+        )
+        assert response.status_code == 422
+        open_archive.assert_not_called()

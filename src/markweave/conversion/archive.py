@@ -365,15 +365,19 @@ def _check_directory_entry_count(
         _archive_limit()
 
 
+def _open_bounded_archive(data: bytes, max_entries: int) -> zipfile.ZipFile:
+    stream = io.BytesIO(data)
+    _check_directory_entry_count(data, stream, max_entries)
+    return zipfile.ZipFile(stream)
+
+
 def _archive_uncompressed_size(data: bytes, max_entries: int) -> int | None:
     """Read the ZIP directory without inflating any member.
 
     Malformed packages are left to the worker's existing validation path.
     """
     try:
-        stream = io.BytesIO(data)
-        _check_directory_entry_count(data, stream, max_entries)
-        with zipfile.ZipFile(stream) as archive:
+        with _open_bounded_archive(data, max_entries) as archive:
             return sum(info.file_size for info in archive.infolist())
     except OSError, zipfile.BadZipFile, UnicodeError, NotImplementedError:
         return None
@@ -394,8 +398,8 @@ def prepare_archive(
     if len(data) > limits.max_archive_bytes:
         _archive_limit()
     try:
-        archive = zipfile.ZipFile(io.BytesIO(data))
-    except OSError, zipfile.BadZipFile:
+        archive = _open_bounded_archive(data, limits.max_entries)
+    except OSError, zipfile.BadZipFile, UnicodeError, NotImplementedError:
         _invalid_archive()
     with archive:
         members, entrypoint = _preflight(archive, limits)
