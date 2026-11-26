@@ -29,7 +29,6 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 
 ## Blocking points
 
-- The owner has renamed the GitHub repository and owns the PyPI Trusted Publisher update. Future Python publication requires the new publisher.
 - Do not schedule during a release-adoption window.
 
 ## Progress
@@ -41,6 +40,9 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 - 2026-11-26: Updated the live repository references and verified public release alignment through
   the canonical GitHub endpoints. All three 0.8.0 GHCR receipts and attestations verified against
   the published digests and their original signing identity.
+- 2026-11-26: The owner added the second PyPI Trusted Publisher for
+  `Guillaume-Lombardo/markweave`, workflow `release.yml`, and environment `pypi`. Remove the original
+  publisher only after the first successful release from the renamed repository.
 
 ## Synchronization
 
