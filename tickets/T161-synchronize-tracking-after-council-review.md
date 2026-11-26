@@ -2,7 +2,7 @@
 ticket: T161
 linear_id: G1L-852
 linear_url: https://linear.app/g1lom/issue/G1L-852/t161-synchronize-project-tracking-after-the-council-review
-status: In Progress
+status: Done
 priority: High
 project: Markdown to DOCX and PDF Converter
 ---
@@ -61,6 +61,8 @@ contract of section 11 with the tested workflow. Documentation and tracking only
   `docs/delivery-history.md`, and AGENTS.md (red-main rule).
 - Not changed: Linear reopened T18 (G1L-328) to In Progress on 2026-10-23 without a recorded reason,
   while its mirror is Done. The owner must decide which surface is right.
+
+- 2026-11-26: Verified on main: #358 merged as 6183b28; the main CI on fac2dda (run 45728741404) passed.
 
 ## Synchronization
 

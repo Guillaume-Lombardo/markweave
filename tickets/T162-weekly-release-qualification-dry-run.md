@@ -2,7 +2,7 @@
 ticket: T162
 linear_id: G1L-853
 linear_url: https://linear.app/g1lom/issue/G1L-853/t162-run-weekly-release-qualification-without-publication
-status: In Progress
+status: Done
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -39,6 +39,8 @@ upstream download, checksum, and Critical-vulnerability drift before publication
 - Regression tests cover shared issue updates and stale dry-run retries after a newer success.
 - Qualification and reporting run on `main`. The first manual run requires the workflow to
   exist on the default branch.
+
+- 2026-11-26: Verified on main: #360 merged as dfaee75. The first dispatched dry-run on main (run 45723845585) passed all eight jobs: stage, smoke, supply-chain, four E2E jobs and failure tracking. Nothing was published.
 
 ## Synchronization
 
