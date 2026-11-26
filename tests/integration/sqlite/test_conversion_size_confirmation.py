@@ -193,3 +193,17 @@ def _override_audit(client: TestClient) -> list[dict]:
         for record in client.get("/api/v1/audit").json()
         if record["operation"] == "large_archive_override"
     ]
+
+
+def test_confirmed_archive_cannot_raise_its_entry_limit(service) -> None:
+    client, actor, settings = service
+    settings.conversion_max_files = 1
+    response = client.post(
+        "/api/v1/conversions",
+        headers={"X-CSRF-Token": actor["csrf_token"]},
+        files={"source": ("source.zip", _source(180, compression=zipfile.ZIP_STORED))},
+        data={"output": "docx", "allow_large_archive": "true"},
+    )
+    assert response.status_code == 422
+    assert client.get("/api/v1/conversions").json()["total"] == 0
+    assert _override_audit(client) == []

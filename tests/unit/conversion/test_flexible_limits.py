@@ -17,6 +17,7 @@ from markweave.conversion.size_policy import (
     SizeLimit,
     require_size_confirmation,
 )
+from markweave.conversion.validation import validate_document
 
 pytestmark = pytest.mark.unit
 
@@ -63,8 +64,17 @@ def test_resize_dimensions(size, pixels, expected) -> None:
 def test_resized_image_keeps_its_encoding(format_name: str, suffix: str) -> None:
     source = raster((120, 80), format_name)
     path = PurePosixPath(f"photo.{suffix}")
-    result = normalize_conversion_image(path, source, IMAGE_LIMITS, "resize")
-    with Image.open(io.BytesIO(result.content)) as image:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as package:
+        package.writestr("document.md", f"![Photograph]({path})")
+        package.writestr(path.as_posix(), source)
+    archive_limits = ArchiveLimits(20_000, 10, 20_000, 20_000, 200, 5_000, 2)
+    document = prepare_archive(
+        buffer.getvalue(), archive_limits, IMAGE_LIMITS, raster_policy="resize"
+    )
+    assert len(document.warnings) == 1
+    (resource,) = validate_document(document).resources
+    with Image.open(io.BytesIO(resource.content)) as image:
         assert image.format == format_name
         assert image.size == (60, 40)
 
@@ -313,3 +323,27 @@ def test_malformed_allocating_headers_reject_before_open(format_name, mocker) ->
             "resize",
         )
     open_image.assert_not_called()
+
+
+def test_animated_gif_remains_rejected_under_resize_policy() -> None:
+    source = io.BytesIO()
+    frame = Image.new("RGB", (30, 10), "blue")
+    frame.save(
+        source,
+        format="GIF",
+        save_all=True,
+        append_images=[Image.new("RGB", frame.size, "red")],
+        duration=100,
+    )
+    with pytest.raises(ConversionError, match="Animated images are not supported"):
+        normalize_conversion_image(
+            PurePosixPath("animation.gif"), source.getvalue(), IMAGE_LIMITS, "resize"
+        )
+
+
+def test_resize_reject_policy_accepts_a_bounded_raster_without_warning() -> None:
+    result = normalize_conversion_image(
+        PurePosixPath("photo.png"), raster((30, 10)), IMAGE_LIMITS, "reject"
+    )
+    assert result.warning is None
+    assert result.media_type == "image/png"
