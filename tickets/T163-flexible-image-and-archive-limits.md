@@ -2,7 +2,7 @@
 ticket: T163
 linear_id: G1L-854
 linear_url: https://linear.app/g1lom/issue/G1L-854/t163-add-flexible-image-and-archive-limits
-status: In Progress
+status: Done
 priority: Medium
 project: Markdown to DOCX and PDF Converter
 ---
@@ -36,6 +36,7 @@ T18 (G1L-328) resource budgets.
   multipart data. SQLite tests verify that rejected overrides leave jobs and audit
   records untouched. A global budget for concurrent authenticated uploads remains
   a follow-up.
+- 2026-11-26: #363 merged as 9042129; main CI green.
 
 ## Synchronization
 

@@ -192,6 +192,48 @@ replacement and omits values.
 The repository Compose files already use canonical names. Check any local overrides
 before upgrading either storage profile or a local conversion environment.
 
+## Upgrading to 0.9.0
+
+When upgrading from `0.8.0`, migration `20261126_28` follows `20261021_27` and stores
+confirmed upload overrides, conversion warnings, and immutable size audit records. Close admission,
+drain jobs, and stop all application writers before creating the profile-consistent database and
+object backup with `0.8.0`. Prove the backup can be restored with `0.8.0` into isolated targets
+before running the migration. Check the [distributed restore limitation](recovery.md#recovery-sets-from-earlier-releases)
+if a retained job references a superseded template version. Deploy the matched images from the
+verified `0.9.0` receipts, then let one controlled component migrate the database and report
+readiness before starting the rest.
+
+Review the following forward-conversion limits before reopening admission.
+
+- `MARKWEAVE_CONVERSION_IMAGE_OVERSIZE_POLICY` defaults to `resize`. Raster images are resized
+  proportionally to the configured width, height, and pixel limits, with a per-image warning.
+  Set it to `reject` to restore strict rejection of oversized raster images. The separate
+  `MARKWEAVE_CONVERSION_IMAGE_DECODE_MAX_PIXELS` ceiling defaults to 32,000,000 and applies
+  before decoding in either mode.
+- `MARKWEAVE_CONVERSION_UPLOAD_MAX_BYTES` and `MARKWEAVE_CONVERSION_MAX_DECOMPRESSED_BYTES`
+  define the standard limits. The latter also caps each ZIP member. Set
+  `MARKWEAVE_CONVERSION_UPLOAD_HARD_MAX_BYTES` and
+  `MARKWEAVE_CONVERSION_HARD_MAX_DECOMPRESSED_BYTES` to bound confirmed overrides. Each
+  defaults to four times its standard limit. Set
+  `MARKWEAVE_CONVERSION_LARGE_ARCHIVE_OVERRIDE=false` to enforce the standard limits as
+  hard ceilings. Overrides are enabled by default and require explicit confirmation.
+- For forward conversion, the request ceiling is the effective hard upload limit plus the
+  multipart allowance (`MARKWEAVE_CONVERSION_REQUEST_MAX_BYTES` minus
+  `MARKWEAVE_CONVERSION_UPLOAD_MAX_BYTES`). Set `MARKWEAVE_ROUTER_REQUEST_MAX_BYTES` in Compose
+  and any upstream proxy limits to at least the largest request ceiling across the enabled routes,
+  including template uploads and any enabled reverse conversion or Composer routes. Check that
+  malware scanners and API and worker resource budgets can handle the configured limits. See
+  [conversion and engine limits](configuration.md#conversion-and-engine-limits).
+
+To roll back to `0.8.0` after the migration starts, stop admission and all writers. Use the
+`0.8.0` version of `markweave restore` to restore the pre-upgrade backup into isolated database
+and object targets. Bring back the `0.8.0` configuration and matched components. For
+reverse-enabled deployments, also restore the `0.8.0` native broker, its configuration, and the
+verified reverse-attempt image.
+Verify application readiness, representative stable objects, and an authorized conversion
+before reopening traffic. Require broker `READY` and an authenticated reverse smoke check
+before reopening reverse admission.
+
 ## Stable links
 
 - [Upgrade guide top](#upgrading)
@@ -200,6 +242,7 @@ before upgrading either storage profile or a local conversion environment.
 - [Schema changes and rollback](#schema-changes-and-rollback)
 - [Upgrading to 0.7.5](#upgrading-to-075)
 - [Upgrading to 0.8.0](#upgrading-to-080)
+- [Upgrading to 0.9.0](#upgrading-to-090)
 - [Configuration migration for 0.8.0](#configuration-compatibility)
 
 ## Related guidance

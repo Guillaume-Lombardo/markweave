@@ -10,6 +10,41 @@ Use the [upgrade guide](docs/upgrading.md) for supported transitions and rollbac
 [release process](docs/releasing.md) for artifact evidence, the [security policy](SECURITY.md) for
 private reporting, and the [support policy](SUPPORT.md) for help with a published release.
 
+<a id="release-0-9-0"></a>
+
+## [0.9.0] - 2026-11-27
+
+### Added
+
+- Forward conversions resize oversized raster images proportionally by default to fit the
+  configured width, height, and pixel limits. The job API, browser, and CLI report the
+  original and resized dimensions. A separate hard pixel limit applies before decoding.
+  Operators can restore strict rejection with `MARKWEAVE_CONVERSION_IMAGE_OVERSIZE_POLICY=reject`.
+- Forward uploads can exceed the standard upload or uncompressed ZIP total after explicit
+  confirmation, up to configurable hard ceilings. Accepted overrides are audited with the
+  actor, measured sizes, limits, and job ID. Scanning, quotas, and per-member limits still
+  apply. See the [upgrade guide](docs/upgrading.md#upgrading-to-090) for configuration and
+  migration `20261126_28`.
+
+### Changed
+
+- The canonical [GitHub repository](https://github.com/Guillaume-Lombardo/markweave) is now
+  `Guillaume-Lombardo/markweave`. Source links, clone commands, issue and support URLs, and
+  release verification use the new location. Existing GitHub URLs redirect, and older
+  release attestations retain their original signing identity. PyPI and GHCR package names
+  stay the same.
+- The weekly release qualification dry-run builds and tests the final images, generates SBOMs,
+  and checks for Critical vulnerabilities without publishing artifacts.
+- Refresh Python runtime dependencies, including FastAPI `0.165.0`, PyYAML `6.0.4`,
+  pypdf `7.1.1`, boto3 `1.44.9`, python-multipart `0.0.34`, pydantic-settings `2.16.3`,
+  and SQLAlchemy `2.1.9`. The frontend workspace accepts Node.js `>=24.19.0 <25`.
+  The published images still use the pinned Node.js `24.19.0` runtime.
+
+### Release notes
+
+- Repository Compose and quickstart defaults use the verified `0.8.0` backend and frontend
+  digests until the `0.9.0` images are published and their exact receipts are adopted.
+
 <a id="release-0-8-0"></a>
 
 ## [0.8.0] - 2026-11-21
