@@ -676,7 +676,7 @@ start_production_router() {
     --env "BACKEND_ORIGIN=$backend_origin" \
     --env "FRONTEND_ORIGIN=$frontend_origin" \
     --env PUBLIC_HOSTS=localhost:3100 \
-    --env ROUTER_REQUEST_MAX_BYTES=1100000 \
+    --env ROUTER_REQUEST_MAX_BYTES=4100000 \
     --env ROUTER_UPSTREAM_TIMEOUT_MS=30000 \
     "$frontend_image" node router.mjs >/dev/null
   for _ in $(seq 1 120); do
@@ -1964,6 +1964,9 @@ e2e_phase_service() {
     --expiration-state-file "$expiration_state_file" \
     --artifact-dir "$temporary_directory/browser-artifacts" \
     --api-metrics-url "$base_url/metrics" "${worker_metrics[@]}"
+
+  MARKWEAVE_E2E_CONVERSION_URL="$base_url" uv run pytest --no-cov \
+    tests/e2e/test_flexible_conversion_limits.py
 
   uv run python -m tests.e2e.cli_workflow --container "$application_name" --profile "$profile"
 

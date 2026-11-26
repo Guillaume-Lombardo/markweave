@@ -1012,3 +1012,80 @@ def test_powerpoint_cli_forwards_explicit_options_without_requiring_a_template(
     assert submitted["slide_level"] == 3
     assert submitted["template_id"] is None
     assert submitted["template_version_id"] is None
+
+
+@pytest.mark.parametrize(
+    ("flags", "answer", "expected_exit", "submit_count"),
+    [
+        (("--allow-large-archive",), None, 0, 1),
+        ((), "yes\n", 0, 2),
+        ((), "n\n", 1, 1),
+        (("--non-interactive",), "yes\n", 1, 1),
+        ((), None, 1, 1),
+    ],
+)
+def test_large_archive_confirmation_cli(  # noqa: PLR0913, PLR0917 - fixture and decision matrix inputs
+    tmp_path, mocker, capsys, flags, answer, expected_exit, submit_count
+) -> None:
+    archive = tmp_path / "source.zip"
+    archive.write_bytes(b"archive content")
+    client = mocker.Mock()
+    confirmed = _response(202, _job(), headers={"retry-after": "1"})
+    confirmation_required = _response(
+        413,
+        {
+            "error": {
+                "code": "ARCHIVE_SIZE_CONFIRMATION_REQUIRED",
+                "message": "Upload is 11 bytes. The standard limit is 10 bytes.",
+            }
+        },
+    )
+    client.submit.side_effect = (
+        [confirmed]
+        if "--allow-large-archive" in flags
+        else [confirmation_required, confirmed]
+    )
+    mocker.patch.object(conversions, "_client", return_value=client)
+    mocker.patch.object(
+        conversions.sys.stdin, "isatty", return_value=answer is not None
+    )
+    mocker.patch.object(
+        conversions.sys.stderr, "isatty", return_value=answer is not None
+    )
+    read = mocker.patch.object(conversions.sys.stdin, "readline", return_value=answer)
+    global_flags = tuple(flag for flag in flags if flag == "--non-interactive")
+    convert_flags = tuple(flag for flag in flags if flag != "--non-interactive")
+    assert (
+        main((*global_flags, "convert", str(archive), *convert_flags)) == expected_exit
+    )
+    assert client.submit.call_count == submit_count
+    if expected_exit == 0:
+        assert client.submit.call_args.kwargs["allow_large_archive"] is True
+    captured = capsys.readouterr()
+    if answer is None or global_flags:
+        read.assert_not_called()
+        if expected_exit:
+            assert "--allow-large-archive to confirm" in captured.err
+    else:
+        read.assert_called_once_with()
+        assert "Continue? [y/N]" in captured.err
+
+
+def test_confirmed_multipart_and_job_resize_warning(mocker, capsys) -> None:
+    client = mocker.Mock()
+    client.get_job.return_value = _response(
+        200,
+        {**_job("succeeded", progress=100), "warnings": ["Image resized to 60 by 40."]},
+    )
+    mocker.patch.object(conversions, "_client", return_value=client)
+    assert main(("jobs", "show", JOB_ID)) == 0
+    assert "warning: Image resized to 60 by 40." in capsys.readouterr().err
+    body, _ = _multipart_body(
+        b"input",
+        source_kind="zip",
+        output="docx",
+        template_id=None,
+        template_version_id=None,
+        allow_large_archive=True,
+    )
+    assert b'name="allow_large_archive"\r\n\r\ntrue\r\n' in body

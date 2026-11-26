@@ -450,15 +450,31 @@ export function ConversionWorkspace({
                   ))}
                 </ul>
               </section>
+              {state.archiveConfirmation && (
+                <p role="status">{state.archiveConfirmation}</p>
+              )}
               <button
                 className="primary-button"
-                disabled={state.submitting || state.packaging}
+                disabled={
+                  state.submitting ||
+                  state.packaging ||
+                  !!state.archiveConfirmation
+                }
                 type="submit"
               >
                 {state.submitting
                   ? "Submitting conversion…"
                   : "Start conversion"}
               </button>
+              {state.archiveConfirmation && (
+                <button
+                  className="primary-button"
+                  onClick={() => void controller.submit(true)}
+                  type="button"
+                >
+                  Confirm and start conversion
+                </button>
+              )}
               {state.source && (
                 <button
                   disabled={state.composerPending || storageError || !restored}
@@ -485,6 +501,13 @@ export function ConversionWorkspace({
                   ? statusPresentation(state.active)
                   : "Submit a conversion or choose a recent one."}
               </div>
+              {!!state.active?.warnings?.length && (
+                <ul aria-label="Conversion warnings" className="list-disc pl-5">
+                  {state.active.warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              )}
               <div className="min-h-24 space-y-3">
                 {state.active && state.active.state !== "succeeded" && (
                   <Progress

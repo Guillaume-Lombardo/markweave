@@ -204,6 +204,7 @@ def test_audit_reader_maps_optional_version_and_sanitizes_failure(
             operation="replace",
             version_id=str(version_id),
             administrator_intervention=True,
+            sizes=None,
             created_at=now,
         ),
         SimpleNamespace(
@@ -216,6 +217,7 @@ def test_audit_reader_maps_optional_version_and_sanitizes_failure(
             operation="user_password_reset",
             version_id=None,
             administrator_intervention=False,
+            sizes=None,
             created_at=now.replace(tzinfo=None),
         ),
     )

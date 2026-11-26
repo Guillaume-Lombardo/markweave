@@ -17,10 +17,6 @@ from markweave.conversion.local_settings import (
 pytestmark = pytest.mark.unit
 
 EXAMPLE = Path("examples/local-conversion.env")
-OPTIONAL_LOCAL_FIELDS = {
-    "conversion_font_manifest_path",
-    "template_engine_workspace_root",
-}
 
 
 def example_values() -> dict[str, str]:
@@ -69,11 +65,14 @@ def test_example_environment_matches_quickstart_values_and_covers_requirements()
         re.findall(r'^\s+(MARKWEAVE_[A-Z0-9_]+):\s*"?([^"\n]*)"?$', compose, re.M)
     )
     values = example_values()
-    assert values == {name: quickstart[name] for name in values}
+    assert values == {
+        name: quickstart[name].removeprefix(f"${{{name}:-").removesuffix("}")
+        for name in values
+    }
     required = {
         f"MARKWEAVE_{name.upper()}"
-        for name in LocalConversionSettings.model_fields
-        if name not in OPTIONAL_LOCAL_FIELDS
+        for name, field in LocalConversionSettings.model_fields.items()
+        if field.is_required()
     }
     assert required <= values.keys()
     assert values.keys() <= {

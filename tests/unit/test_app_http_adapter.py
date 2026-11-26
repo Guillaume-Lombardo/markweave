@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 from datetime import UTC, datetime
@@ -20,6 +21,7 @@ from pytest_mock import MockerFixture
 from markweave.app import AppComponents, create_app
 from markweave.auth.errors import (
     AUTHENTICATION_REQUIRED,
+    CSRF_REQUIRED,
     INVALID_CREDENTIALS,
 )
 from markweave.auth.memory import MemoryReadinessProbe
@@ -1115,12 +1117,102 @@ def test_conversion_body_is_bounded_before_authentication_and_multipart_parsing(
     with client:
         response = client.post(
             "/api/v1/conversions",
-            content=b"x" * 1_100_001,
+            content=b"x" * 4_100_001,
             headers={"Content-Type": "multipart/form-data; boundary=private"},
         )
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "CONVERSION_REQUEST_TOO_LARGE"
     auth.authenticate.assert_not_called()
+
+
+def _conversion_asgi_request(
+    client: TestClient, receive, send, extra_headers=()
+) -> None:
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "scheme": "https",
+        "path": "/api/v1/conversions",
+        "headers": [
+            (b"content-type", b"multipart/form-data; boundary=private"),
+            *extra_headers,
+        ],
+    }
+    asyncio.run(client.app(scope, receive, send))
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("length", [b"invalid", b"-1"])
+def test_conversion_rejects_invalid_length_before_receiving_upload(
+    mocker: MockerFixture, length
+) -> None:
+    client, auth, _, _ = isolated_client(mocker)
+    receive = mocker.AsyncMock()
+    send = mocker.AsyncMock()
+
+    _conversion_asgi_request(client, receive, send, ((b"content-length", length),))
+
+    receive.assert_not_awaited()
+    auth.authenticate.assert_not_called()
+    assert send.await_args_list[0].args[0]["status"] == 422
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("error", [AUTHENTICATION_REQUIRED, CSRF_REQUIRED])
+def test_conversion_requires_auth_and_csrf_before_receiving_upload(
+    mocker: MockerFixture, error
+) -> None:
+    client, auth, _, _ = isolated_client(mocker)
+    if error is AUTHENTICATION_REQUIRED:
+        auth.authenticate.side_effect = error.new()
+    else:
+        auth.validate_csrf.side_effect = error.new()
+    receive = mocker.AsyncMock(side_effect=AssertionError("Upload body was read"))
+    send = mocker.AsyncMock()
+
+    _conversion_asgi_request(client, receive, send)
+
+    receive.assert_not_awaited()
+    assert send.await_args_list[0].args[0]["status"] == error.status_code
+    assert (
+        json.loads(send.await_args_list[1].args[0]["body"])["error"]["code"]
+        == error.code
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("length", [(), ((b"content-length", b"100"),)])
+def test_conversion_counts_stream_bytes_and_closes_partial_file(
+    mocker: MockerFixture, length
+) -> None:
+    scanner = mocker.Mock(spec=UploadScanner)
+    client, auth, _, _ = isolated_client(mocker, scanner=scanner)
+    spool = mocker.spy(sys.modules["starlette.formparsers"], "SpooledTemporaryFile")
+    send = mocker.AsyncMock()
+    part = b'--private\r\nContent-Disposition: form-data; name="source"; filename="a.md"\r\n\r\n'
+
+    def messages():
+        auth.validate_csrf.assert_called_once()
+        yield {
+            "type": "http.request",
+            "body": part + b"x" * 2_000_000,
+            "more_body": True,
+        }
+        # The parser has already spooled part of the file before pulling again.
+        assert spool.spy_return is not None
+        yield {"type": "http.request", "body": b"x" * 2_100_000, "more_body": True}
+        pytest.fail("Upload parser read beyond the hard body ceiling")
+
+    receive = mocker.AsyncMock(side_effect=messages())
+    _conversion_asgi_request(client, receive, send, length)
+
+    assert receive.await_count == 2
+    assert spool.spy_return.closed
+    scanner.scan.assert_not_called()
+    assert send.await_args_list[0].args[0]["status"] == 413
+    assert json.loads(send.await_args_list[1].args[0]["body"])["error"]["code"] == (
+        "CONVERSION_REQUEST_TOO_LARGE"
+    )
 
 
 @pytest.mark.unit
@@ -1264,7 +1356,7 @@ def test_conversion_http_adapter_delegates_all_safe_routes(
                 files={"source": ("source.md", b"x" * 1_000_001)},
                 data=data,
             ).status_code
-            == 422
+            == 413
         )
         assert (
             client.post(

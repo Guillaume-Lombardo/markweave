@@ -8,9 +8,10 @@ import os
 import zipfile
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import Literal
 
 from markweave.config import ConfigurationError, Settings
-from markweave.conversion.archive import ArchiveLimits
+from markweave.conversion.archive import ArchiveLimits, prepare_archive
 from markweave.conversion.errors import (
     ConversionError,
     ConversionErrorCode,
@@ -82,6 +83,7 @@ class ProductionTemplateAwareProcessor:
         image_limits: ImageLimits,
         traceability: ProcessorTraceability,
         presentations: PresentationProcessor | None = None,
+        raster_policy: Literal["resize", "reject"] | None = None,
     ) -> None:
         self._objects = objects
         self._docx = docx
@@ -90,6 +92,7 @@ class ProductionTemplateAwareProcessor:
         self._image_limits = image_limits
         self._traceability = traceability
         self._presentations = presentations
+        self._raster_policy = raster_policy
 
     def process_with_template(  # noqa: PLR0913 - explicit worker boundary
         self,
@@ -157,9 +160,9 @@ class ProductionTemplateAwareProcessor:
                 progress=progress,
             )
         try:
-            docx = self._convert_docx(
+            docx, warnings = self._convert_docx(
                 source,
-                job.source_kind,
+                job,
                 template_content,
                 deadline_monotonic=deadline_monotonic,
                 cancellation_requested=cancelled,
@@ -171,7 +174,7 @@ class ProductionTemplateAwareProcessor:
         self._require_active(cancelled)
         if job.output is JobOutput.DOCX:
             progress(JobStep.PUBLISHING, 95)
-            return JobProcessResult(docx)
+            return JobProcessResult(docx, warnings=warnings)
 
         artifact = self._pdf.convert(
             docx,
@@ -184,10 +187,11 @@ class ProductionTemplateAwareProcessor:
         self._require_active(cancelled)
         progress(JobStep.PUBLISHING, 95)
         if job.output is JobOutput.PDF:
-            return JobProcessResult(artifact.pdf, manifest)
+            return JobProcessResult(artifact.pdf, manifest, warnings=warnings)
         return JobProcessResult(
             _combined_archive(docx, artifact.pdf, manifest),
             manifest,
+            warnings=warnings,
         )
 
     def _load_source(self, job: ConversionJob) -> bytes:
@@ -219,23 +223,29 @@ class ProductionTemplateAwareProcessor:
     def _convert_docx(
         self,
         source: bytes,
-        source_kind: SourceKind | None,
+        job: ConversionJob,
         template_content: bytes | None,
         *,
         deadline_monotonic: float | None,
         cancellation_requested: CancellationProbe,
-    ) -> bytes:
+    ) -> tuple[bytes, tuple[str, ...]]:
+        source_kind = job.source_kind
         if source_kind is SourceKind.ARCHIVE:
             if source[:4] not in {b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"}:
                 raise _source_integrity_error()
-            return self._docx.convert_archive(
-                source,
+            limits = self._archive_limits.for_confirmed_archive(
+                job.large_archive_confirmed
+            )
+            document = prepare_archive(
+                source, limits, self._image_limits, raster_policy=self._raster_policy
+            )
+            content = self._docx.convert_document(
+                document,
                 template_content,
-                self._archive_limits,
-                self._image_limits,
                 deadline_monotonic=deadline_monotonic,
                 cancellation_requested=cancellation_requested,
             )
+            return content, document.warnings
         if source_kind is not SourceKind.MARKDOWN or source[:4] in {
             b"PK\x03\x04",
             b"PK\x05\x06",
@@ -246,12 +256,17 @@ class ProductionTemplateAwareProcessor:
             markdown = source.decode("utf-8")
         except UnicodeDecodeError:
             raise validation_error("Markdown input is not valid UTF-8.") from None
-        return self._docx.convert(
+        limits = self._archive_limits.for_confirmed_archive(job.large_archive_confirmed)
+        if len(source) > limits.max_archive_bytes:
+            raise validation_error("Document source exceeds configured limits.")
+        content = self._docx.convert(
             markdown,
             template_content,
             deadline_monotonic=deadline_monotonic,
             cancellation_requested=cancellation_requested,
         )
+
+        return content, ()
 
     def _traceability_context(
         self, job: ConversionJob, template: TemplateVersion | None
@@ -310,14 +325,7 @@ def build_document_engines(
     """Compose the validation, archive, image, Mermaid, Pandoc, and PDF adapters."""
 
     workspace = settings.template_engine_workspace_root
-    image_limits = ImageLimits(
-        settings.conversion_image_max_source_bytes,
-        settings.conversion_image_max_width_pixels,
-        settings.conversion_image_max_height_pixels,
-        settings.conversion_image_max_pixels,
-        settings.conversion_image_max_svg_elements,
-        settings.conversion_image_max_svg_depth,
-    )
+    image_limits = ImageLimits.from_conversion_settings(settings)
     archive_limits = ArchiveLimits(
         max_archive_bytes=settings.conversion_upload_max_bytes,
         max_entries=settings.conversion_max_files,
@@ -327,6 +335,8 @@ def build_document_engines(
         max_markdown_bytes=settings.conversion_upload_max_bytes,
         max_images=settings.conversion_max_images,
         max_files=settings.conversion_max_files,
+        hard_archive_bytes=settings.effective_conversion_upload_hard_max_bytes,
+        hard_total_uncompressed_bytes=settings.effective_conversion_hard_max_decompressed_bytes,
     )
     pandoc_config = PandocConfig(
         settings.template_pandoc_executable,
@@ -420,11 +430,13 @@ def build_production_processor(
             mermaid_limits=engines.mermaid_limits,
             archive_limits=engines.archive_limits,
             image_limits=engines.image_limits,
+            raster_policy=settings.conversion_image_oversize_policy,
         ),
         docx=engines.docx,
         pdf=engines.pdf,
         archive_limits=engines.archive_limits,
         image_limits=engines.image_limits,
+        raster_policy=settings.conversion_image_oversize_policy,
         traceability=ProcessorTraceability(
             application_version=VERSION,
             conversion_contract_version=CONVERSION_CONTRACT_VERSION,

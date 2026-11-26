@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from markweave.cli.commands.conversions import _confirm_large_archive
 from markweave.cli.errors import CliError
 from markweave.cli.local_outputs import check_destination, publish_outputs
 from markweave.cli.output import OutputWriter
@@ -75,7 +76,8 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
             # Remote handlers read their own request values, never these attributes;
             # suppressing defaults lets local mode detect explicit remote options.
             action.default = argparse.SUPPRESS
-            remote_options.append((action.dest, action.option_strings[-1]))
+            if action.dest != "allow_large_archive":
+                remote_options.append((action.dest, action.option_strings[-1]))
     convert.set_defaults(local_remote_options=tuple(remote_options))
     _keep_remote_abbreviations(convert)
     group = convert.add_argument_group(
@@ -148,6 +150,40 @@ def _keep_remote_abbreviations(convert: argparse.ArgumentParser) -> None:
     setattr(convert, "_get_option_tuples", remote_first)  # noqa: B010
 
 
+def _confirm_source_size(
+    context: CommandContext,
+    settings: LocalConversionSettings,
+    source: bytes,
+    *,
+    archive: bool,
+    confirmed: bool,
+) -> bool:
+    from markweave.conversion.archive import conversion_size_limits  # noqa: PLC0415
+    from markweave.conversion.errors import ConversionError  # noqa: PLC0415
+    from markweave.conversion.size_policy import (  # noqa: PLC0415
+        ConversionSizeError,
+        SizeLimit,
+        require_size_confirmation,
+    )
+
+    upload = SizeLimit(
+        "upload",
+        len(source),
+        settings.conversion_upload_max_bytes,
+        settings.effective_conversion_upload_hard_max_bytes,
+    )
+    try:
+        limits = conversion_size_limits(source, upload, settings, archive=archive)
+        return require_size_confirmation(limits, confirmed=confirmed)
+    except ConversionError as error:
+        raise CliError(error.code.value, str(error)) from None
+    except ConversionSizeError as error:
+        if not error.confirmation_required:
+            raise CliError("conversion_size_limit_exceeded", str(error)) from None
+        _confirm_large_archive(context, str(error))
+        return True
+
+
 def _convert_locally(
     context: CommandContext, writer: OutputWriter, invocation: LocalInvocation
 ) -> None:
@@ -189,7 +225,16 @@ def _convert_locally(
     )
 
     settings = _load_local_settings()
-    source = _read_file(source_path, settings.conversion_upload_max_bytes, "source")
+    source = _read_file(
+        source_path, settings.effective_conversion_upload_hard_max_bytes, "source"
+    )
+    confirmed = _confirm_source_size(
+        context,
+        settings,
+        source,
+        archive=source_kind.value == "archive",
+        confirmed=getattr(namespace, "allow_large_archive", False),
+    )
     template = (
         _read_file(template_path, settings.template_max_archive_bytes, "template")
         if template_path is not None
@@ -216,6 +261,7 @@ def _convert_locally(
                         outputs=outputs,
                         template=template,
                         require_pinned=require_pinned,
+                        **({"allow_large_archive": True} if confirmed else {}),
                     ),
                     deadline_monotonic=deadline,
                     cancellation_requested=cancelled.is_set,

@@ -11,11 +11,12 @@ from pathlib import Path
 from typing import Self
 
 from pydantic import Field, ValidationError, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import SettingsConfigDict
 
 from markweave.config import (
     ConfigurationError,
     ConflictingConfigurationError,
+    ConversionLimitSettings,
     validated_environment_model,
 )
 
@@ -28,7 +29,7 @@ class LocalConfigurationError(ConfigurationError):
         self.variables = variables
 
 
-class LocalConversionSettings(BaseSettings):
+class LocalConversionSettings(ConversionLimitSettings):
     """The service's document-pipeline limits, without any runtime profile."""
 
     model_config = SettingsConfigDict(
@@ -37,9 +38,6 @@ class LocalConversionSettings(BaseSettings):
         extra="ignore",
     )
 
-    conversion_upload_max_bytes: int = Field(gt=0)
-    conversion_max_decompressed_bytes: int = Field(gt=0)
-    conversion_max_files: int = Field(gt=0)
     conversion_max_images: int = Field(gt=0)
     conversion_max_diagrams: int = Field(gt=0)
     conversion_max_compression_ratio: float = Field(ge=1.0, allow_inf_nan=False)

@@ -746,6 +746,16 @@ ticket (such as T107) may delete the tests that belong only to the code it remov
   authorized LLM connection as section 2 states, retained drafts, revisions, and exports stay
   accessible without one, and ordinary conversion never depends on it.
 
+- **D17 – Flexible forward-conversion limits (T163, 2026-11-26).** By default, resize oversized
+  raster images proportionally to fit the configured width, height, and pixel budgets. Preserve
+  the encoding of resized images and return a warning per image in the job API, browser, and CLI.
+  Operators can require rejection. Check header dimensions against a hard decoding ceiling before
+  loading pixels. Existing SVG, Mermaid, Composer, and reverse-conversion rules still apply.
+  Forward-conversion upload and uncompressed archive totals have soft limits and separate hard
+  ceilings. Default each hard ceiling to four times its soft limit. Require explicit confirmation
+  in the intervening band and audit accepted overrides with actor, sizes, and job ID. Operators can
+  disable confirmation. Hard, member, and quota limits and scanning still apply.
+
 ## 4. Input contract
 
 A standalone Markdown file is accepted only when it has no local-resource dependency. Clients may
@@ -1130,7 +1140,8 @@ revision, excluding T161, which produces this revision):
 - T10 owns the exact official font artifacts, versions, notices, Fontconfig substitution details,
   and the scripts that explicitly require Noto coverage. The approved font families in section 2
   remain fixed while these implementation details are deferred.
-- T18 owns maximum upload and decompressed sizes; file, image, and diagram counts; active-job and
+- T18 owns soft and hard upload and uncompressed archive limits, image dimensions and decode
+  budgets (D17); file, image, and diagram counts; active-job and
   queue-depth limits; worker duration, memory, and ephemeral storage; source/result retention;
   quotas; and cleanup schedules. Keep workload-dependent production values configurable. The
   approved template/audit retention, ClamAV, and recovery contracts are fixed in section 8.2.

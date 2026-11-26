@@ -7,6 +7,7 @@ import json
 import zipfile
 from collections.abc import Callable, Mapping
 from dataclasses import asdict
+from typing import Literal
 
 from markweave.conversion.archive import ArchiveLimits
 from markweave.conversion.images import ImageLimits
@@ -40,6 +41,7 @@ class PresentationProcessor:
         mermaid_limits: MermaidLimits,
         archive_limits: ArchiveLimits,
         image_limits: ImageLimits,
+        raster_policy: Literal["resize", "reject"] | None = None,
     ) -> None:
         self._config = pandoc_config
         self._environment = environment
@@ -47,6 +49,7 @@ class PresentationProcessor:
         self._mermaid_limits = mermaid_limits
         self._archive_limits = archive_limits
         self._image_limits = image_limits
+        self._raster_policy = raster_policy
 
     def process(  # noqa: PLR0913 - worker lifecycle callbacks
         self,
@@ -61,7 +64,10 @@ class PresentationProcessor:
         document = prepare_source(
             source,
             archive=job.source_kind is SourceKind.ARCHIVE,
-            archive_limits=self._archive_limits,
+            archive_limits=self._archive_limits.for_confirmed_archive(
+                job.large_archive_confirmed
+            ),
+            raster_policy=self._raster_policy,
             image_limits=self._image_limits,
         )
         plan = plan_presentation(
@@ -87,7 +93,7 @@ class PresentationProcessor:
         if job.output is JobOutput.PPTX_BUNDLE:
             content = portable_package(job, source, content, asdict(plan.options))
         progress(JobStep.PUBLISHING, 95)
-        return JobProcessResult(content)
+        return JobProcessResult(content, warnings=document.warnings)
 
 
 def portable_package(

@@ -77,6 +77,7 @@ class LocalConversionRequest:
     outputs: frozenset[LocalOutput]
     template: bytes | None = None
     require_pinned: bool = False
+    allow_large_archive: bool = False
 
     def __post_init__(self) -> None:
         if not self.outputs or not self.outputs <= set(LocalOutput):
@@ -168,6 +169,8 @@ class LocalConverter:
         )
         if request.require_pinned and warnings:
             raise LocalConversionError("engine_version_unpinned", warnings[0])
+        if document is not None:
+            warnings += document.warnings
         self._checkpoint(deadline_monotonic, cancelled)
         if document is None:
             docx = pipeline.docx.convert(
@@ -252,7 +255,10 @@ class LocalConverter:
             raise LocalConversionError(
                 "source_empty", "The conversion source is empty."
             )
-        if len(source) > self._settings.conversion_upload_max_bytes:
+        limits = pipeline.archive_limits.for_confirmed_archive(
+            request.allow_large_archive
+        )
+        if len(source) > limits.max_archive_bytes:
             raise LocalConversionError(
                 "source_too_large",
                 "The conversion source exceeds the configured upload limit.",
@@ -262,7 +268,10 @@ class LocalConverter:
             if not is_zip:
                 raise validation_error("Document archive is invalid.")
             document = prepare_archive(
-                source, pipeline.archive_limits, pipeline.image_limits
+                source,
+                limits,
+                pipeline.image_limits,
+                raster_policy=self._settings.conversion_image_oversize_policy,
             )
             return document.markdown, document
         if is_zip:

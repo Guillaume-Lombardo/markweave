@@ -34,10 +34,7 @@ class BoundedRequestBody:
             and path.startswith("/api/v1/templates/")
             and path.endswith("/content")
         )
-        if method == "POST" and path in {
-            "/api/v1/conversions",
-            "/api/v1/presentation-plan",
-        }:
+        if method == "POST" and path == "/api/v1/presentation-plan":
             maximum_bytes = self._conversion_maximum_bytes
             error_code = "CONVERSION_REQUEST_TOO_LARGE"
             error_message = "The conversion request is too large."

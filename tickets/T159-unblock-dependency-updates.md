@@ -34,3 +34,4 @@ Restore compatibility with ty 0.0.107 for the admission-window E2E fixture and r
 - On Node.js 24.19.0 the workspace check, browser-module tests, frontend checks, 898 Vitest tests, Next.js build, and five production tests passed. The Vitest rerun used two workers after the initial local run failed three existing tests.
 - The canonical fast Pytest suite passed on Linux with 6,559 tests and 94.50% coverage. Its engine and Podman markers deselected 136 tests.
 - Independent review approved the implementation in one round.
+- 2026-11-26: #359 merged as 780e235 and the main CI is green. This issue stays In Progress until the next weekly Dependabot npm update job for `/` succeeds (expected Monday 2026-11-30); that job is the acceptance evidence. Follow-up: move the runtime Node to 24.22.x once UBI ships it.

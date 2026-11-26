@@ -143,14 +143,14 @@ test(
         ],
         escaping,
       );
-      // An oversize package is refused against the authoritative upload limit.
+      // An oversize package is refused against the authoritative hard upload limit.
       await expectRefusedBeforeUpload(
         page,
         [
           markdownFile("large.md", "![l](large.png)"),
           imageFile(
             "large.png",
-            Buffer.concat([pixel, Buffer.alloc(1_000_001)]),
+            Buffer.concat([pixel, Buffer.alloc(4_000_001)]),
           ),
         ],
         uploadLimit,

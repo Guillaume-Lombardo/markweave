@@ -8,7 +8,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-from typing import Never
+from typing import TYPE_CHECKING, Literal, Never
 from xml.etree import ElementTree
 
 from defusedxml import ElementTree as DefusedElementTree
@@ -27,6 +27,17 @@ from tinycss2.ast import (
 )
 
 from markweave.conversion.errors import ConversionError, validation_error
+from markweave.conversion.raster_headers import (
+    gif_canvas,
+    jpeg_canvas,
+    png_canvas,
+    webp_dimensions,
+)
+
+if TYPE_CHECKING:
+    from markweave.config import Settings
+    from markweave.conversion.local_settings import LocalConversionSettings
+
 
 _SVG_NAMESPACE = "http://www.w3.org/2000/svg"
 _XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
@@ -45,6 +56,12 @@ _RASTER_FORMATS = {
     ".png": frozenset({"PNG"}),
     ".webp": frozenset({"WEBP"}),
 }
+_RASTER_MEDIA_TYPES = {
+    "GIF": "image/gif",
+    "JPEG": "image/jpeg",
+    "PNG": "image/png",
+    "WEBP": "image/webp",
+}
 SUPPORTED_IMAGE_SUFFIXES = frozenset((*_RASTER_FORMATS, ".svg"))
 SvgRenderer = Callable[[bytes, int, int], bytes]
 
@@ -59,6 +76,22 @@ class ImageLimits:
     max_pixels: int
     max_svg_elements: int
     max_svg_depth: int
+    max_decode_pixels: int | None = None
+
+    @classmethod
+    def from_conversion_settings(
+        cls, settings: Settings | LocalConversionSettings
+    ) -> ImageLimits:
+        """Build the shared image budget for forward conversion and preview."""
+        return cls(
+            settings.conversion_image_max_source_bytes,
+            settings.conversion_image_max_width_pixels,
+            settings.conversion_image_max_height_pixels,
+            settings.conversion_image_max_pixels,
+            settings.conversion_image_max_svg_elements,
+            settings.conversion_image_max_svg_depth,
+            max_decode_pixels=settings.conversion_image_decode_max_pixels,
+        )
 
     def __post_init__(self) -> None:
         for value in (
@@ -71,6 +104,8 @@ class ImageLimits:
         ):
             if type(value) is not int or value <= 0:
                 raise ValueError("Image limits must be positive integers")
+        if self.max_decode_pixels is not None and self.max_decode_pixels <= 0:
+            raise ValueError("Image decoding limit must be positive")
         if self.max_svg_depth > _MAX_SAFE_SVG_DEPTH:
             raise ValueError(f"SVG nesting depth cannot exceed {_MAX_SAFE_SVG_DEPTH}")
 
@@ -90,6 +125,59 @@ def _check_dimensions(width: int, height: int, limits: ImageLimits) -> None:
         _reject_image("Document image exceeds configured limits.")
 
 
+def _fit_dimensions(width: int, height: int, limits: ImageLimits) -> tuple[int, int]:
+    scale = min(
+        1.0,
+        limits.max_width_pixels / width,
+        limits.max_height_pixels / height,
+        math.sqrt(limits.max_pixels / (width * height)),
+    )
+    target_width = max(1, int(width * scale))
+    target_height = max(1, int(height * scale))
+    # Rounding the shorter side up to one pixel can exceed the area budget.
+    return min(target_width, limits.max_pixels // target_height or 1), min(
+        target_height, limits.max_pixels
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class NormalizedImage:
+    content: bytes
+    media_type: str = "image/png"
+    warning: str | None = None
+
+
+def _check_decode_dimensions(width: int, height: int, limits: ImageLimits) -> None:
+    if (
+        width <= 0
+        or height <= 0
+        or any(
+            ceiling is not None and width * height > ceiling
+            for ceiling in (limits.max_decode_pixels, Image.MAX_IMAGE_PIXELS)
+        )
+    ):
+        _reject_image("Document image exceeds the hard decoding limit.")
+
+
+def _check_raster_headers(
+    source: bytes, suffix: str, limits: ImageLimits, *, strict: bool = False
+) -> None:
+    if suffix == ".gif":
+        dimensions = (gif_canvas(source),)
+    elif suffix == ".webp":
+        dimensions = webp_dimensions(source)
+    elif suffix == ".png":
+        dimensions = (png_canvas(source),)
+    elif suffix in {".jpg", ".jpeg"}:
+        dimensions = (jpeg_canvas(source),)
+    else:
+        return
+    for width, height in dimensions:
+        _check_decode_dimensions(width, height, limits)
+        if strict:
+            _check_dimensions(width, height, limits)
+
+
 def _normalized_png(image: Image.Image, limits: ImageLimits) -> bytes:
     _check_dimensions(*image.size, limits)
     if getattr(image, "n_frames", 1) != 1:
@@ -106,18 +194,26 @@ def _normalized_png(image: Image.Image, limits: ImageLimits) -> bytes:
 
 
 def _normalize_raster(source: bytes, suffix: str, limits: ImageLimits) -> bytes:
+    _check_raster_headers(source, suffix, limits, strict=True)
     try:
-        with Image.open(io.BytesIO(source)) as probe:
+        with Image.open(
+            io.BytesIO(source), formats=sorted(_RASTER_FORMATS[suffix])
+        ) as probe:
             image_format = probe.format
             if image_format not in _RASTER_FORMATS[suffix]:
                 _reject_image()
+            _check_decode_dimensions(*probe.size, limits)
+            _check_dimensions(*probe.size, limits)
             probe.verify()
-        with Image.open(io.BytesIO(source)) as image:
+        with Image.open(
+            io.BytesIO(source), formats=sorted(_RASTER_FORMATS[suffix])
+        ) as image:
             return _normalized_png(image, limits)
     except ConversionError:
         raise
     except (
         Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
         UnidentifiedImageError,
         OSError,
         SyntaxError,
@@ -311,6 +407,7 @@ def _normalize_svg(source: bytes, limits: ImageLimits, renderer: SvgRenderer) ->
         raise
     except (
         Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
         UnidentifiedImageError,
         OSError,
         SyntaxError,
@@ -338,20 +435,123 @@ def normalize_image(
     return _normalize_raster(source, suffix, limits)
 
 
+def normalize_conversion_image(
+    path: PurePosixPath,
+    source: bytes,
+    limits: ImageLimits,
+    policy: Literal["resize", "reject"],
+) -> NormalizedImage:
+    """Keep the original raster encoding when resizing an oversized input."""
+
+    suffix = path.suffix.casefold()
+    if policy == "reject" or suffix not in _RASTER_FORMATS:
+        return NormalizedImage(normalize_image(path, source, limits))
+    if not source or len(source) > limits.max_source_bytes:
+        _reject_image("Document image exceeds configured limits.")
+    _check_raster_headers(source, suffix, limits)
+    formats = sorted(_RASTER_FORMATS[suffix])
+    try:
+        with Image.open(io.BytesIO(source), formats=formats) as probe:
+            _check_decode_dimensions(*probe.size, limits)
+            probe.verify()
+        with Image.open(io.BytesIO(source), formats=formats) as image:
+            return _resize_raster(path, image, limits)
+    except (
+        Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
+        UnidentifiedImageError,
+        OSError,
+        SyntaxError,
+        TypeError,
+        ValueError,
+    ):
+        _reject_image()
+
+
+def _resize_raster(
+    path: PurePosixPath, image: Image.Image, limits: ImageLimits
+) -> NormalizedImage:
+    _check_decode_dimensions(*image.size, limits)
+    if getattr(image, "is_animated", False):
+        _reject_image("Animated images are not supported.")
+    image_format = image.format
+    if image_format is None:
+        _reject_image()
+    original_size = image.size
+    ImageOps.exif_transpose(image, in_place=True)
+    width, height = image.size
+    target = _fit_dimensions(width, height, limits)
+    if (
+        target == image.size
+        and _fit_dimensions(*original_size, limits) == original_size
+    ):
+        return NormalizedImage(_encode_raster(image, "PNG"))
+    if target == image.size:
+        # The source orientation exceeds its dimension budget. Apply that same
+        # scale after EXIF orientation so the displayed image stays proportional.
+        original_width, original_height = _fit_dimensions(*original_size, limits)
+        target = (original_height, original_width)
+    new_width, new_height = target
+    return NormalizedImage(
+        _encode_raster(image, image_format, target),
+        _RASTER_MEDIA_TYPES[image_format],
+        f"Image {path.as_posix()!r} resized from {width}\u00d7{height} "
+        f"to {new_width}\u00d7{new_height}.",
+    )
+
+
+def _encode_raster(
+    image: Image.Image, image_format: str, size: tuple[int, int] | None = None
+) -> bytes:
+    has_transparency = "A" in image.getbands() or "transparency" in image.info
+    mode = "RGBA" if has_transparency and image_format != "JPEG" else "RGB"
+    normalized = image.convert(mode)
+    if size is not None:
+        normalized = normalized.resize(size, Image.Resampling.LANCZOS)
+    # A fresh image drops inherited EXIF, ICC, comments and text chunks.
+    normalized.info.clear()
+    output = io.BytesIO()
+    options = {"compress_level": 9, "optimize": False} if image_format == "PNG" else {}
+    normalized.save(output, format=image_format, **options)
+    return output.getvalue()
+
+
+def validate_resized_raster(
+    path: PurePosixPath, source: bytes, media_type: str, limits: ImageLimits
+) -> None:
+    """Recheck bounded raster format and dimensions at the document boundary."""
+    suffix = path.suffix.casefold()
+    formats = _RASTER_FORMATS.get(suffix, frozenset())
+    _check_raster_headers(source, suffix, limits, strict=True)
+    try:
+        with Image.open(io.BytesIO(source), formats=list(formats)) as image:
+            if _RASTER_MEDIA_TYPES.get(image.format or "") != media_type:
+                _reject_image()
+            _check_decode_dimensions(*image.size, limits)
+            _check_dimensions(*image.size, limits)
+            if getattr(image, "is_animated", False):
+                _reject_image()
+            image.load()
+    except Image.DecompressionBombError, UnidentifiedImageError, OSError, ValueError:
+        _reject_image()
+
+
 def validate_normalized_png(source: bytes, limits: ImageLimits) -> None:
     """Defensively prove that manifest bytes are bounded normalized PNG output."""
 
     if type(source) is not bytes or not source:
         _reject_image()
+    _check_raster_headers(source, ".png", limits, strict=True)
     try:
-        with Image.open(io.BytesIO(source)) as image:
-            if image.format != "PNG" or image.info:
+        with Image.open(io.BytesIO(source), formats=["PNG"]) as image:
+            if image.info:
                 _reject_image()
             normalized = _normalized_png(image, limits)
     except ConversionError:
         raise
     except (
         Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
         UnidentifiedImageError,
         OSError,
         SyntaxError,

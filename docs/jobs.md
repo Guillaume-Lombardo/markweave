@@ -46,6 +46,16 @@ provide environment-specific values.
 The complete typed admission, budget, retention, and cleanup contract is documented in
 [`resource-policy.md`](resource-policy.md).
 
+A confirmed upload can exceed the standard upload or uncompressed ZIP total up to the
+effective hard ceiling. Accepted overrides produce an immutable `large_archive_override`
+audit record with the actor, job ID, and measured sizes and limits. Ingress and malware scanners
+must accept the effective hard upload size. In Compose, set
+`MARKWEAVE_ROUTER_REQUEST_MAX_BYTES` to at least the hard upload size plus the difference between
+`MARKWEAVE_CONVERSION_REQUEST_MAX_BYTES` and `MARKWEAVE_CONVERSION_UPLOAD_MAX_BYTES`. The
+default router ceiling is 4,100,000 bytes. Apply the same sizing to any external proxy.
+If you raise the hard limits, check scanner streaming limits and the API and worker memory and
+workspace budgets before deploying.
+
 ## Durable lifecycle
 
 Jobs move through `queued`, `running`, and exactly one of `succeeded`, `failed`, or `cancelled`.

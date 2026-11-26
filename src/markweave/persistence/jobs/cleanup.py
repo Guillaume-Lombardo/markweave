@@ -149,6 +149,7 @@ class _JobCleanupRepository(_SqlJobStore):
                         cleanup_completed=True,
                         result_object_id=None,
                         result_manifest_object_id=None,
+                        warnings="[]",
                         cleanup_owner=None,
                         cleanup_token=None,
                         cleanup_expires_at=None,

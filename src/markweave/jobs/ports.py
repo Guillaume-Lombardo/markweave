@@ -74,6 +74,7 @@ class JobTerminalRepository(Protocol):
         now: datetime,
         expires_at: datetime,
         result_manifest_object_id: UUID | None = None,
+        warnings: tuple[str, ...] = (),
     ) -> ConversionJob: ...
 
     def fail(self, failure: JobFailure) -> ConversionJob: ...

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from contextlib import suppress
 from datetime import UTC, datetime
@@ -36,6 +37,7 @@ from markweave.persistence.schema import (
     ComposerContentAuditRow,
     ComposerPermissionAuditRow,
     ConversionJobRow,
+    ConversionSizeAuditRow,
     IdleSessionPolicyAuditRow,
     ReversionAttemptRow,
     ReversionBrokerPrincipalRow,
@@ -292,6 +294,7 @@ class SqlAuditReader:
                         literal(None, type_=Integer).label("old_admin_idle_minutes"),
                         literal(None, type_=Integer).label("new_user_idle_minutes"),
                         literal(None, type_=Integer).label("new_admin_idle_minutes"),
+                        literal(None, type_=String).label("sizes"),
                     ),
                     select(
                         AuthenticationAuditRow.id.label("id"),
@@ -312,6 +315,7 @@ class SqlAuditReader:
                         literal(None, type_=Integer).label("old_admin_idle_minutes"),
                         literal(None, type_=Integer).label("new_user_idle_minutes"),
                         literal(None, type_=Integer).label("new_admin_idle_minutes"),
+                        literal(None, type_=String).label("sizes"),
                     ),
                     select(
                         IdleSessionPolicyAuditRow.id.label("id"),
@@ -340,6 +344,7 @@ class SqlAuditReader:
                         IdleSessionPolicyAuditRow.new_admin_idle_minutes.label(
                             "new_admin_idle_minutes"
                         ),
+                        literal(None, type_=String).label("sizes"),
                     ),
                     select(
                         ComposerContentAuditRow.id.label("id"),
@@ -371,6 +376,7 @@ class SqlAuditReader:
                         literal(None, type_=Integer).label("old_admin_idle_minutes"),
                         literal(None, type_=Integer).label("new_user_idle_minutes"),
                         literal(None, type_=Integer).label("new_admin_idle_minutes"),
+                        literal(None, type_=String).label("sizes"),
                     ),
                     select(
                         ComposerConnectionAuditRow.id.label("id"),
@@ -402,6 +408,7 @@ class SqlAuditReader:
                         literal(None, type_=Integer).label("old_admin_idle_minutes"),
                         literal(None, type_=Integer).label("new_user_idle_minutes"),
                         literal(None, type_=Integer).label("new_admin_idle_minutes"),
+                        literal(None, type_=String).label("sizes"),
                     ),
                     select(
                         ComposerPermissionAuditRow.id.label("id"),
@@ -426,6 +433,24 @@ class SqlAuditReader:
                         literal(None, type_=Integer).label("old_admin_idle_minutes"),
                         literal(None, type_=Integer).label("new_user_idle_minutes"),
                         literal(None, type_=Integer).label("new_admin_idle_minutes"),
+                        literal(None, type_=String).label("sizes"),
+                    ),
+                    select(
+                        ConversionSizeAuditRow.id,
+                        ConversionSizeAuditRow.actor_id,
+                        ConversionSizeAuditRow.actor_id,
+                        literal("large_archive_override"),
+                        ConversionSizeAuditRow.id,
+                        literal("conversion"),
+                        literal(None, type_=String),
+                        literal(None, type_=String),
+                        literal(False),
+                        ConversionSizeAuditRow.created_at,
+                        literal(None, type_=Integer),
+                        literal(None, type_=Integer),
+                        literal(None, type_=Integer),
+                        literal(None, type_=Integer),
+                        ConversionSizeAuditRow.sizes,
                     ),
                 ).subquery()
                 rows = database.execute(
@@ -450,6 +475,7 @@ class SqlAuditReader:
                         version_id=UUID(row.version_id) if row.version_id else None,
                         administrator_intervention=row.administrator_intervention,
                         created_at=_required_utc(row.created_at),
+                        sizes=tuple(json.loads(row.sizes)) if row.sizes else (),
                         old_user_idle_minutes=getattr(
                             row, "old_user_idle_minutes", None
                         ),

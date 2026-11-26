@@ -385,3 +385,28 @@ def test_manifest_download_is_owner_bound_and_requires_atomic_publication(
         instance.download_manifest(
             succeeded.id, actor_id=succeeded.owner_id, actor_is_admin=True
         )
+
+
+def test_request_digest_ignores_the_admission_decision() -> None:
+    from dataclasses import replace  # noqa: PLC0415
+
+    from markweave.conversion.size_policy import SizeLimit  # noqa: PLC0415
+
+    request = JobRequest(
+        owner_id=uuid4(),
+        source=b"# Markdown",
+        template_id=None,
+        template_version_id=None,
+        output=JobOutput.DOCX,
+        component_versions=COMPONENT_VERSIONS,
+        now=NOW,
+    )
+    digest_fields = {
+        "source_sha256": hashlib.sha256(request.source).hexdigest(),
+        "source_size": len(request.source),
+        "include_template_mode": True,
+    }
+    confirmed = replace(request, size_override=(SizeLimit("upload", 10, 5, 20),))
+    assert _request_digest(confirmed, **digest_fields) == _request_digest(
+        request, **digest_fields
+    )

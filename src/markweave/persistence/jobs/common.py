@@ -59,6 +59,8 @@ def _job(row: ConversionJobRow) -> ConversionJob:
             else None
         ),
         component_versions=_component_versions(row.component_versions),
+        large_archive_confirmed=row.large_archive_confirmed,
+        warnings=tuple(json.loads(row.warnings)),
         correlation_id=row.correlation_id or row.id,
         state=JobState(row.state),
         step=JobStep(row.step),

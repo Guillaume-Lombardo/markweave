@@ -6,6 +6,7 @@ import hashlib
 import importlib.metadata
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -112,6 +113,38 @@ def test_reverse_attempt_image_has_fixed_minimal_runtime_contract() -> None:
         "puppeteer",
     )
     assert all(value not in containerfile.lower() for value in forbidden)
+
+
+@pytest.mark.unit
+def test_reverse_attempt_staged_package_can_import_shared_normalizer(
+    tmp_path: Path,
+) -> None:
+    containerfile = CONTAINERFILE.read_text(encoding="utf-8").replace("\\\n", "")
+    for instruction in containerfile.splitlines():
+        if instruction.startswith("COPY src/markweave/"):
+            _, *sources, destination = instruction.split()
+            for source in sources:
+                path = ROOT / source
+                target = tmp_path / destination / path.name
+                if path.is_dir():
+                    shutil.copytree(path, target)
+                else:
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(path, target)
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            "import sys; sys.path.insert(0, sys.argv[1]); "
+            "from markweave.conversion.images import normalize_image; "
+            "assert callable(normalize_image)",
+            str(tmp_path / "src"),
+        ],
+        check=True,
+        timeout=10,
+    )
 
 
 @pytest.mark.unit

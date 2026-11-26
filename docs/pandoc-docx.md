@@ -20,7 +20,7 @@ protocol-relative forms, and encoded-scheme equivalents are rejected. The same c
 apply inside YAML front matter and footnote continuations, where extension syntax could otherwise
 hide content from a plain CommonMark parse. Literal HTML and URLs remain permitted inside actual
 code spans and code blocks. Standalone Markdown still rejects every image token. Archive inputs may
-bind a safe relative image destination to a normalized PNG in an immutable approved-resource
+bind a safe relative image destination to a validated raster in an immutable approved-resource
 manifest; missing, escaping, ambiguous, absolute, and remote destinations fail before the engine.
 Pandoc raw-code
 attributes such as `{=html}` and `{=tex}` are also rejected when attached to inline code or used as

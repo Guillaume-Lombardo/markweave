@@ -460,5 +460,5 @@ def test_conversion_api_idempotency_authorization_cancellation_and_result(  # no
                 template_id=template_id,
                 template_version_id=template_version_id,
             ).status_code
-            == 422
+            == 413
         )

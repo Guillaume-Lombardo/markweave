@@ -135,7 +135,7 @@ def _processor(mocker, source: bytes):
     objects.get.return_value = source
     docx = mocker.Mock()
     docx.convert.return_value = b"docx"
-    docx.convert_archive.return_value = b"archive-docx"
+    docx.convert_document.return_value = b"archive-docx"
     pdf = mocker.Mock()
     pdf.convert.return_value = PdfArtifact(b"pdf", _manifest())
     processor = ProductionTemplateAwareProcessor(
@@ -216,7 +216,10 @@ def test_processor_uses_pandoc_default_and_nullable_traceability(mocker) -> None
 
 
 def test_processor_archive_and_combined_output_are_deterministic(mocker) -> None:
-    source = b"PK\x03\x04archive"
+    source_buffer = io.BytesIO()
+    with zipfile.ZipFile(source_buffer, "w") as archive:
+        archive.writestr("document.md", "# Archive")
+    source = source_buffer.getvalue()
     job = _job(
         JobOutput.BOTH,
         source,
@@ -237,14 +240,13 @@ def test_processor_archive_and_combined_output_are_deterministic(mocker) -> None
     second = processor.process_with_template(*arguments, **keywords).content
 
     assert first == second
-    docx.convert_archive.assert_called_with(
-        b"PK\x03\x04archive",
+    docx.convert_document.assert_called_with(
+        mocker.ANY,
         b"template",
-        processor._archive_limits,
-        processor._image_limits,
         deadline_monotonic=None,
         cancellation_requested=mocker.ANY,
     )
+    assert docx.convert_document.call_args.args[0].markdown == "# Archive"
 
 
 def test_processor_accepts_ordinary_markdown_starting_with_pk(mocker) -> None:

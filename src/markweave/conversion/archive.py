@@ -5,22 +5,37 @@ from __future__ import annotations
 import io
 import math
 import stat
+import struct
 import unicodedata
 import zipfile
 import zlib
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import PurePosixPath
+from typing import Literal
 
+from markweave.config import ConversionLimitSettings
 from markweave.conversion.errors import ConversionError, validation_error
 from markweave.conversion.images import (
     SUPPORTED_IMAGE_SUFFIXES,
     ImageLimits,
+    NormalizedImage,
+    normalize_conversion_image,
     normalize_image,
 )
+from markweave.conversion.size_policy import SizeLimit
 
 _READ_CHUNK_BYTES = 64 * 1024
 _ZIP_SYSTEM_UNIX = 3
+_DIRECTORY_HEADER = struct.Struct("<4s24xHHH12x")
+_CENTRAL_DIRECTORY_SIGNATURE = b"PK\x01\x02"
+_END_OF_CENTRAL_DIRECTORY = b"PK\x05\x06"
+_ZIP64_END_SIGNATURE = b"PK\x06\x06"
+_ZIP64_END_AND_LOCATOR_BYTES = 56 + 20
+# CPython's EOCD record includes its location after the comment.
+_EOCD_SIGNATURE = 0
+_EOCD_DIRECTORY_SIZE = 5
+_EOCD_LOCATION = 9
 _SUPPORTED_COMPRESSION = frozenset({zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED})
 
 
@@ -36,6 +51,19 @@ class ArchiveLimits:
     max_markdown_bytes: int
     max_images: int
     max_files: int | None = None
+    hard_archive_bytes: int | None = None
+    hard_total_uncompressed_bytes: int | None = None
+
+    def for_confirmed_archive(self, confirmed: bool) -> ArchiveLimits:
+        if not confirmed:
+            return self
+        return replace(
+            self,
+            max_archive_bytes=self.hard_archive_bytes or self.max_archive_bytes,
+            max_total_uncompressed_bytes=(
+                self.hard_total_uncompressed_bytes or self.max_total_uncompressed_bytes
+            ),
+        )
 
     def __post_init__(self) -> None:
         integer_limits = (
@@ -71,7 +99,7 @@ class ArchiveLimits:
 
 @dataclass(frozen=True)
 class ApprovedResource:
-    """One image normalized to safe PNG bytes at its logical package path."""
+    """One image normalized to safe raster bytes at its logical package path."""
 
     path: PurePosixPath
     content: bytes
@@ -86,6 +114,7 @@ class ApprovedDocument:
     entrypoint: PurePosixPath
     resources: tuple[ApprovedResource, ...]
     image_limits: ImageLimits | None = None
+    warnings: tuple[str, ...] = ()
 
 
 ImageNormalizer = Callable[[PurePosixPath, bytes, ImageLimits], bytes]
@@ -281,12 +310,86 @@ def _read_member_bounded(
     return bytes(payload), total_read + actual_size
 
 
+def conversion_size_limits(
+    data: bytes, upload: SizeLimit, settings: ConversionLimitSettings, *, archive: bool
+) -> tuple[SizeLimit, ...]:
+    total = (
+        _archive_uncompressed_size(data, settings.conversion_max_files)
+        if archive
+        else None
+    )
+    if total is None:
+        return (upload,)
+    return (
+        upload,
+        SizeLimit(
+            "decompressed",
+            total,
+            settings.conversion_max_decompressed_bytes,
+            settings.effective_conversion_hard_max_decompressed_bytes,
+        ),
+    )
+
+
+def _check_directory_entry_count(
+    data: bytes, stream: io.BytesIO, max_entries: int
+) -> None:
+    # Reuse the pinned Python ZIP reader's EOCD and ZIP64 locator handling.
+    end_record = zipfile._EndRecData(stream)  # ty: ignore[missing-attribute] - pinned CPython
+    if end_record is None:
+        raise zipfile.BadZipFile("Missing central directory")
+    end = end_record[_EOCD_LOCATION]
+    if end_record[_EOCD_SIGNATURE] == _ZIP64_END_SIGNATURE and data.startswith(
+        _END_OF_CENTRAL_DIRECTORY, end
+    ):
+        # Earlier Python 3.14 patch releases report the ZIP32 record location
+        # for ZIP64 too. Match the offset their ZipFile parser then uses.
+        end -= _ZIP64_END_AND_LOCATOR_BYTES
+    offset = end - end_record[_EOCD_DIRECTORY_SIZE]
+    if offset < 0 or end > len(data):
+        raise zipfile.BadZipFile("Invalid central directory size")
+    for _ in range(max_entries):
+        if offset == end:
+            return
+        if offset + _DIRECTORY_HEADER.size > end:
+            raise zipfile.BadZipFile("Invalid central directory entry")
+        signature, name_length, extra_length, comment_length = (
+            _DIRECTORY_HEADER.unpack_from(data, offset)
+        )
+        if signature != _CENTRAL_DIRECTORY_SIGNATURE:
+            raise zipfile.BadZipFile("Invalid central directory signature")
+        offset += _DIRECTORY_HEADER.size + name_length + extra_length + comment_length
+        if offset > end:
+            raise zipfile.BadZipFile("Invalid central directory entry length")
+    if offset != end:
+        _archive_limit()
+
+
+def _open_bounded_archive(data: bytes, max_entries: int) -> zipfile.ZipFile:
+    stream = io.BytesIO(data)
+    _check_directory_entry_count(data, stream, max_entries)
+    return zipfile.ZipFile(stream)
+
+
+def _archive_uncompressed_size(data: bytes, max_entries: int) -> int | None:
+    """Read the ZIP directory without inflating any member.
+
+    Malformed packages are left to the worker's existing validation path.
+    """
+    try:
+        with _open_bounded_archive(data, max_entries) as archive:
+            return sum(info.file_size for info in archive.infolist())
+    except OSError, zipfile.BadZipFile, UnicodeError, NotImplementedError:
+        return None
+
+
 def prepare_archive(
     data: bytes,
     limits: ArchiveLimits,
     image_limits: ImageLimits,
     *,
     image_normalizer: ImageNormalizer = normalize_image,
+    raster_policy: Literal["resize", "reject"] | None = None,
 ) -> ApprovedDocument:
     """Validate a ZIP entirely before returning selected Markdown and safe images."""
 
@@ -295,8 +398,8 @@ def prepare_archive(
     if len(data) > limits.max_archive_bytes:
         _archive_limit()
     try:
-        archive = zipfile.ZipFile(io.BytesIO(data))
-    except OSError, zipfile.BadZipFile:
+        archive = _open_bounded_archive(data, limits.max_entries)
+    except OSError, zipfile.BadZipFile, UnicodeError, NotImplementedError:
         _invalid_archive()
     with archive:
         members, entrypoint = _preflight(archive, limits)
@@ -318,11 +421,24 @@ def prepare_archive(
     except UnicodeDecodeError:
         raise validation_error("Document Markdown is not valid UTF-8.") from None
     resources: list[ApprovedResource] = []
+    warnings: list[str] = []
     for path in sorted(payloads, key=str):
         if path.suffix.casefold() not in SUPPORTED_IMAGE_SUFFIXES:
             continue
-        normalized = image_normalizer(path, payloads[path], image_limits)
-        if type(normalized) is not bytes or not normalized:
+        normalized = (
+            NormalizedImage(image_normalizer(path, payloads[path], image_limits))
+            if raster_policy is None
+            else normalize_conversion_image(
+                path, payloads[path], image_limits, raster_policy
+            )
+        )
+        if type(normalized.content) is not bytes or not normalized.content:
             raise validation_error("Document contains an invalid image.")
-        resources.append(ApprovedResource(path, normalized))
-    return ApprovedDocument(markdown, entrypoint, tuple(resources), image_limits)
+        resources.append(
+            ApprovedResource(path, normalized.content, normalized.media_type)
+        )
+        if normalized.warning is not None:
+            warnings.append(normalized.warning)
+    return ApprovedDocument(
+        markdown, entrypoint, tuple(resources), image_limits, tuple(warnings)
+    )

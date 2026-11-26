@@ -138,6 +138,7 @@ class JobService:
                 source_sha256=source_sha256,
                 source_size=source_size,
                 presentation_options=request.presentation_options,
+                size_override=request.size_override,
             )
         )
         if replayed:

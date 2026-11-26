@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach } from "vitest";
 import { AuthProvider } from "../src/auth/context";
 import { AuthController } from "../src/auth/controller";
-import type { ApiTransport } from "../src/api/transport";
+import { ApiError, type ApiTransport } from "../src/api/transport";
 import { ConversionController } from "../src/conversion/controller";
 import { ConversionWorkspace, saveDownload } from "../src/conversion/workspace";
 import {
@@ -612,17 +612,19 @@ test("a recent conversion opened during a deferred read wins over saved history"
       }),
   );
   const opened = { ...conversionJob, state: "succeeded" as const };
-  const json = vi
-    .fn()
-    .mockResolvedValueOnce({
-      conversion_upload_max_bytes: 1_000_000,
-      resolved_template: null,
-      selection_source: "pandoc_default",
-      template_version_id: null,
-    })
-    .mockResolvedValueOnce({ items: [opened], limit: 10, offset: 0, total: 1 })
-    .mockResolvedValueOnce(opened)
-    .mockResolvedValue({ items: [], limit: 20, offset: 0, total: 0 });
+  const json = vi.fn(async (path: string) => {
+    if (path === "/api/v1/conversion-options")
+      return {
+        conversion_upload_max_bytes: 1_000_000,
+        resolved_template: null,
+        selection_source: "pandoc_default",
+        template_version_id: null,
+      };
+    if (path === `/api/v1/conversions/${opened.id}`) return opened;
+    if (path.startsWith("/api/v1/conversions?"))
+      return { items: [opened], limit: 10, offset: 0, total: 1 };
+    return { items: [], limit: 20, offset: 0, total: 0 };
+  });
   const { conversion } = renderWorkspace({ json });
   const recent = await screen.findByRole("button", {
     name: /report.md · succeeded/,
@@ -649,3 +651,75 @@ test("a recent conversion opened during a deferred read wins over saved history"
     expect.anything(),
   );
 });
+
+test.each(["upload", "decompressed"] as const)(
+  "the workspace confirms the %s limit before creating the job",
+  async (dimension) => {
+    const warning = "Image 'assets/photo.png' resized from 120×80 to 60×40.";
+    const sizeMessage =
+      dimension === "upload"
+        ? "Upload is 11 bytes. The standard limit is 10 bytes and the hard limit is 40 bytes."
+        : "Uncompressed archive is 70 bytes. The standard limit is 50 bytes and the hard limit is 100 bytes.";
+    const multipart = vi.fn().mockResolvedValue({
+      ...accepted,
+      data: { ...conversionJob, warnings: [warning] },
+    });
+    if (dimension === "decompressed") {
+      multipart.mockRejectedValueOnce(
+        new ApiError(413, "ARCHIVE_SIZE_CONFIRMATION_REQUIRED", sizeMessage),
+      );
+    }
+    renderWorkspace({
+      json: vi
+        .fn()
+        .mockResolvedValueOnce({
+          conversion_upload_max_bytes: 10,
+          conversion_upload_hard_max_bytes: 40,
+          resolved_template: null,
+          selection_source: "pandoc_default",
+          template_version_id: null,
+        })
+        .mockResolvedValue({ items: [], limit: 10, offset: 0, total: 0 }),
+      multipartWithMetadata: multipart,
+    });
+    const submit = await screen.findByRole("button", {
+      name: "Start conversion",
+    });
+    const input = screen.getByLabelText(/Source file/);
+    fireEvent.change(input, {
+      target: { files: [new File(["x".repeat(41)], "above-hard.zip")] },
+    });
+    fireEvent.click(submit);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "exceeds the configured upload limit",
+    );
+    expect(multipart).not.toHaveBeenCalled();
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File(
+            ["x".repeat(dimension === "upload" ? 11 : 10)],
+            "source.zip",
+          ),
+        ],
+      },
+    });
+    fireEvent.click(submit);
+    expect(await screen.findByText(sizeMessage)).toBeVisible();
+    expect(multipart).toHaveBeenCalledTimes(dimension === "upload" ? 0 : 1);
+    if (dimension === "decompressed") {
+      expect(multipart.mock.calls[0]?.[1].has("allow_large_archive")).toBe(
+        false,
+      );
+    }
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Confirm and start conversion",
+      }),
+    );
+    expect(await screen.findByText(warning)).toBeVisible();
+    expect(multipart.mock.lastCall?.[1].get("allow_large_archive")).toBe(
+      "true",
+    );
+  },
+);

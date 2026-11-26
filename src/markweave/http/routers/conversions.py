@@ -1,7 +1,8 @@
 """Conversion submission, lifecycle, and result routes."""
 
+from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any
 from urllib.parse import quote
 from uuid import UUID
 
@@ -17,12 +18,21 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.routing import APIRoute
 from starlette.concurrency import run_in_threadpool
+from starlette.types import Message
 
 from markweave.auth.models import Role, User
+from markweave.conversion.archive import conversion_size_limits
+from markweave.conversion.errors import ConversionError
 from markweave.conversion.runtime_manifest import COMPONENT_VERSIONS
+from markweave.conversion.size_policy import (
+    ConversionSizeError,
+    SizeLimit,
+    require_size_confirmation,
+)
 from markweave.http.dependencies import HttpDependencies
-from markweave.http.errors import error_responses
+from markweave.http.errors import ConversionRequestTooLarge, error_responses
 from markweave.http.responses import conversion_response, template_response
 from markweave.http.schemas import (
     ConversionOptionsResponse,
@@ -31,10 +41,12 @@ from markweave.http.schemas import (
 )
 from markweave.jobs.errors import JobRequestError
 from markweave.jobs.models import (
+    ConversionJob,
     JobOutput,
     JobOutputFamily,
     JobPage,
     JobRequest,
+    SourceKind,
     source_kind_for_filename,
 )
 from markweave.observability import CORRELATION_HEADER, CORRELATION_STATE_KEY
@@ -49,6 +61,48 @@ _RESULT_EXTENSIONS = {
     JobOutput.PPTX: "pptx",
     JobOutput.PPTX_BUNDLE: "zip",
 }
+
+
+def _upload_route(dependencies: HttpDependencies) -> type[APIRoute]:
+    class ConversionUploadRoute(APIRoute):
+        def get_route_handler(
+            self,
+        ) -> Callable[[Request], Coroutine[Any, Any, Response]]:
+            handler = super().get_route_handler()
+
+            async def handle_upload(request: Request) -> Response:
+                maximum_bytes = dependencies.settings.conversion_hard_request_max_bytes
+                length = request.headers.get("Content-Length", "0")
+                try:
+                    declared_bytes = int(length)
+                except ValueError:
+                    raise JobRequestError from None
+                if declared_bytes < 0:
+                    raise JobRequestError
+                if declared_bytes > maximum_bytes:
+                    raise ConversionRequestTooLarge
+
+                # FastAPI parses form fields before resolving endpoint dependencies.
+                await run_in_threadpool(
+                    dependencies.mutation_actor,
+                    request,
+                    request.headers.get("X-CSRF-Token"),
+                )
+                received_bytes = 0
+
+                async def receive() -> Message:
+                    nonlocal received_bytes
+                    message = await request.receive()
+                    received_bytes += len(message.get("body", b""))
+                    if received_bytes > maximum_bytes:
+                        raise ConversionRequestTooLarge
+                    return message
+
+                return await handler(Request(request.scope, receive))
+
+            return handle_upload
+
+    return ConversionUploadRoute
 
 
 def _result_content_disposition(
@@ -69,6 +123,50 @@ def _result_content_disposition(
     if encoded_filename != filename:
         return f"attachment; filename*=UTF-8''{encoded_filename}"
     return f'attachment; filename="{filename}"'
+
+
+async def _admit_source(
+    dependencies: HttpDependencies,
+    source: UploadFile,
+    source_kind: SourceKind,
+    *,
+    confirmed: bool,
+) -> tuple[bytes, tuple[SizeLimit, ...]]:
+    settings = dependencies.settings
+    hard_upload = settings.effective_conversion_upload_hard_max_bytes
+    try:
+        # Multipart parsing has already counted the file bytes. Avoid reading an
+        # oversized spooled file back into memory just to reject it.
+        content = (
+            b""
+            if source.size is not None and source.size > hard_upload
+            else await source.read(hard_upload + 1)
+        )
+    finally:
+        await source.close()
+    upload = SizeLimit(
+        "upload",
+        source.size if source.size is not None else len(content),
+        settings.conversion_upload_max_bytes,
+        hard_upload,
+    )
+    if upload.actual_bytes > hard_upload:
+        raise ConversionSizeError(upload, confirmation_required=False)
+    if not content:
+        raise JobRequestError
+    await run_in_threadpool(dependencies.components.scanner.scan, content)
+    try:
+        limits = await run_in_threadpool(
+            conversion_size_limits,
+            content,
+            upload,
+            settings,
+            archive=source_kind is SourceKind.ARCHIVE,
+        )
+    except ConversionError:
+        raise JobRequestError from None
+    override = require_size_confirmation(limits, confirmed=confirmed)
+    return content, limits if override else ()
 
 
 def build_router(dependencies: HttpDependencies) -> APIRouter:
@@ -101,6 +199,7 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
             raise PersistenceError
         return ConversionOptionsResponse(
             conversion_upload_max_bytes=settings.conversion_upload_max_bytes,
+            conversion_upload_hard_max_bytes=settings.effective_conversion_upload_hard_max_bytes,
             resolved_template=(
                 template_response(template, dependencies.authentication)
                 if template is not None
@@ -110,17 +209,9 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
             selection_source=source,
         )
 
-    @router.post(
-        "/api/v1/conversions",
-        response_model=ConversionResponse,
-        status_code=status.HTTP_202_ACCEPTED,
-        tags=["conversions"],
-        responses=error_responses(401, 403, 409, 413, 422, 429, 503),
-    )
     async def create_conversion(  # noqa: PLR0913, PLR0917 - FastAPI fields
         request: Request,
         response: Response,
-        actor: Annotated[User, Depends(dependencies.mutation_actor)],
         source: Annotated[UploadFile, File()],
         output: Annotated[JobOutput, Form()],
         template_id: Annotated[UUID | None, Form()] = None,
@@ -128,6 +219,8 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
         idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
         presentation_dialect: Annotated[PresentationDialect | None, Form()] = None,
         slide_level: Annotated[int | None, Form(ge=1, le=6)] = None,
+        allow_large_archive: Annotated[bool, Form()] = False,
+        csrf_token: Annotated[str | None, Header(alias="X-CSRF-Token")] = None,
     ) -> ConversionResponse:
         correlation_id = getattr(request.state, CORRELATION_STATE_KEY)
         if source.filename is None:
@@ -139,16 +232,14 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
         except ValueError:
             await source.close()
             raise JobRequestError from None
-        try:
-            content = await source.read(settings.conversion_upload_max_bytes + 1)
-        finally:
-            await source.close()
-        if not content or len(content) > settings.conversion_upload_max_bytes:
-            raise JobRequestError
-        await run_in_threadpool(components.scanner.scan, content)
-        try:
-            job, _replayed = await run_in_threadpool(
-                components.jobs.submit,
+        content, size_override = await _admit_source(
+            dependencies, source, source_kind, confirmed=allow_large_archive
+        )
+
+        def submit() -> tuple[ConversionJob, bool]:
+            # The session may have been revoked while the body was read or scanned.
+            actor = dependencies.mutation_actor(request, csrf_token)
+            return components.jobs.submit(
                 JobRequest(
                     owner_id=actor.id,
                     source=content,
@@ -160,6 +251,7 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
                     correlation_id=correlation_id,
                     source_filename=source_filename,
                     source_kind=source_kind,
+                    size_override=size_override,
                     presentation_options=(
                         PresentationOptions(
                             presentation_dialect or PresentationDialect.AUTO,
@@ -173,12 +265,26 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
                 ),
                 idempotency_key,
             )
+
+        try:
+            job, _replayed = await run_in_threadpool(submit)
         except ValueError:
             raise JobRequestError from None
         response.headers["Location"] = f"/api/v1/conversions/{job.id}"
         response.headers[CORRELATION_HEADER] = job.correlation_id
         response.headers["Retry-After"] = str(settings.conversion_retry_after_seconds)
         return conversion_response(job)
+
+    router.add_api_route(
+        "/api/v1/conversions",
+        create_conversion,
+        methods=["POST"],
+        route_class_override=_upload_route(dependencies),
+        response_model=ConversionResponse,
+        status_code=status.HTTP_202_ACCEPTED,
+        tags=["conversions"],
+        responses=error_responses(401, 403, 409, 413, 422, 429, 503),
+    )
 
     @router.get(
         "/api/v1/conversions",

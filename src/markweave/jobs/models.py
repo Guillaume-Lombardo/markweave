@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID, uuid5
 
+from markweave.conversion.size_policy import SizeLimit
 from markweave.observability import require_correlation_id
 from markweave.presentations.models import PresentationOptions
 
@@ -172,6 +173,7 @@ class JobSubmission:
     source_sha256: str = "0" * SHA256_CHARACTERS
     source_size: int = 1
     presentation_options: PresentationOptions | None = None
+    size_override: tuple[SizeLimit, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "created_at", _utc(self.created_at))
@@ -229,6 +231,8 @@ class ConversionJob:
     source_size: int | None = None
     result_manifest_object_id: UUID | None = None
     presentation_options: PresentationOptions | None = None
+    large_archive_confirmed: bool = False
+    warnings: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         correlation_id = self.correlation_id or str(self.id)
@@ -341,6 +345,7 @@ class JobProcessResult:
     progress_manifest: bytes | None = None
     template_version: str | None = None
     template_sha256: str | None = None
+    warnings: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if (self.template_version is None) is not (self.template_sha256 is None):
@@ -374,6 +379,7 @@ class JobRequest:
     source_filename: str = "source.md"
     source_kind: SourceKind = SourceKind.MARKDOWN
     presentation_options: PresentationOptions | None = None
+    size_override: tuple[SizeLimit, ...] = ()
 
     def __post_init__(self) -> None:
         if self.correlation_id:

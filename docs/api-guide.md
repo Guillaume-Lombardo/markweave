@@ -444,12 +444,19 @@ version atomically. See [versioned template API](templates.md) for authorization
 retention, and exact endpoint behavior.
 
 `GET /api/v1/conversion-options` is an authenticated, non-cacheable read of the configured
-`conversion_upload_max_bytes` and the resolved immutable template selection. It returns the
+`conversion_upload_max_bytes`, the effective `conversion_upload_hard_max_bytes`, and the
+resolved immutable template selection. It returns the
 selected template and exact `template_version_id`, or a strict null pair, plus one stable
 `selection_source`: `pandoc_default`, `preferred`, or `system_fallback`. `GET
 /api/v1/template-context` similarly returns the current user's `preferred_template_id`, the
 `system_fallback_template_id`, and configured `template_max_archive_bytes`. Neither response
 contains storage paths, credentials, or deployment secrets.
+
+Submit `allow_large_archive=true` as a multipart field after explicit confirmation.
+HTTP 413 with `ARCHIVE_SIZE_CONFIRMATION_REQUIRED` indicates that confirmation can help.
+`CONVERSION_SIZE_LIMIT_EXCEEDED` indicates an absolute ceiling. Both include `dimension`
+(`upload` or `decompressed`), `actual_bytes`, `soft_limit_bytes`, and `hard_limit_bytes`.
+The job response can include `warnings` with original and final image dimensions.
 
 ## Administration and audit
 

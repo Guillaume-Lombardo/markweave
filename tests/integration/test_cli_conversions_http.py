@@ -101,6 +101,7 @@ def test_cli_conversion_lifecycle_idempotency_capacity_authorization_and_downloa
     options = _last_json(capsys.readouterr().out)["conversion_options"]
     assert options == {
         "conversion_upload_max_bytes": 1_000_000,
+        "conversion_upload_hard_max_bytes": 4_000_000,
         "resolved_template": None,
         "template_version_id": None,
         "selection_source": "pandoc_default",

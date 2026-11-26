@@ -163,6 +163,7 @@ def test_container_asset_changes_select_container_domain(path: str) -> None:
         "src/markweave/conversion/__init__.py",
         "src/markweave/conversion/errors.py",
         "src/markweave/conversion/images.py",
+        "src/markweave/conversion/raster_headers.py",
         "src/markweave/broker/podman_runtime.py",
         "src/markweave/broker_process.py",
         "src/markweave/broker/service.py",

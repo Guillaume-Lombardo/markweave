@@ -29,7 +29,8 @@ WORKDIR /opt/markweave/app
 COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY src/markweave/__init__.py src/markweave/version.py ./src/markweave/
 COPY src/markweave/conversion/__init__.py src/markweave/conversion/errors.py \
-    src/markweave/conversion/images.py ./src/markweave/conversion/
+    src/markweave/conversion/images.py src/markweave/conversion/raster_headers.py \
+    ./src/markweave/conversion/
 COPY src/markweave/reversions ./src/markweave/reversions
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/markweave/venv \

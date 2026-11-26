@@ -7,6 +7,7 @@ import errno
 import math
 import os
 import stat
+import sys
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -33,6 +34,8 @@ _DEFAULT_PROFILE = "default"
 _TERMINAL_STATES = frozenset({"succeeded", "failed", "cancelled", "expired"})
 _SUCCESS = 200
 _ACCEPTED = 202
+_CONTENT_TOO_LARGE = 413
+_CONFIRMATION_REQUIRED = "archive_size_confirmation_required"
 _DEFAULT_POLL_INTERVAL = 1.0
 _MAX_POLL_INTERVAL = 60.0
 _MAX_RETRIES = 5
@@ -131,6 +134,11 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
         "--no-package",
         action=_FlagOption,
         help="Upload a Markdown source unchanged instead of packaging local images.",
+    )
+    convert.add_argument(
+        "--allow-large-archive",
+        action=_FlagOption,
+        help="Confirm upload and uncompressed archive sizes above the standard limits.",
     )
     convert.add_argument("--template-id", action=_RequestOption)
     convert.add_argument("--template-version-id", action=_RequestOption)
@@ -255,28 +263,36 @@ def _convert(context: CommandContext, writer: OutputWriter, request: _Request) -
             "Retries require an explicit idempotency key.",
         )
     client = _client(context, request)
-    response: ConversionHttpResponse | None = None
-    for attempt in range(retries + 1):
-        try:
-            response = client.submit(
-                source,
-                source_kind=source_kind,
-                output=output,
-                template_id=template_id,
-                template_version_id=template_version_id,
-                idempotency_key=idempotency_key,
-                **{
-                    name: request.values[name]
-                    for name in ("presentation_dialect", "slide_level")
-                    if request.values.get(name) is not None
-                },
-            )
-            break
-        except CliError as error:
-            if error.code != "network_error" or attempt == retries:
-                raise
-    if response is None:
+
+    def submit(*, confirmed: bool) -> ConversionHttpResponse:
+        for attempt in range(retries + 1):
+            try:
+                return client.submit(
+                    source,
+                    source_kind=source_kind,
+                    output=output,
+                    template_id=template_id,
+                    template_version_id=template_version_id,
+                    idempotency_key=idempotency_key,
+                    **{
+                        name: request.values[name]
+                        for name in ("presentation_dialect", "slide_level")
+                        if request.values.get(name) is not None
+                    },
+                    **({"allow_large_archive": True} if confirmed else {}),
+                )
+            except CliError as error:
+                if error.code != "network_error" or attempt == retries:
+                    raise
         raise _invalid_response()
+
+    confirmed = bool(request.values.get("allow_large_archive"))
+    response = submit(confirmed=confirmed)
+    if response.status == _CONTENT_TOO_LARGE and not confirmed:
+        error = _api_error(response, fallback="submission_failed")
+        if error.code == _CONFIRMATION_REQUIRED:
+            _confirm_large_archive(context, error.message)
+            response = submit(confirmed=True)
     payload = _payload(
         response, expected_status=_ACCEPTED, fallback="submission_failed"
     )
@@ -295,6 +311,18 @@ def _convert(context: CommandContext, writer: OutputWriter, request: _Request) -
         f"Submitted job {job['id']}{packaged}; poll after {poll_after:g} seconds.",
         result,
     )
+
+
+def _confirm_large_archive(context: CommandContext, message: str) -> None:
+    if context.non_interactive or not (sys.stdin.isatty() and sys.stderr.isatty()):
+        raise CliError(
+            _CONFIRMATION_REQUIRED,
+            f"{message} Re-run with --allow-large-archive to confirm.",
+        )
+    sys.stderr.write(f"{message} Continue? [y/N] ")
+    sys.stderr.flush()
+    if sys.stdin.readline().strip().casefold() not in {"y", "yes"}:
+        raise CliError(_CONFIRMATION_REQUIRED, "Large conversion upload was declined.")
 
 
 def _prepared_source(
@@ -355,7 +383,11 @@ def _upload_limit(context: CommandContext, request: _Request) -> int:
     payload = _payload(
         response, expected_status=_SUCCESS, fallback="conversion_options_read_failed"
     )
-    return int(_validated_conversion_options(payload)["conversion_upload_max_bytes"])
+    options = _validated_conversion_options(payload)
+    return int(
+        options.get("conversion_upload_hard_max_bytes")
+        or options["conversion_upload_max_bytes"]
+    )
 
 
 def _list_jobs(
@@ -378,7 +410,7 @@ def _show_job(context: CommandContext, writer: OutputWriter, request: _Request) 
     job_id = _uuid(request, "job_id")
     response = _client(context, request).get_job(job_id)
     job = _job(_payload(response, expected_status=_SUCCESS, fallback="job_show_failed"))
-    writer.success(_job_summary(job), job)
+    _write_job(writer, job)
 
 
 def _wait_job(context: CommandContext, writer: OutputWriter, request: _Request) -> None:
@@ -402,7 +434,7 @@ def _wait_job(context: CommandContext, writer: OutputWriter, request: _Request) 
         )
         if job["state"] in _TERMINAL_STATES:
             _raise_terminal_failure(job)
-            writer.success(_job_summary(job), job)
+            _write_job(writer, job)
             return
         remaining = deadline - time.monotonic()
         if remaining <= 0:
@@ -555,6 +587,7 @@ def _job(value: Any) -> dict[str, Any]:
     job_id = value.get("id")
     state = value.get("state")
     progress = value.get("progress")
+    warnings = value.get("warnings", [])
     correlation_id = value.get("correlation_id")
     try:
         canonical_id = str(UUID(job_id)) if isinstance(job_id, str) else None
@@ -570,6 +603,8 @@ def _job(value: Any) -> dict[str, Any]:
         or not isinstance(progress, int)
         or isinstance(progress, bool)
         or not 0 <= progress <= _MAX_PROGRESS
+        or not isinstance(warnings, list)
+        or not all(isinstance(warning, str) for warning in warnings)
     ):
         raise _invalid_response()
     return {**value, "id": canonical_id, "correlation_id": canonical_correlation}
@@ -579,6 +614,7 @@ def _validated_conversion_options(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise _invalid_response()
     upload_limit = value.get("conversion_upload_max_bytes")
+    hard_limit = value.get("conversion_upload_hard_max_bytes")
     source = value.get("selection_source")
     template = value.get("resolved_template")
     version_id = value.get("template_version_id")
@@ -586,6 +622,10 @@ def _validated_conversion_options(value: Any) -> dict[str, Any]:
         not isinstance(upload_limit, int)
         or isinstance(upload_limit, bool)
         or upload_limit <= 0
+        or (
+            hard_limit is not None
+            and (type(hard_limit) is not int or hard_limit < upload_limit)
+        )
         or source not in {"pandoc_default", "preferred", "system_fallback"}
     ):
         raise _invalid_response()
@@ -603,6 +643,11 @@ def _validated_conversion_options(value: Any) -> dict[str, Any]:
         version_id = canonical_version
     return {
         "conversion_upload_max_bytes": upload_limit,
+        **(
+            {"conversion_upload_hard_max_bytes": hard_limit}
+            if hard_limit is not None
+            else {}
+        ),
         "resolved_template": template,
         "template_version_id": version_id,
         "selection_source": source,
@@ -639,6 +684,12 @@ def _canonical_response_uuid(value: Any) -> str:
     if canonical != value:
         raise _invalid_response()
     return canonical
+
+
+def _write_job(writer: OutputWriter, job: dict[str, Any]) -> None:
+    for warning in job.get("warnings", ()):
+        writer.warning(warning)
+    writer.success(_job_summary(job), job)
 
 
 def _job_summary(job: dict[str, Any]) -> str:

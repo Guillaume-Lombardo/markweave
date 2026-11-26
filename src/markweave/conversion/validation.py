@@ -17,6 +17,7 @@ from markweave.conversion.images import (
     SUPPORTED_IMAGE_SUFFIXES,
     ImageLimits,
     validate_normalized_png,
+    validate_resized_raster,
 )
 
 PANDOC_READER = (
@@ -201,7 +202,6 @@ def validate_document(document: ApprovedDocument) -> ApprovedMarkdown:
         not isinstance(resource, ApprovedResource)
         or not _is_safe_package_path(resource.path)
         or resource.path.suffix.casefold() not in SUPPORTED_IMAGE_SUFFIXES
-        or resource.media_type != "image/png"
         or type(resource.content) is not bytes
         for resource in document.resources
     ):
@@ -212,12 +212,7 @@ def validate_document(document: ApprovedDocument) -> ApprovedMarkdown:
         raise validation_error("Document package is invalid.")
     if document.resources and document.image_limits is None:
         raise validation_error("Document package is invalid.")
-    if document.image_limits is not None:
-        try:
-            for resource in document.resources:
-                validate_normalized_png(resource.content, document.image_limits)
-        except ConversionError:
-            raise validation_error("Document package is invalid.") from None
+    _validate_resource_images(document)
     approved_paths = frozenset(resource.path for resource in document.resources)
     package_paths = (document.entrypoint, *approved_paths)
     if len(approved_paths) != len(
@@ -245,3 +240,20 @@ def validate_document(document: ApprovedDocument) -> ApprovedMarkdown:
         resources=document.resources,
         image_limits=document.image_limits,
     )
+
+
+def _validate_resource_images(document: ApprovedDocument) -> None:
+    if document.image_limits is not None:
+        try:
+            for resource in document.resources:
+                if resource.media_type == "image/png":
+                    validate_normalized_png(resource.content, document.image_limits)
+                else:
+                    validate_resized_raster(
+                        resource.path,
+                        resource.content,
+                        resource.media_type,
+                        document.image_limits,
+                    )
+        except ConversionError:
+            raise validation_error("Document package is invalid.") from None

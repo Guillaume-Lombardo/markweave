@@ -63,6 +63,12 @@ export type AuditRecordResponse = {
      */
     owner_id: string;
     /**
+     * Sizes
+     */
+    sizes?: Array<{
+        [key: string]: string | number;
+    }>;
+    /**
      * Target Id
      */
     target_id: string;
@@ -247,6 +253,10 @@ export type AuthorWriteRequest = {
  * Body_create_conversion_api_v1_conversions_post
  */
 export type BodyCreateConversionApiV1ConversionsPost = {
+    /**
+     * Allow Large Archive
+     */
+    allow_large_archive?: boolean;
     output: JobOutput;
     presentation_dialect?: PresentationDialect | null;
     /**
@@ -1947,6 +1957,10 @@ export type ConnectionUpdateRequest = {
  */
 export type ConversionOptionsResponse = {
     /**
+     * Conversion Upload Hard Max Bytes
+     */
+    conversion_upload_hard_max_bytes?: number | null;
+    /**
      * Conversion Upload Max Bytes
      */
     conversion_upload_max_bytes: number;
@@ -2062,6 +2076,10 @@ export type ConversionResponse = {
      * Updated At
      */
     updated_at: string;
+    /**
+     * Warnings
+     */
+    warnings?: Array<string>;
 };
 
 /**
@@ -2097,13 +2115,29 @@ export type CredentialWriteRequest = {
  */
 export type ErrorDetail = {
     /**
+     * Actual Bytes
+     */
+    actual_bytes?: number | null;
+    /**
      * Code
      */
     code: string;
     /**
+     * Dimension
+     */
+    dimension?: 'upload' | 'decompressed' | null;
+    /**
+     * Hard Limit Bytes
+     */
+    hard_limit_bytes?: number | null;
+    /**
      * Message
      */
     message: string;
+    /**
+     * Soft Limit Bytes
+     */
+    soft_limit_bytes?: number | null;
 };
 
 /**

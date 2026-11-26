@@ -193,3 +193,55 @@ def test_worker_source_bundle_and_default_reference_boundary(
             )
         assert converted.call_args.args[1] is None
         assert callable(converted.call_args.kwargs["cancellation_requested"])
+
+
+@pytest.mark.parametrize("format_name", ["GIF", "WEBP"])
+@pytest.mark.parametrize("ceiling", ["width", "decode_pixels"])
+def test_plan_rejects_oversized_raster_before_pillow_open(
+    tmp_path, mocker, format_name, ceiling
+):
+    from PIL import Image  # noqa: PLC0415
+
+    image = io.BytesIO()
+    dimensions = (2_001, 1) if ceiling == "width" else (20, 10)
+    Image.new("RGB", dimensions, "blue").save(image, format=format_name)
+    filename = f"picture.{format_name.lower()}"
+    source = io.BytesIO()
+    with zipfile.ZipFile(source, "w") as archive:
+        archive.writestr("document.md", f"![Picture]({filename})")
+        archive.writestr(filename, image.getvalue())
+    settings = settings_for(tmp_path)
+    if ceiling == "decode_pixels":
+        settings = settings.model_copy(
+            update={"conversion_image_decode_max_pixels": 100}
+        )
+    with TestClient(
+        create_app(settings, scanner=TrustingUploadScanner()),
+        base_url="https://testserver",
+    ) as client:
+        headers = authenticate(client)
+        open_image = mocker.patch.object(Image, "open")
+        response = client.post(
+            "/api/v1/presentation-plan",
+            headers=headers,
+            files={"source": ("slides.zip", source.getvalue())},
+        )
+        assert response.status_code == 422
+        open_image.assert_not_called()
+
+
+def test_plan_bounds_entry_count_before_zipfile(tmp_path, mocker):
+    source = io.BytesIO()
+    with zipfile.ZipFile(source, "w") as archive:
+        for index in range(101):
+            archive.writestr(f"{index}.md", "# Slide")
+    with client_for(tmp_path) as client:
+        headers = authenticate(client)
+        open_archive = mocker.patch.object(zipfile, "ZipFile")
+        response = client.post(
+            "/api/v1/presentation-plan",
+            headers=headers,
+            files={"source": ("slides.zip", source.getvalue())},
+        )
+        assert response.status_code == 422
+        open_archive.assert_not_called()

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, replace
 from pathlib import PurePosixPath
+from typing import Literal
 
 import yaml
 from markdown_it import MarkdownIt
@@ -48,9 +49,14 @@ def prepare_source(
     archive: bool,
     archive_limits: ArchiveLimits,
     image_limits: ImageLimits,
+    raster_policy: Literal["resize", "reject"] | None = None,
 ) -> ApprovedDocument:
     if archive:
-        return prepare_archive(source, archive_limits, image_limits)
+        return prepare_archive(
+            source, archive_limits, image_limits, raster_policy=raster_policy
+        )
+    if len(source) > archive_limits.max_archive_bytes:
+        raise validation_error("Document source exceeds configured limits.")
     try:
         text = source.decode("utf-8")
     except UnicodeDecodeError:

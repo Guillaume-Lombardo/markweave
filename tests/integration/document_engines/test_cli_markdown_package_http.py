@@ -246,14 +246,17 @@ def test_oversize_packages_and_images_keep_the_service_limits(
     code, rejected = _submit(too_large, capsys)
 
     assert code == 1
-    assert rejected["error"]["code"] == "conversion_request_invalid"
+    assert rejected["error"]["code"] == "archive_size_confirmation_required"
 
     (project / "wide.png").write_bytes(_png(width=2_001, height=1))
     wide = project / "wide.md"
     wide.write_text("![w](wide.png)", encoding="utf-8")
     code, submitted = _submit(wide, capsys)
     assert code == 0, submitted
-    _process(application, settings)
+    _process(
+        application,
+        settings.model_copy(update={"conversion_image_oversize_policy": "reject"}),
+    )
     capsys.readouterr()
     failed = _job(submitted["id"], capsys)
     assert (failed["state"], failed["error_code"], failed["error_message"]) == (
