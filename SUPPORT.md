@@ -2,9 +2,9 @@
 
 ## Get help
 
-Use [GitHub Discussions](https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/discussions)
+Use [GitHub Discussions](https://github.com/Guillaume-Lombardo/markweave/discussions)
 for installation, upgrade, configuration, command-line, API, document-conversion,
-and template questions. Use [GitHub Issues](https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/issues)
+and template questions. Use [GitHub Issues](https://github.com/Guillaume-Lombardo/markweave/issues)
 for reproducible product defects that are not security-sensitive. Search the
 repository documentation and existing Discussions or issues before posting.
 Include the Markweave version or container digest, operating system, selected

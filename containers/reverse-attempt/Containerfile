@@ -82,7 +82,7 @@ ENV PATH=/opt/markweave/venv/bin:/usr/local/bin:/usr/bin \
 
 ARG BASE_IMAGE
 LABEL org.opencontainers.image.title="Markweave reverse-conversion attempt" \
-      org.opencontainers.image.source="https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter" \
+      org.opencontainers.image.source="https://github.com/Guillaume-Lombardo/markweave" \
       org.opencontainers.image.base.name="${BASE_IMAGE}" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT"
 

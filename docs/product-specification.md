@@ -1056,9 +1056,15 @@ may rebuild or publish `0.6.0`. Its history and the earlier receipt pins are in 
 [delivery history](delivery-history.md).
 
 PyPI Trusted Publishing is bound to project `markweave`, owner `Guillaume-Lombardo`, repository
-`simple-md-to-docx-converter`, workflow `release.yml`, and environment `pypi`. Immediately before
+`markweave`, workflow `release.yml`, and environment `pypi`. Immediately before
 every upload, recheck that the exact `markweave` version is unpublished. A pending publisher does
 not reserve the distribution name. The public license is Apache-2.0.
+
+The renamed repository retains its GitHub repository ID. Release verification uses the canonical
+GitHub API and Release asset URLs, and verifies signed provenance against the exact repository and
+workflow identity at signing time. Existing release receipts, digests, and signed identities
+remain valid. The owner adds the renamed repository as a second PyPI Trusted Publisher and removes
+the old publisher only after the first successful release from the renamed repository (T102).
 
 Markweave stays under the personal GitHub account; no organization or repository transfer is
 required. Repository-owned pull-request and scheduled mutation checks remain required, with independent
@@ -1096,7 +1102,7 @@ revision, excluding T161, which produces this revision):
 
 | Ticket | Outcome | Status | Depends on |
 |---|---|---|---|
-| T102 | Rename the GitHub repository to markweave | Backlog | — |
+| T102 | Rename the GitHub repository to markweave | In Progress | — |
 | T105 | Allow a sanitized inline HTML subset | Backlog | T96 |
 | T111 | Add table of contents, section numbering and page breaks | Backlog | T96 |
 | T112 | Add cross-references for figures, tables and equations | Backlog | T96, T111 |

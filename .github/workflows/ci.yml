@@ -115,7 +115,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
           cache-suffix: py314
-          save-cache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' }}
+          save-cache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'Guillaume-Lombardo/markweave' }}
       - name: Synchronize locked dependencies
         run: uv sync --locked --all-groups
       - name: Verify public release alignment
@@ -168,14 +168,14 @@ jobs:
           uv lock --check
           uv run python -m scripts.ci.validate_ci
       - name: Save the exact pnpm store cache from trusted main
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'Guillaume-Lombardo/markweave' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.local/share/pnpm/store/v11
           key: ${{ runner.os }}-node-24.19.0-pnpm-11.25.0-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Save the Next.js compiler cache from trusted main
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'Guillaume-Lombardo/markweave' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: web/.next/cache
@@ -423,7 +423,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
           cache-suffix: py314-heavy
-          save-cache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' }}
+          save-cache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'Guillaume-Lombardo/markweave' }}
       - name: Synchronize locked dependencies
         run: uv sync --locked --all-groups
       - name: Restore verified LibreOffice DEB archive
@@ -438,7 +438,7 @@ jobs:
           MARKWEAVE_TOOLCHAIN_CACHE_DIRECTORY: ${{ runner.temp }}/markweave-toolchain
         run: bash scripts/ci/prepare-libreoffice-archive.sh deb
       - name: Save verified LibreOffice DEB archive
-        if: ${{ matrix.domain == 'document-engines' && github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' }}
+        if: ${{ matrix.domain == 'document-engines' && github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'Guillaume-Lombardo/markweave' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/markweave-toolchain/LibreOffice_26.2.5_Linux_x86-64_deb.tar.gz
@@ -589,7 +589,7 @@ jobs:
           MARKWEAVE_TOOLCHAIN_CACHE_DIRECTORY: ${{ runner.temp }}/markweave-toolchain
         run: bash scripts/ci/prepare-libreoffice-archive.sh rpm
       - name: Save verified LibreOffice RPM archive
-        if: ${{ contains(fromJSON(needs.detect.outputs.image-roles), 'backend') && github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' }}
+        if: ${{ contains(fromJSON(needs.detect.outputs.image-roles), 'backend') && github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'Guillaume-Lombardo/markweave' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/markweave-toolchain/LibreOffice_26.2.5_Linux_x86-64_rpm.tar.gz
@@ -870,7 +870,7 @@ jobs:
   main-ci-alert:
     name: CI / main failure tracking
     needs: gate
-    if: "${{ !cancelled() && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'push') && (needs.gate.result == 'failure' || needs.gate.result == 'success') }}"
+    if: "${{ !cancelled() && github.repository == 'Guillaume-Lombardo/markweave' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'push') && (needs.gate.result == 'failure' || needs.gate.result == 'success') }}"
     permissions:
       contents: read
       issues: write

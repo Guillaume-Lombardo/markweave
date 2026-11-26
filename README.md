@@ -32,8 +32,8 @@ You need OpenSSL, `flock`, about 6 GiB of available memory, and Docker Compose o
 rootless Podman with a Compose provider. Published images support Linux/AMD64.
 
 ```bash
-git clone https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter.git
-cd simple-md-to-docx-converter
+git clone https://github.com/Guillaume-Lombardo/markweave.git
+cd markweave
 scripts/quickstart-simple.sh up
 scripts/quickstart-simple.sh password
 ```

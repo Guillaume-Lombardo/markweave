@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
 PROJECT = "markweave"
-REPOSITORY = "Guillaume-Lombardo/simple-md-to-docx-converter"
+REPOSITORY = "Guillaume-Lombardo/markweave"
 IMAGE_REPOSITORY = "ghcr.io/guillaume-lombardo/md-converter"
 FRONTEND_IMAGE_REPOSITORY = "ghcr.io/guillaume-lombardo/md-converter-web"
 REGISTRY_PATH = "guillaume-lombardo/md-converter"

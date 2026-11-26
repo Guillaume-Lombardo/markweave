@@ -42,7 +42,7 @@ SIMPLE_RELEASE_LITERAL = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 SAFE_RELEASE_PATH = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
 ASCII_CONTROL_LIMIT = 32
 ASCII_DELETE = 127
-TRUSTED_REPOSITORY = "Guillaume-Lombardo/simple-md-to-docx-converter"
+TRUSTED_REPOSITORY = "Guillaume-Lombardo/markweave"
 TRUSTED_REPOSITORY_CONDITION = f"github.repository == '{TRUSTED_REPOSITORY}'"
 TRUSTED_REPOSITORY_GUARD = f"${{{{ {TRUSTED_REPOSITORY_CONDITION} }}}}"
 MAIN_FAILURE_TRACKING_PERMISSIONS = {"contents": "read", "issues": "write"}
@@ -54,18 +54,18 @@ MAIN_CI_ALERT_CONDITION = (
 )
 TRUSTED_CACHE_WRITE = (
     "save-cache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' "
-    "&& github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' }}"
+    "&& github.repository == 'Guillaume-Lombardo/markweave' }}"
 )
 TRUSTED_LIBREOFFICE_DEB_CACHE_WRITE = (
     "${{ matrix.domain == 'document-engines' && github.event_name == 'push' "
     "&& github.ref == 'refs/heads/main' && github.repository == "
-    "'Guillaume-Lombardo/simple-md-to-docx-converter' }}"
+    "'Guillaume-Lombardo/markweave' }}"
 )
 BACKEND_IMAGE_ROLE = "contains(fromJSON(needs.detect.outputs.image-roles), 'backend')"
 TRUSTED_LIBREOFFICE_RPM_CACHE_WRITE = (
     f"${{{{ {BACKEND_IMAGE_ROLE} && github.event_name == 'push' && "
     "github.ref == 'refs/heads/main' && github.repository == "
-    "'Guillaume-Lombardo/simple-md-to-docx-converter' }}"
+    "'Guillaume-Lombardo/markweave' }}"
 )
 READ_ONLY_PERMISSIONS = {"contents": "read"}
 FORBIDDEN_WORKFLOW_KEYS = frozenset({"secrets"})
@@ -225,20 +225,20 @@ class ReleaseWorkflowPolicy:
 
 
 CONTAINER_RELEASE_CANONICAL_DIGEST = (
-    "fa4447c2e77a46da607ec80bb01ac909542a7666a922d77438961124749725de"
+    "268c3a3455186a79f8b6b1e2ea47471cc6f9010639488465fffdf1588f040e60"
 )
 CONTAINER_QUALIFY_CANONICAL_DIGEST = (
-    "a44375efe21573cad442f0675b3cc654c904e67ecffcd62732e1dd6b4985e645"
+    "f844453085066fd29dbf8dedd18b79a39c8ddf747247cbadeab91ff779993836"
 )
 RELEASE_QUALIFICATION_DRY_RUN_CANONICAL_DIGEST = (
-    "e0ddaff38821a6c7c32b45cbef380bef1337d02c4a00ac9618011b60b1b05c6a"
+    "f800931ac9ffb7616382da8c24a4fe46682efb47a7cea8bf4901a07d706df60e"
 )
 CONTAINER_PAIR_PUBLISHER_CANONICAL_DIGEST = (
     "3a61c6bd75e47afe761ead42b77f73ae46cc0da2e8430f09e5dce0f74a7d6fdc"
 )
 RELEASE_IMAGE_ROLES = ("backend", "frontend", "reverse_attempt")
 PRODUCTION_RELEASE_CANONICAL_DIGEST = (
-    "c215a73f107ba41e9754e4c2b9e3d8a5fd2e1eca6bd65a9e5e43e9c5f1d0716d"
+    "ce7f59280baf870bc4c8e305d92b805d066108b3c26956273f71e1b889a3214a"
 )
 
 
@@ -383,7 +383,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
             ): (
                 "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' "
                 "&& github.repository == "
-                "'Guillaume-Lombardo/simple-md-to-docx-converter' }}"
+                "'Guillaume-Lombardo/markweave' }}"
             ),
             (
                 "light",
@@ -391,7 +391,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
             ): (
                 "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' "
                 "&& github.repository == "
-                "'Guillaume-Lombardo/simple-md-to-docx-converter' }}"
+                "'Guillaume-Lombardo/markweave' }}"
             ),
             (
                 "heavy",
@@ -483,7 +483,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
             ),
             ("mutation", "Retain mutation evidence"): "${{ always() }}",
         },
-        canonical_digest="95dbfa82894ed97a11177256a5450a1fd29a2fc0a44a5cca61b28efb90565386",
+        canonical_digest="836210a98bac3af3eda19125bce5fcbd5ce75bd72a879f61006685d472af5b7d",
     ),
     "mutation.yml": WorkflowPolicy(
         triggers=frozenset({"schedule", "workflow_dispatch"}),
@@ -503,7 +503,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
         },
         job_conditions={"mutation": TRUSTED_REPOSITORY_GUARD},
         step_conditions={("mutation", "Retain mutation evidence"): "${{ always() }}"},
-        canonical_digest="1a39e23c080b5fc6e376568e5f5b4509b7270ae712001817f00f81167705dadb",
+        canonical_digest="42ee171bb9456b8d87b740569c8402790ee84a7986e4907a3867b93afe166adc",
     ),
 }
 

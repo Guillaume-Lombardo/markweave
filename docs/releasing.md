@@ -43,15 +43,14 @@ Configure the PyPI Trusted Publisher with these exact values:
 
 - PyPI project name: `markweave`
 - GitHub owner: `Guillaume-Lombardo`
-- GitHub repository: `simple-md-to-docx-converter`
+- GitHub repository: `markweave`
 - Workflow: `release.yml`
 - Environment: `pypi`
 
-No PyPI token belongs in GitHub. The `markweave` project now has the active publisher created by its
-first trusted upload. If the repository, workflow, environment, or PyPI publisher identity changes,
-update and verify both ends before merging a version transition. The `md-converter` GHCR package is
-public; verify anonymous pull access after every release and do not grant the package to unrelated
-repositories.
+No PyPI token belongs in GitHub. The owner adds the publisher above as a second publisher and
+removes the old one only after the first successful release from the renamed repository. Verify
+the new publisher before merging a version transition. The GHCR package names are stable. Verify
+anonymous pull access after every release and grant package access only to the publishing repository.
 
 ## Prepare a version release
 
@@ -137,11 +136,13 @@ exact pins. Obtain independent review and restore alignment before integrating u
 A failed or partial publication leaves no adoption branch and reports the publication results in
 the summary. Rerunning the adoption job reuses an identical branch and dispatches CI if its commit
 has no dispatch yet. A differing branch fails without being overwritten. To review the generated
-diff from a clean checkout of the release source, use:
+diff, run the current tooling with `--repo` pointing to a clean checkout at the release source SHA.
+For a release published before the rename, run this from an up-to-date `markweave` checkout so the
+tooling uses the canonical GitHub endpoints:
 
 ```bash
 uv run --locked python -m scripts.release.adopt_receipts \
-  --version VERSION --source-sha RELEASE_SOURCE_SHA --dry-run
+  --repo /path/to/release-checkout --version VERSION --source-sha RELEASE_SOURCE_SHA --dry-run
 ```
 
 If publication fails, investigate or use the bounded recovery path below. If a separate recovery
@@ -167,11 +168,11 @@ serialization is not guaranteed to be byte-reproducible across hosted Podman ver
 source SHA, and the ID of a failed source run in which every `container-qualify` job succeeded and
 the `container-qualify / supply-chain` job retained the exact pre-mutation staging artifact.
 
-Before download, recovery verifies the source run belongs to this upstream repository and exact
-workflow, ran from trusted `main` at a descendant of the release source and an ancestor of the
-current trusted `main` workflow SHA, completed every qualification job successfully, reached the
-successful pre-mutation staging step, and has one
-bounded non-expired artifact with matching repository/run metadata. It downloads by immutable
+Before download, recovery verifies the source run's stable numeric repository ID and exact
+workflow. The run must come from trusted `main` at a descendant of the release source and an
+ancestor of the current trusted `main` workflow SHA. Recovery also checks that the run completed
+every qualification job and the pre-mutation staging step successfully, and has one bounded,
+non-expired artifact with matching repository/run metadata. It downloads by immutable
 artifact ID, not name alone. It then validates the exact regular-file set, closed checksum bundle,
 OCI archives and metadata relationships, publication receipts, release version/tag/source, and the
 state of every public GHCR digest in the retained release set. The recovery job has scoped `packages: write` permission because
@@ -218,8 +219,9 @@ For released version `<version>`:
   extra, then verify `from markweave import __version__`, the exact version, and the installed CLI;
 - verify GHCR tag `<version>` in each of the three repositories resolves to its receipt digest
   and is anonymously pullable;
-- verify provenance identifies this repository and reviewed main SHA;
-- verify the GitHub tag `v<version>` targets that same SHA and every release evidence file is
+- verify provenance against the exact workflow and repository that signed the digest, and check
+  the main SHA associated with the signing run;
+- verify the GitHub tag `v<version>` targets the release source SHA and every release evidence file is
   attached to its published GitHub Release.
 
 Preserve workflow URLs and immutable digests in the release record. Do not publish, replace, or
@@ -228,6 +230,45 @@ delete external release state outside this protected automation without explicit
 Historical schema-1 releases bind only backend and frontend. Their retained recovery evidence
 remains valid for that pair, but cannot identify a reverse-attempt image or qualify a matched
 reverse deployment. Current schema-2 releases require all three roles.
+
+### Verify container provenance
+
+Set `image` to the package from `release-images.json` and set `digest` and `source_sha` to the
+registry manifest digest and release source SHA from the verified publication receipt. For releases
+published from the renamed repository, verify each image with:
+
+```bash
+gh attestation verify "oci://$image@$digest" \
+  --repo Guillaume-Lombardo/markweave \
+  --cert-identity https://github.com/Guillaume-Lombardo/markweave/.github/workflows/container-release.yml@refs/heads/main \
+  --source-ref refs/heads/main --source-digest "$source_sha"
+```
+
+For evidence from a manual recovery, use the attestation run's repository identity and pass its
+main SHA as `--source-digest`. The publication receipt still records the release source SHA.
+
+The 0.8.0 image set was signed before the rename. The following command binds each published
+digest to its original certificate identity and source SHA. The same signing-time rule applies
+when verifying earlier releases and historical PyPI attestations.
+
+```bash
+(
+  set -e
+  signing_repo=Guillaume-Lombardo/simple-md-to-docx-converter
+  source_sha=1a3350712224d2234540274eef0366f12d425468
+  for image in \
+    ghcr.io/guillaume-lombardo/md-converter@sha256:4aa0beec3f9c493c4109c2be4edb6e9f3e943808bb6f48e39492176d2d2f2a48 \
+    ghcr.io/guillaume-lombardo/md-converter-web@sha256:2558483c2fadd33aa6de627d4e56a535cdf4a2c615d4a86f325cb6905f6c5fe8 \
+    ghcr.io/guillaume-lombardo/md-converter-reverse-attempt@sha256:9351d1180e2c893d1e821547f63f6b5f158b7b8813aba3bb3825053e9c9fbcbe
+  do
+    printf '%s\n' "$image"
+    gh attestation verify "oci://$image" --bundle-from-oci --repo "$signing_repo" \
+      --cert-identity "https://github.com/$signing_repo/.github/workflows/container-release.yml@refs/heads/main" \
+      --source-ref refs/heads/main --source-digest "$source_sha" \
+      --format json --jq '"Verified provenance attestations: \(length)"'
+  done
+)
+```
 
 ## Frontend publication after T64
 

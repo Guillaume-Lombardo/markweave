@@ -149,7 +149,4 @@ def test_ci_uses_exact_restore_only_caches_and_trusted_saves() -> None:
         assert "restore-keys" not in restore["with"]
         assert "github.event_name == 'push'" in save["if"]
         assert "github.ref == 'refs/heads/main'" in save["if"]
-        assert (
-            "github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter'"
-            in save["if"]
-        )
+        assert "github.repository == 'Guillaume-Lombardo/markweave'" in save["if"]

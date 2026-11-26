@@ -136,7 +136,7 @@ ENV PATH=/opt/md-converter/venv/bin:/usr/local/bin:/usr/bin \
 ARG BASE_IMAGE
 LABEL org.opencontainers.image.title="Markdown to DOCX and PDF Converter" \
       org.opencontainers.image.version="${APPLICATION_VERSION}" \
-      org.opencontainers.image.source="https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter" \
+      org.opencontainers.image.source="https://github.com/Guillaume-Lombardo/markweave" \
       org.opencontainers.image.base.name="${BASE_IMAGE}"
 
 WORKDIR /work

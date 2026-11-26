@@ -3,7 +3,7 @@
 ## Report a vulnerability privately
 
 Do not open a public issue for a suspected vulnerability. Use GitHub's private
-[security advisory reporting form](https://github.com/Guillaume-Lombardo/simple-md-to-docx-converter/security/advisories/new).
+[security advisory reporting form](https://github.com/Guillaume-Lombardo/markweave/security/advisories/new).
 If that form is unavailable, open a GitHub Discussion asking a maintainer for a
 private reporting channel; do not include vulnerability details in the discussion.
 

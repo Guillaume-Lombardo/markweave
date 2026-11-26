@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   container-qualify:
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.ref == 'refs/heads/main' }}
     uses: ./.github/workflows/container-qualify.yml
     with:
       source-sha: ${{ github.sha }}
@@ -22,7 +22,7 @@ jobs:
   main-ci-alert:
     name: Release qualification dry-run / main failure tracking
     needs: container-qualify
-    if: "${{ !cancelled() && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && (needs.container-qualify.result == 'failure' || needs.container-qualify.result == 'success') }}"
+    if: "${{ !cancelled() && github.repository == 'Guillaume-Lombardo/markweave' && github.ref == 'refs/heads/main' && (needs.container-qualify.result == 'failure' || needs.container-qualify.result == 'success') }}"
     permissions:
       actions: read
       contents: read

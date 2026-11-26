@@ -36,7 +36,7 @@ permissions:
 
 jobs:
   publish:
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && github.event_name == 'push' && github.sha == inputs.source-sha }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.ref == 'refs/heads/main' && github.event_name == 'push' && github.sha == inputs.source-sha }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -123,7 +123,7 @@ jobs:
           retention-days: 90
 
   recover-evidence:
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -283,7 +283,7 @@ jobs:
 
   attest:
     needs: [publish, recover-evidence]
-    if: ${{ always() && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && ((github.event_name == 'push' && github.sha == inputs.source-sha && needs.publish.result == 'success') || (github.event_name == 'workflow_dispatch' && needs.recover-evidence.result == 'success')) }}
+    if: ${{ always() && github.repository == 'Guillaume-Lombardo/markweave' && github.ref == 'refs/heads/main' && ((github.event_name == 'push' && github.sha == inputs.source-sha && needs.publish.result == 'success') || (github.event_name == 'workflow_dispatch' && needs.recover-evidence.result == 'success')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -321,7 +321,7 @@ jobs:
 
   release-evidence:
     needs: [publish, recover-evidence, attest]
-    if: ${{ always() && github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && github.ref == 'refs/heads/main' && needs.attest.result == 'success' && ((github.event_name == 'push' && github.sha == inputs.source-sha && needs.publish.result == 'success') || (github.event_name == 'workflow_dispatch' && needs.recover-evidence.result == 'success')) }}
+    if: ${{ always() && github.repository == 'Guillaume-Lombardo/markweave' && github.ref == 'refs/heads/main' && needs.attest.result == 'success' && ((github.event_name == 'push' && github.sha == inputs.source-sha && needs.publish.result == 'success') || (github.event_name == 'workflow_dispatch' && needs.recover-evidence.result == 'success')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

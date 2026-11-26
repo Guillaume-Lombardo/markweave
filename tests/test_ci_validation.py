@@ -157,7 +157,7 @@ concurrency:
 
 jobs:
   build-and-verify:
-    if: ${{{{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' }}}}
+    if: ${{{{ github.repository == 'Guillaume-Lombardo/markweave' }}}}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -196,7 +196,7 @@ jobs:
           if-no-files-found: error
   publish:
     needs: build-and-verify
-    if: ${{{{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' }}}}
+    if: ${{{{ github.repository == 'Guillaume-Lombardo/markweave' }}}}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: pypi
@@ -1155,7 +1155,7 @@ def test_container_qualification_policy_rejects_weakening(
             "container qualification job 'stage' lacks the reviewed timeout",
         ),
         (
-            "  e2e:\n    name: e2e (${{ matrix.domain }})\n    needs: stage\n    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' && ",
+            "  e2e:\n    name: e2e (${{ matrix.domain }})\n    needs: stage\n    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' && ",
             "  e2e:\n    name: e2e (${{ matrix.domain }})\n    needs: stage\n    if: ${{ ",
             "container qualification job 'e2e' lacks the trusted-main guard",
         ),
@@ -2653,7 +2653,7 @@ def test_release_policy_rejects_extra_job_and_dependency(
     """The release DAG contains only the exact producer and minimal publisher."""
     extra_job = """\
   substitute:
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -2677,8 +2677,7 @@ def test_release_policy_rejects_missing_repository_guard(
 ) -> None:
     """Every release job is tied to the intended upstream repository."""
     weakened = valid_release_workflow.replace(
-        "    if: ${{ github.repository == "
-        "'Guillaume-Lombardo/simple-md-to-docx-converter' }}\n",
+        "    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' }}\n",
         "",
         1,
     )
@@ -2692,8 +2691,8 @@ def test_release_policy_rejects_bypassable_repository_guard(
 ) -> None:
     """A trusted comparison cannot be neutralized by an always-true disjunction."""
     weakened = valid_release_workflow.replace(
-        "simple-md-to-docx-converter' }}",
-        "simple-md-to-docx-converter' || true }}",
+        "markweave' }}",
+        "markweave' || true }}",
         1,
     )
     errors = validate_release_workflow_text(weakened, policy=RELEASE_POLICY)
@@ -2706,8 +2705,8 @@ def test_release_policy_rejects_negated_repository_guard(
 ) -> None:
     """The trusted comparison cannot be accepted inside a negated expression."""
     weakened = valid_release_workflow.replace(
-        "github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter'",
-        "!(github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter')",
+        "github.repository == 'Guillaume-Lombardo/markweave'",
+        "!(github.repository == 'Guillaume-Lombardo/markweave')",
         1,
     )
     errors = validate_release_workflow_text(weakened, policy=RELEASE_POLICY)

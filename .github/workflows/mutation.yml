@@ -15,7 +15,7 @@ concurrency:
 jobs:
   mutation:
     name: Mutation / full campaign
-    if: ${{ github.repository == 'Guillaume-Lombardo/simple-md-to-docx-converter' }}
+    if: ${{ github.repository == 'Guillaume-Lombardo/markweave' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
