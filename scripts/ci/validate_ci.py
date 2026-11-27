@@ -483,7 +483,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
             ),
             ("mutation", "Retain mutation evidence"): "${{ always() }}",
         },
-        canonical_digest="836210a98bac3af3eda19125bce5fcbd5ce75bd72a879f61006685d472af5b7d",
+        canonical_digest="443373b31c77e6a0470459bc967aaee2f5550894ebe663797ea8519495d1c15c",
     ),
     "mutation.yml": WorkflowPolicy(
         triggers=frozenset({"schedule", "workflow_dispatch"}),
@@ -771,7 +771,7 @@ def _validate_read_only_job_permissions(
     job_name: str, job: Mapping[str, Any]
 ) -> list[str]:
     expected = {
-        "light": {"contents": "read", "packages": "read"},
+        "light": {"contents": "read"},
         "heavy": {"contents": "read"},
         "build-images": {"contents": "read"},
         "final-image": {"contents": "read"},
@@ -972,30 +972,20 @@ def _validate_public_alignment_credentials(
         if step.get("name") == "Verify public release alignment"
     ]
     expected = {
-        "BASE_SHA": (
-            "${{ github.event.pull_request.base.sha || "
-            "github.event.merge_group.base_sha || github.event.before }}"
-        ),
+        "BASE_SHA": "${{ github.event.merge_group.base_sha || github.event.before }}",
         "EVENT_NAME": "${{ github.event_name }}",
-        "GHCR_TOKEN": (
-            "${{ (github.event_name == 'push' || (github.event_name == "
-            "'pull_request' && github.event.pull_request.head.repo.full_name == "
-            "github.repository)) && github.token || '' }}"
+        "GITHUB_API_TOKEN": (
+            f"${{{{ {TRUSTED_REPOSITORY_CONDITION} && (github.event_name == 'push' "
+            "|| (github.event_name == 'pull_request' && "
+            "github.event.pull_request.head.repo.full_name == github.repository)) "
+            "&& github.token || '' }}"
         ),
-        "GHCR_USERNAME": (
-            "${{ (github.event_name == 'push' || (github.event_name == "
-            "'pull_request' && github.event.pull_request.head.repo.full_name == "
-            "github.repository)) && github.actor || '' }}"
-        ),
-        "HEAD_SHA": (
-            "${{ github.event.pull_request.head.sha || "
-            "github.event.merge_group.head_sha || github.sha }}"
-        ),
+        "HEAD_SHA": "${{ github.sha }}",
     }
     if len(alignment_steps) != 1 or alignment_steps[0].get("env") != expected:
         return [
-            "public alignment must receive only the ephemeral read-only GHCR "
-            "credentials"
+            "public alignment must receive the exact event commits and only the "
+            "ephemeral read-only GitHub API token"
         ]
     return []
 

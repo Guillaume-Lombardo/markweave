@@ -1,6 +1,7 @@
 """Unit tests for the main CI issue lifecycle."""
 
 import json
+import subprocess
 
 import pytest
 from pytest_mock import MockerFixture
@@ -8,6 +9,56 @@ from pytest_mock import MockerFixture
 from scripts.ci import main_ci_alert as alert
 
 pytestmark = pytest.mark.unit
+REPOSITORY = "example/project"
+ISSUES = f"repos/{REPOSITORY}/issues"
+
+
+def test_creates_tracking_issue_through_canonical_repository_after_rename(
+    mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name, value in {
+        "GITHUB_REPOSITORY": "example/previous-name",
+        "GITHUB_REPOSITORY_ID": "123",
+        "GITHUB_SERVER_URL": "https://github.com",
+        "GITHUB_RUN_ID": "42",
+        "GITHUB_RUN_NUMBER": "2",
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_EVENT_NAME": "push",
+        "CI_GATE_RESULT": "failure",
+    }.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.delenv("CI_TRACKING_SOURCE", raising=False)
+    mocker.patch.object(alert.shutil, "which", return_value="/usr/bin/gh")
+    issues = "repos/example/current-name/issues"
+
+    def gh(command, **options):
+        match command[1:]:
+            case ["api", "repositories/123"]:
+                response = {"full_name": "example/current-name"}
+            case ["api", "--paginate", "--slurp", query] if query.startswith(issues):
+                response = [[]]
+            case ["label", "create", *args] if args[-2:] == [
+                "--repo",
+                "example/current-name",
+            ]:
+                response = {}
+            case ["api", "--method", "POST", endpoint, "--input", "-"]:
+                if endpoint != issues:
+                    raise subprocess.CalledProcessError(1, command, stderr="HTTP 307")
+                payload = json.loads(options["input"])
+                assert alert._read_state(payload["body"])["push"]["url"] == (
+                    "https://github.com/example/current-name/actions/runs/42/attempts/1"
+                )
+                response = {"number": 17}
+            case _:
+                response = [[]]
+        return subprocess.CompletedProcess(command, 0, json.dumps(response))
+
+    command = mocker.patch.object(alert.subprocess, "run", side_effect=gh)
+
+    alert.main()
+
+    assert command.call_args.args[0][1:5] == ["api", "--method", "POST", issues]
 
 
 def _run(number: int, conclusion: str, attempt: int = 1) -> alert.Run:
@@ -46,11 +97,11 @@ def test_first_failure_creates_the_labeled_issue(
     command = mocker.patch.object(alert, "_gh")
     failure = _run(2, "failure")
 
-    alert.reconcile(source, failure)
+    alert.reconcile(REPOSITORY, source, failure)
 
     command.assert_called_once()
     assert command.call_args.args[:3] == ("label", "create", alert.LABEL)
-    assert api.call_args.args == ("--method", "POST", alert.ISSUES)
+    assert api.call_args.args == ("--method", "POST", ISSUES)
     payload = api.call_args.kwargs["payload"]
     assert payload["title"] == alert.TITLE
     assert payload["labels"] == [alert.LABEL]
@@ -76,10 +127,10 @@ def test_older_dry_run_failure_cannot_raise_an_alert_after_newer_success(
     )
     command = mocker.patch.object(alert, "_gh")
 
-    alert.reconcile("release-qualification", _run(1, "failure", attempt=2))
+    alert.reconcile(REPOSITORY, "release-qualification", _run(1, "failure", attempt=2))
 
     api.assert_called_once_with(
-        "repos/{owner}/{repo}/actions/workflows/release-qualification-dry-run.yml/runs"
+        f"repos/{REPOSITORY}/actions/workflows/release-qualification-dry-run.yml/runs"
         "?branch=main&status=success&per_page=1"
     )
     command.assert_not_called()
@@ -97,12 +148,12 @@ def test_green_run_without_an_owned_issue_does_nothing(mocker: MockerFixture) ->
     )
     command = mocker.patch.object(alert.subprocess, "run")
 
-    alert.reconcile("push", _run(2, "success"))
+    alert.reconcile(REPOSITORY, "push", _run(2, "success"))
 
     api.assert_called_once_with(
         "--paginate",
         "--slurp",
-        f"{alert.ISSUES}?state=all&labels={alert.LABEL}&per_page=100",
+        f"{ISSUES}?state=all&labels={alert.LABEL}&per_page=100",
     )
     command.assert_not_called()
 
@@ -154,10 +205,10 @@ def test_tracking_issue_is_updated_in_place(
         responses.insert(0, {"workflow_runs": []})
     api = mocker.patch.object(alert, "_api", side_effect=responses)
 
-    alert.reconcile(event, run)
+    alert.reconcile(REPOSITORY, event, run)
 
     assert api.call_count == len(responses)
-    assert api.call_args.args == ("--method", "PATCH", f"{alert.ISSUES}/17")
+    assert api.call_args.args == ("--method", "PATCH", f"{ISSUES}/17")
     payload = api.call_args.kwargs["payload"]
     assert payload["state"] == state
     assert alert._read_state(payload["body"]) == latest | {event: run}
@@ -171,7 +222,7 @@ def test_older_runs_and_duplicate_attempts_are_ignored(
         alert, "_api", return_value=[[_issue({"schedule": _run(3, "success", 2)})]]
     )
 
-    alert.reconcile("schedule", run)
+    alert.reconcile(REPOSITORY, "schedule", run)
 
     api.assert_called_once()
 
@@ -183,7 +234,7 @@ def test_untracked_events_cannot_write_issues(
     api = mocker.patch.object(alert, "_api")
 
     with pytest.raises(ValueError, match="CI gate result"):
-        alert.reconcile(event, _run(1, "failure"))
+        alert.reconcile(REPOSITORY, event, _run(1, "failure"))
 
     api.assert_not_called()
 
@@ -194,7 +245,7 @@ def test_update_fails_closed_when_issue_state_is_missing(mocker: MockerFixture) 
     )
 
     with pytest.raises(ValueError, match="missing its automation state"):
-        alert.reconcile("push", _run(1, "success"))
+        alert.reconcile(REPOSITORY, "push", _run(1, "success"))
 
     api.assert_called_once()
 
@@ -207,7 +258,7 @@ def test_duplicate_tracking_issues_require_manual_resolution(
     )
 
     with pytest.raises(ValueError, match="Multiple main CI tracking issues"):
-        alert.reconcile("push", _run(1, "failure"))
+        alert.reconcile(REPOSITORY, "push", _run(1, "failure"))
 
     api.assert_called_once()
 
@@ -228,7 +279,7 @@ def test_entry_point_uses_the_exact_workflow_attempt(
     expected_source: str,
 ) -> None:
     for name, value in {
-        "GITHUB_REPOSITORY": "example/project",
+        "GITHUB_REPOSITORY_ID": "123",
         "GITHUB_SERVER_URL": "https://github.com",
         "GITHUB_RUN_ID": "987654",
         "GITHUB_RUN_NUMBER": "17",
@@ -241,11 +292,13 @@ def test_entry_point_uses_the_exact_workflow_attempt(
         monkeypatch.delenv("CI_TRACKING_SOURCE", raising=False)
     else:
         monkeypatch.setenv("CI_TRACKING_SOURCE", tracking_source)
+    mocker.patch.object(alert, "_api", return_value={"full_name": REPOSITORY})
     reconcile = mocker.patch.object(alert, "reconcile")
 
     alert.main()
 
     reconcile.assert_called_once_with(
+        REPOSITORY,
         expected_source,
         {
             "number": 17,
@@ -264,7 +317,7 @@ def test_issue_payload_is_passed_as_json_on_standard_input(
     command.return_value.stdout = json.dumps({"number": 17})
     payload = {"body": "First line\nSecond line"}
 
-    assert alert._api("--method", "PATCH", f"{alert.ISSUES}/17", payload=payload) == {
+    assert alert._api("--method", "PATCH", f"{ISSUES}/17", payload=payload) == {
         "number": 17
     }
     assert command.call_args.args[0] == [
@@ -272,7 +325,7 @@ def test_issue_payload_is_passed_as_json_on_standard_input(
         "api",
         "--method",
         "PATCH",
-        f"{alert.ISSUES}/17",
+        f"{ISSUES}/17",
         "--input",
         "-",
     ]

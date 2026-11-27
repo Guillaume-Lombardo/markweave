@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import base64
 import hashlib
 import json
 import os
@@ -34,26 +33,14 @@ FRONTEND_IMAGE_REPOSITORY = "ghcr.io/guillaume-lombardo/md-converter-web"
 REGISTRY_PATH = "guillaume-lombardo/md-converter"
 FRONTEND_REGISTRY_PATH = "guillaume-lombardo/md-converter-web"
 REVERSE_REGISTRY_PATH = "guillaume-lombardo/md-converter-reverse-attempt"
-PARTIAL_072_SOURCE = "b28256486af4cf6d58c3aa06a27815c321df57f9"
-REPOSITORY_ID = 1343515292
-PARTIAL_072_RUN = 35723245369
-PARTIAL_072_ARTIFACT = 10692228358
-PARTIAL_074_SOURCE = "5d0ac0bb329018fa3a88d7ba516e575de9abc100"
-PARTIAL_074_RUN = 38182704382
-PARTIAL_074_ARTIFACT = 11718675473
-PARTIAL_074_ARTIFACT_DIGEST = (
-    "sha256:5f07b4b657dbb6eaa32395670b63aabb53187bd60b49da4e29e74d27b0bb36e4"
-)
 PYPI_URL = f"https://pypi.org/pypi/{PROJECT}/json"
 GITHUB_API = f"https://api.github.com/repos/{REPOSITORY}"
 GITHUB_RELEASES = f"https://github.com/{REPOSITORY}/releases/download"
 GHCR_TOKEN_URL = (
     f"https://ghcr.io/token?service=ghcr.io&scope=repository:{REGISTRY_PATH}:pull"
 )
-SKIPPED_CONTAINER_DEPLOYMENT_VERSION = "0.5.2"
-SKIPPED_CONTAINER_PUBLIC_VERSION = "0.6.0"
-SKIPPED_CONTAINER_CONTINUATION_VERSION = "0.6.1"
-PENDING_EVENTS = frozenset({"pull_request", "merge_group", "push"})
+CANDIDATE_EVENTS = frozenset({"pull_request", "merge_group"})
+PENDING_EVENTS = CANDIDATE_EVENTS | {"push"}
 KNOWN_EVENTS = PENDING_EVENTS | frozenset({"release", "workflow_dispatch", "schedule"})
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
@@ -68,22 +55,27 @@ FRONTEND_IMAGE = re.compile(
 BACKEND_IMAGE_DEFAULT = re.compile(
     r"\$\{MARKWEAVE_CUTOVER_BACKEND_IMAGE:-(?P<image>[^}]+)\}"
 )
+FRONTEND_IMAGE_DEFAULT = re.compile(
+    r"\$\{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-(?P<image>[^}]+)\}"
+)
 PAIRED_RELEASE_FIRST_VERSION = Version("0.6.1")
 ZERO_SHA = "0" * 40
+PULL_REQUEST_MERGE_PARENTS = 2
 MAX_JSON_BYTES = 1_048_576
 MAX_RECEIPT_BYTES = 16_384
 MAX_TOKEN_BYTES = 16_384
-MAX_REGISTRY_ERROR_BYTES = 4_096
-MAX_REGISTRY_USERNAME_BYTES = 256
 HTTP_TIMEOUT_SECONDS = 10.0
 HTTP_RETRY_ATTEMPTS = 3
 HTTP_RETRY_DELAY_SECONDS = 1.0
 HTTP_OK = 200
-HTTP_FORBIDDEN = 403
-HTTP_NOT_FOUND = 404
 TRANSIENT_HTTP_STATUSES = frozenset({429, 500, 502, 503, 504})
 OCI_SCHEMA_VERSION = 2
 CUTOVER_FRONTEND_ROLES = ("frontend", "router")
+QUICKSTARTS = ("scripts/quickstart.sh", "scripts/quickstart-simple.sh")
+QUICKSTART_PIN = re.compile(
+    r'[ \t]*readonly[ \t]+cutover_(backend|frontend)_image="([^"\n]+)"'
+    r"(?:[ \t]+#[^\n]*)?[ \t]*"
+)
 
 
 class AlignmentError(ValueError):
@@ -224,53 +216,6 @@ class BaseIdentity:
     attempt_retry: bool = False
 
 
-@dataclass(frozen=True)
-class PartialRelease:
-    """One reviewed Python-only release whose images were never published."""
-
-    version: str
-    source_sha: str
-    run_id: int
-    artifact_id: int
-    artifact_digest: str | None
-    continuation_version: str
-    deployed_version: str
-
-    @property
-    def state(self) -> str:
-        """Return the reported pending state for this exact continuation."""
-        return f"pending-partial-{self.version}"
-
-
-PARTIAL_072 = PartialRelease(
-    version="0.7.2",
-    source_sha=PARTIAL_072_SOURCE,
-    run_id=PARTIAL_072_RUN,
-    artifact_id=PARTIAL_072_ARTIFACT,
-    artifact_digest=None,
-    continuation_version="0.7.3",
-    deployed_version="0.7.1",
-)
-PARTIAL_074 = PartialRelease(
-    version="0.7.4",
-    source_sha=PARTIAL_074_SOURCE,
-    run_id=PARTIAL_074_RUN,
-    artifact_id=PARTIAL_074_ARTIFACT,
-    artifact_digest=PARTIAL_074_ARTIFACT_DIGEST,
-    continuation_version="0.7.5",
-    deployed_version="0.7.3",
-)
-PARTIAL_RELEASES = {partial.version: partial for partial in (PARTIAL_072, PARTIAL_074)}
-
-
-@dataclass(frozen=True)
-class RegistryCredentials:
-    """Ephemeral GitHub Actions credentials for one read-only GHCR fallback."""
-
-    username: str
-    token: str
-
-
 def _canonical_final_version(value: object, *, label: str) -> str:
     if not isinstance(value, str) or value != value.strip():
         raise AlignmentError(f"{label} must be a canonical final version string")
@@ -324,7 +269,6 @@ def parse_compose_identity(document: str) -> ComposeIdentity:
 
 def parse_frontend_compose_identity(document: str) -> ComposeIdentity:
     """Parse the shared published frontend default from compose.yaml."""
-    expression = re.compile(r"\$\{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-(?P<image>[^}]+)\}")
     try:
         compose = yaml.load(document, Loader=yaml.BaseLoader)  # noqa: S506
         services = compose["services"]
@@ -337,7 +281,7 @@ def parse_frontend_compose_identity(document: str) -> ComposeIdentity:
         raise AlignmentError(
             "cutover frontend services must share one trusted immutable public default"
         )
-    matches = [expression.fullmatch(image) for image in configured]
+    matches = [FRONTEND_IMAGE_DEFAULT.fullmatch(image) for image in configured]
     images = [match.group("image") for match in matches if match is not None]
     if (
         len(images) != len(CUTOVER_FRONTEND_ROLES)
@@ -498,29 +442,13 @@ def _ghcr_manifest_response(
     *,
     repository_path: str,
     version: str,
-    credentials: RegistryCredentials | None = None,
 ) -> HttpResponse:
     token_url = (
         f"https://ghcr.io/token?service=ghcr.io&scope=repository:{repository_path}:pull"
     )
-    headers = {"Accept": "application/json"}
-    if credentials is not None:
-        if (
-            not credentials.username
-            or not credentials.token
-            or len(credentials.username) > MAX_REGISTRY_USERNAME_BYTES
-            or len(credentials.token) > MAX_TOKEN_BYTES
-            or any(
-                character in credentials.username or character in credentials.token
-                for character in "\r\n"
-            )
-        ):
-            raise AlignmentError("GHCR fallback credentials are invalid")
-        basic = base64.b64encode(
-            f"{credentials.username}:{credentials.token}".encode()
-        ).decode("ascii")
-        headers["Authorization"] = f"Basic {basic}"
-    token_response = transport.request(token_url, headers=headers)
+    token_response = transport.request(
+        token_url, headers={"Accept": "application/json"}
+    )
     token = _ghcr_pull_token(
         token_response, label="GHCR returned an invalid pull token response"
     )
@@ -559,90 +487,6 @@ def _ghcr_manifest_with_token(
     )
 
 
-def _require_exact_anonymous_denial(response: HttpResponse) -> None:
-    if response.status != HTTP_FORBIDDEN or len(response.body) > (
-        MAX_REGISTRY_ERROR_BYTES
-    ):
-        raise AlignmentError("GHCR anonymous denial response is invalid")
-    try:
-        denial = json.loads(response.body)
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise AlignmentError("GHCR anonymous denial response is invalid") from error
-    if denial != {
-        "errors": [
-            {
-                "code": "DENIED",
-                "message": "requested access to the resource is denied",
-            }
-        ]
-    }:
-        raise AlignmentError("GHCR anonymous denial response is invalid")
-
-
-def _require_ghcr_tag_publicly_absent(
-    transport: Transport,
-    *,
-    repository_path: str,
-    version: str,
-    credentials: RegistryCredentials | None,
-    allow_reverse_fallback: bool = False,
-) -> None:
-    token_url = (
-        f"https://ghcr.io/token?service=ghcr.io&scope=repository:{repository_path}:pull"
-    )
-    anonymous = transport.request(token_url, headers={"Accept": "application/json"})
-    if anonymous.status == HTTP_OK:
-        token = _ghcr_pull_token(
-            anonymous, label="GHCR returned an invalid anonymous token response"
-        )
-        response = _ghcr_manifest_with_token(
-            transport, repository_path=repository_path, version=version, token=token
-        )
-    else:
-        _require_exact_anonymous_denial(anonymous)
-        if repository_path != FRONTEND_REGISTRY_PATH and not (
-            allow_reverse_fallback and repository_path == REVERSE_REGISTRY_PATH
-        ):
-            raise AlignmentError("GHCR backend anonymous access was denied")
-        if credentials is None:
-            raise AlignmentError("GHCR read-only fallback credentials are unavailable")
-        response = _ghcr_manifest_response(
-            transport,
-            repository_path=repository_path,
-            version=version,
-            credentials=credentials,
-        )
-    if (
-        response.status != HTTP_NOT_FOUND
-        or len(response.body) > MAX_REGISTRY_ERROR_BYTES
-    ):
-        raise AlignmentError(
-            f"GHCR tag is not proven publicly absent: {repository_path}:{version}"
-        )
-    try:
-        document = json.loads(response.body)
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise AlignmentError(
-            f"GHCR absence response is invalid: {repository_path}:{version}"
-        ) from error
-    errors = document.get("errors") if isinstance(document, dict) else None
-    if (
-        not isinstance(document, dict)
-        or set(document) != {"errors"}
-        or not isinstance(errors, list)
-        or len(errors) != 1
-        or not isinstance(errors[0], dict)
-        or errors[0]
-        != {
-            "code": "MANIFEST_UNKNOWN",
-            "message": "manifest unknown",
-        }
-    ):
-        raise AlignmentError(
-            f"GHCR absence response is invalid: {repository_path}:{version}"
-        )
-
-
 def _ghcr_digest(
     transport: Transport, *, version: str, repository_path: str = REGISTRY_PATH
 ) -> str:
@@ -671,143 +515,6 @@ def _ghcr_digest(
     return digest
 
 
-def _require_skipped_container_release(
-    transport: Transport,
-    *,
-    project_version: str,
-    compose: ComposeIdentity,
-    base: BaseIdentity | None,
-    registry_credentials: RegistryCredentials | None,
-) -> None:
-    expected = (
-        SKIPPED_CONTAINER_CONTINUATION_VERSION,
-        SKIPPED_CONTAINER_DEPLOYMENT_VERSION,
-        SKIPPED_CONTAINER_PUBLIC_VERSION,
-    )
-    if (project_version, compose.version, base.version if base else None) != expected:
-        raise AlignmentError(
-            "repository state is not an exact pending version transition"
-        )
-    if base is None or FULL_SHA.fullmatch(base.source_sha) is None:
-        raise AlignmentError(
-            "skipped-container continuation requires its release source"
-        )
-    _release_receipt(transport, version=compose.version, expected_digest=compose.digest)
-    if _ghcr_digest(transport, version=compose.version) != compose.digest:
-        raise AlignmentError("public GHCR digest and Compose digest differ")
-    source_sha, assets = _release_identity(
-        transport, version=SKIPPED_CONTAINER_PUBLIC_VERSION
-    )
-    if source_sha != base.source_sha:
-        raise AlignmentError(
-            "skipped-container release does not match the exact base source"
-        )
-    if any(
-        isinstance(asset, dict) and asset.get("name") == "registry-publication.json"
-        for asset in assets
-    ):
-        raise AlignmentError(
-            "skipped-container release already has a publication receipt"
-        )
-    for repository_path in (REGISTRY_PATH, FRONTEND_REGISTRY_PATH):
-        _require_ghcr_tag_publicly_absent(
-            transport,
-            repository_path=repository_path,
-            version=SKIPPED_CONTAINER_PUBLIC_VERSION,
-            credentials=registry_credentials,
-        )
-
-
-def _require_partial_transition(  # noqa: PLR0913 - exact reviewed surfaces
-    transport: Transport,
-    *,
-    partial: PartialRelease,
-    project_version: str,
-    compose: ComposeIdentity,
-    base: BaseIdentity | None,
-    credentials: RegistryCredentials | None,
-) -> None:
-    """Admit only one reviewed Python-only release to its fresh continuation.
-
-    The reviewed records are the 0.7.2 to 0.7.3 and the 0.7.4 to 0.7.5
-    transitions. Each is bound to its exact source, failed run, sole Python
-    artifact, empty GitHub Release and structurally absent GHCR tags.
-    """
-    if (
-        project_version != partial.continuation_version
-        or compose.version != partial.deployed_version
-        or base != BaseIdentity(partial.version, partial.source_sha)
-    ):
-        raise AlignmentError(
-            "repository state is not the exact "
-            f"{partial.continuation_version} transition"
-        )
-    source, assets = _release_identity(transport, version=partial.version)
-    if source != partial.source_sha or assets:
-        raise AlignmentError(
-            f"partial {partial.version} release identity or empty evidence differs"
-        )
-    run_url = f"{GITHUB_API}/actions/runs/{partial.run_id}"
-    run = _json_response(transport, run_url)
-    expected_run = {
-        "id": partial.run_id,
-        "head_sha": partial.source_sha,
-        "head_branch": "main",
-        "event": "push",
-        "path": ".github/workflows/release.yml",
-        "status": "completed",
-        "conclusion": "failure",
-        "run_attempt": 1,
-    }
-    if any(run.get(key) != value for key, value in expected_run.items()):
-        raise AlignmentError(f"partial {partial.version} failed run identity differs")
-    artifacts = _json_response(transport, f"{run_url}/artifacts?per_page=2")
-    entries = artifacts.get("artifacts")
-    if (
-        artifacts.get("total_count") != 1
-        or not isinstance(entries, list)
-        or len(entries) != 1
-        or not isinstance(entries[0], dict)
-    ):
-        raise AlignmentError(
-            f"partial {partial.version} must have only its Python artifact"
-        )
-    artifact = entries[0]
-    expected_artifact: dict[str, object] = {
-        "id": partial.artifact_id,
-        "name": f"python-release-v{partial.version}",
-        "expired": False,
-    }
-    if partial.artifact_digest is not None:
-        expected_artifact["digest"] = partial.artifact_digest
-    workflow = artifact.get("workflow_run")
-    if (
-        any(artifact.get(key) != value for key, value in expected_artifact.items())
-        or not isinstance(workflow, dict)
-        or workflow.get("id") != partial.run_id
-        or workflow.get("head_sha") != partial.source_sha
-        or workflow.get("head_branch") != "main"
-        or workflow.get("repository_id") != REPOSITORY_ID
-        or workflow.get("head_repository_id") != REPOSITORY_ID
-    ):
-        raise AlignmentError(
-            f"partial {partial.version} Python artifact identity differs"
-        )
-    for repository_path in (
-        REGISTRY_PATH,
-        FRONTEND_REGISTRY_PATH,
-        REVERSE_REGISTRY_PATH,
-    ):
-        for tag in (partial.version, f"source-{partial.source_sha}"):
-            _require_ghcr_tag_publicly_absent(
-                transport,
-                repository_path=repository_path,
-                version=tag,
-                credentials=credentials,
-                allow_reverse_fallback=True,
-            )
-
-
 def _git_output(arguments: Sequence[str]) -> bytes:
     try:
         return subprocess.run(  # noqa: S603 - fixed executable and bounded arguments
@@ -817,8 +524,33 @@ def _git_output(arguments: Sequence[str]) -> bytes:
         raise AlignmentError("cannot inspect the exact Git transition") from error
 
 
+def _git_file(repository: Path, sha: str, path: str) -> bytes:
+    return _git_output(("-C", str(repository), "show", f"{sha}:{path}"))
+
+
+def _read_file(repository: Path, path: str, *, head: str = "") -> bytes:
+    document = (repository / path).read_bytes()
+    if head and document != _git_file(repository, head, path):
+        raise AlignmentError(f"head {path} does not match the checked-out source")
+    return document
+
+
+def _candidate_base(repository: Path, *, event: str, base: str, head: str) -> str:
+    if FULL_SHA.fullmatch(head) is None or head == ZERO_SHA:
+        raise AlignmentError("candidates require a nonzero full head SHA")
+    if event != "pull_request":
+        return base
+    # GitHub checks out the synthetic merge commit. Its first parent is the
+    # base it was built against, even when the event payload names an older SHA.
+    parents = _git_output(("-C", str(repository), "show", "-s", "--format=%P", head))
+    parent_shas = parents.decode("ascii").split()
+    if len(parent_shas) != PULL_REQUEST_MERGE_PARENTS:
+        raise AlignmentError("pull request head must be a two-parent merge commit")
+    return parent_shas[0]
+
+
 def _base_identity(
-    repository: Path, *, base: str, head: str, current_version: str
+    repository: Path, *, base: str, head: str, project: bytes
 ) -> BaseIdentity:
     if (
         FULL_SHA.fullmatch(base) is None
@@ -829,74 +561,102 @@ def _base_identity(
         raise AlignmentError(
             "pending transitions require nonzero full base and head SHAs"
         )
-    previous = _git_output(("-C", str(repository), "show", f"{base}:pyproject.toml"))
-    reviewed_head = _git_output(
-        ("-C", str(repository), "show", f"{head}:pyproject.toml")
-    )
-    if (
-        parse_project_version(reviewed_head, label="head pyproject.toml")
-        != current_version
-    ):
+    previous = _git_file(repository, base, "pyproject.toml")
+    reviewed_head = _git_file(repository, head, "pyproject.toml")
+    if reviewed_head != project:
         raise AlignmentError(
-            "head project.version does not match the checked-out source"
+            "head pyproject.toml does not match the checked-out source"
         )
     base_version = parse_project_version(previous, label="base pyproject.toml")
-    attempt_retry = False
-    if base_version == current_version:
-        try:
-            attempt_retry = detect_transition(previous, reviewed_head) is not None
-        except ReleaseVersionError as error:
-            raise AlignmentError(str(error)) from error
+    try:
+        transition = detect_transition(previous, reviewed_head)
+    except ReleaseVersionError as error:
+        raise AlignmentError(str(error)) from error
     return BaseIdentity(
-        version=base_version, source_sha=base, attempt_retry=attempt_retry
+        version=base_version,
+        source_sha=base,
+        attempt_retry=transition is not None and transition.version == base_version,
     )
 
 
-def check_alignment(  # noqa: PLR0912, PLR0913 - explicit release transition cases and injectable surfaces
+def _compose_images(document: str) -> tuple[ComposeIdentity, ComposeIdentity | None]:
+    backend = parse_compose_identity(document)
+    frontend = (
+        parse_frontend_compose_identity(document)
+        if Version(backend.version) >= PAIRED_RELEASE_FIRST_VERSION
+        else None
+    )
+    return backend, frontend
+
+
+def _quickstart_pins(document: bytes) -> list[tuple[str, str]]:
+    # Receipt adoption requires standalone declarations with contiguous image references.
+    pins = []
+    continued = False
+    for line in document.decode("utf-8").splitlines():
+        if not continued and line.lstrip().startswith("#"):
+            continue
+        if not continued and (match := QUICKSTART_PIN.fullmatch(line)):
+            pins.append((match[1], match[2]))
+        continued = line.endswith("\\")
+    return sorted(pins)
+
+
+def _check_quickstart_pins(
+    repository: Path, *, head: str, backend: ComposeIdentity, frontend: ComposeIdentity
+) -> dict[str, list[tuple[str, str]]]:
+    expected = [
+        (
+            "backend",
+            f"${{MARKWEAVE_CUTOVER_BACKEND_IMAGE:-{IMAGE_REPOSITORY}:{backend.version}@{backend.digest}}}",
+        ),
+        (
+            "frontend",
+            f"${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{FRONTEND_IMAGE_REPOSITORY}:{frontend.version}@{frontend.digest}}}",
+        ),
+    ]
+    pins = {
+        path: _quickstart_pins(_read_file(repository, path, head=head))
+        for path in QUICKSTARTS
+    }
+    for path, actual in pins.items():
+        if actual != expected:
+            raise AlignmentError(
+                f"{path} image pins do not match the public Compose pair"
+            )
+    return pins
+
+
+def _pin_changes(
+    repository: Path,
+    *,
+    base: str,
+    images: tuple[ComposeIdentity, ComposeIdentity | None],
+    quickstarts: Mapping[str, list[tuple[str, str]]],
+) -> bool:
+    previous = _git_file(repository, base, "compose.yaml")
+    return _compose_images(previous.decode("utf-8")) != images or any(
+        _quickstart_pins(_git_file(repository, base, path)) != pins
+        for path, pins in quickstarts.items()
+    )
+
+
+def check_alignment(  # noqa: PLR0913 - explicit release transition cases and injectable surfaces
     *,
     project_version: str,
     compose: ComposeIdentity,
     event_name: str,
     transport: Transport,
     base: BaseIdentity | None = None,
-    registry_credentials: RegistryCredentials | None = None,
     frontend: ComposeIdentity | None = None,
 ) -> str:
     """Verify normal alignment or the sole exact pending-release transition."""
     if event_name not in KNOWN_EVENTS:
         raise AlignmentError(f"unsupported GitHub event: {event_name}")
     pypi_version = _pypi_version(transport)
-    partial = (
-        PARTIAL_RELEASES.get(pypi_version) if pypi_version != compose.version else None
-    )
-    if partial is not None:
-        if event_name not in PENDING_EVENTS:
-            raise AlignmentError("this event requires fully published alignment")
-        _require_partial_transition(
-            transport,
-            partial=partial,
-            project_version=project_version,
-            compose=compose,
-            base=base,
-            credentials=registry_credentials,
-        )
-    elif pypi_version != compose.version:
-        if (
-            event_name not in PENDING_EVENTS
-            or pypi_version != SKIPPED_CONTAINER_PUBLIC_VERSION
-        ):
-            raise AlignmentError("latest PyPI version and Compose image tag differ")
-        _require_skipped_container_release(
-            transport,
-            project_version=project_version,
-            compose=compose,
-            base=base,
-            registry_credentials=registry_credentials,
-        )
-        return "pending-skipped-container"
-    if partial is not None:
-        state = partial.state
-    elif project_version != compose.version:
+    if pypi_version != compose.version:
+        raise AlignmentError("latest PyPI version and Compose image tag differ")
+    if project_version != compose.version:
         if event_name not in PENDING_EVENTS:
             raise AlignmentError("this event requires fully published alignment")
         version_transition = (
@@ -963,44 +723,67 @@ def main(arguments: Sequence[str] | None = None) -> int:
     """Check the current repository against fixed public release surfaces."""
     options = _arguments(arguments)
     try:
-        project_version = parse_project_version(
-            (options.repository / "pyproject.toml").read_bytes()
-        )
-        compose = parse_compose_identity(
-            (options.repository / "compose.yaml").read_text(encoding="utf-8")
-        )
-        frontend = None
-        if Version(compose.version) >= PAIRED_RELEASE_FIRST_VERSION:
-            frontend = parse_frontend_compose_identity(
-                (options.repository / "compose.yaml").read_text(encoding="utf-8")
+        candidate = options.event_name in CANDIDATE_EVENTS
+        base_sha = (
+            _candidate_base(
+                options.repository,
+                event=options.event_name,
+                base=options.base,
+                head=options.head,
             )
+            if candidate
+            else options.base
+        )
+        project = (options.repository / "pyproject.toml").read_bytes()
+        project_version = parse_project_version(project)
+        head = options.head if candidate else ""
+        images = _compose_images(
+            _read_file(options.repository, "compose.yaml", head=head).decode("utf-8")
+        )
+        compose, frontend = images
+        pending = project_version != compose.version
         base = None
-        if project_version != compose.version:
+        if pending or candidate:
             if options.event_name not in PENDING_EVENTS:
                 raise AlignmentError("this event requires fully published alignment")
             base = _base_identity(
                 options.repository,
-                base=options.base,
+                base=base_sha,
                 head=options.head,
-                current_version=project_version,
+                project=project,
             )
-        username = os.environ.get("GHCR_USERNAME") or None
-        token = os.environ.get("GHCR_TOKEN") or None
-        registry_credentials = None
-        if username is not None or token is not None:
-            if username is None or token is None:
-                raise AlignmentError("GHCR fallback credentials are incomplete")
-            registry_credentials = RegistryCredentials(username=username, token=token)
+        quickstarts = (
+            _check_quickstart_pins(
+                options.repository, head=head, backend=compose, frontend=frontend
+            )
+            if frontend is not None
+            else {}
+        )
+        if base is not None and candidate:
+            release_changed = base.version != project_version or base.attempt_retry
+            if not release_changed and not _pin_changes(
+                options.repository,
+                base=base.source_sha,
+                images=images,
+                quickstarts=quickstarts,
+            ):
+                if pending:
+                    raise AlignmentError("adopt published images before other changes")
+                print(
+                    "public release alignment: skipped (no release or image pin changes)"
+                )
+                return 0
         state = check_alignment(
             project_version=project_version,
             compose=compose,
             event_name=options.event_name,
-            transport=UrlLibTransport(github_token=token),
-            base=base,
-            registry_credentials=registry_credentials,
+            transport=UrlLibTransport(
+                github_token=os.environ.get("GITHUB_API_TOKEN") or None
+            ),
+            base=base if pending else None,
             frontend=frontend,
         )
-    except (AlignmentError, OSError) as error:
+    except (AlignmentError, OSError, UnicodeDecodeError) as error:
         print(f"public release alignment failed: {error}", file=sys.stderr)
         return 1
     print(f"public release alignment: {state}")
