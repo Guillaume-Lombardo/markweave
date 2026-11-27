@@ -1,9 +1,12 @@
-"""Exercise confirmation and resizing against the deployed rootless images."""
+"""Exercise forward upload limits against the deployed rootless images."""
 
+import http.client
 import io
 import json
 import os
 import zipfile
+from contextlib import ExitStack
+from urllib.parse import urlsplit
 
 import pytest
 from PIL import Image
@@ -89,3 +92,84 @@ def test_confirmed_archive_and_resized_docx() -> None:
         and any(size["actual_bytes"] == len(archive) for size in entry["sizes"])
         for entry in json.loads(audit.body)
     )
+
+
+def test_forward_upload_saturation_rejects_before_reading_and_allows_retry() -> None:
+    base_url = os.environ["MARKWEAVE_E2E_CONVERSION_URL"]
+    origin = urlsplit(base_url)
+    assert origin.scheme == "http"
+    assert origin.hostname is not None
+    client = ServiceClient(base_url)
+    login = client.request(
+        "POST",
+        "/api/v1/login",
+        body=b'{"username":"e2e-admin","password":"e2e-admin-password"}',
+        content_type="application/json",
+    )
+    expect(login, 200, "sign in for concurrent forward uploads")
+    cookie = next(
+        raw.split(";", 1)[0]
+        for raw in login.set_cookies
+        if raw.startswith("md_converter_session=")
+    )
+    csrf = decode_object(login, "read upload session")["csrf_token"]
+    body, content_type = multipart(
+        [("output", "docx")], [("source", "capacity.md", b"# Upload capacity")]
+    )
+    path = "/api/v1/conversions"
+    before = decode_object(client.request("GET", path), "list jobs before upload")
+    before_audit = client.request("GET", "/api/v1/audit")
+    expect(before_audit, 200, "read audit before upload")
+
+    with ExitStack() as connections:
+        pending = []
+        for _ in range(4):
+            connection = http.client.HTTPConnection(
+                origin.hostname, origin.port, timeout=10
+            )
+            connections.callback(connection.close)
+            connection.putrequest("POST", path)
+            connection.putheader("Cookie", cookie)
+            connection.putheader("X-CSRF-Token", csrf)
+            connection.putheader("Content-Type", content_type)
+            connection.putheader("Content-Length", str(len(body)))
+            connection.putheader("Expect", "100-continue")
+            connection.endheaders()
+            assert connection.sock is not None
+            # Uvicorn acknowledges only when the application first reads the body.
+            with connection.sock.makefile("rb") as stream:
+                assert stream.readline().split()[:2] == [b"HTTP/1.1", b"100"]
+                assert stream.readline() == b"\r\n"
+            pending.append(connection)
+
+        rejected = client.request(
+            "POST",
+            path,
+            body=body,
+            content_type=content_type,
+            headers={"X-CSRF-Token": csrf},
+        )
+        expect(rejected, 503, "forward upload saturation")
+        assert error_payload(rejected)["code"] == "CONVERSION_UPLOAD_CAPACITY_EXCEEDED"
+        assert rejected.headers["retry-after"] == "1"
+        assert (
+            decode_object(client.request("GET", path), "list jobs at capacity")["total"]
+            == before["total"]
+        )
+        assert client.request("GET", "/api/v1/audit").body == before_audit.body
+
+        first = pending[0]
+        first.send(body)
+        with first.getresponse() as admitted:
+            assert admitted.status == 202
+            admitted.read()
+        retried = client.request(
+            "POST",
+            path,
+            body=body,
+            content_type=content_type,
+            headers={"X-CSRF-Token": csrf},
+        )
+        expect(retried, 202, "retry forward upload after a slot is released")
+        finished = wait_for_job(client, retried.headers["location"])
+        assert finished["state"] == "succeeded"

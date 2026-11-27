@@ -2,10 +2,12 @@
 
 from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime
+from threading import BoundedSemaphore
 from typing import Annotated, Any
 from urllib.parse import quote
 from uuid import UUID
 
+from anyio import CancelScope, create_task_group
 from fastapi import (
     APIRouter,
     Depends,
@@ -32,7 +34,12 @@ from markweave.conversion.size_policy import (
     require_size_confirmation,
 )
 from markweave.http.dependencies import HttpDependencies
-from markweave.http.errors import ConversionRequestTooLarge, error_responses
+from markweave.http.errors import (
+    ConversionRequestTooLarge,
+    ConversionUploadCapacityExceeded,
+    capacity_error_responses,
+    error_responses,
+)
 from markweave.http.responses import conversion_response, template_response
 from markweave.http.schemas import (
     ConversionOptionsResponse,
@@ -64,6 +71,8 @@ _RESULT_EXTENSIONS = {
 
 
 def _upload_route(dependencies: HttpDependencies) -> type[APIRoute]:
+    slots = BoundedSemaphore(dependencies.settings.conversion_upload_max_in_flight)
+
     class ConversionUploadRoute(APIRoute):
         def get_route_handler(
             self,
@@ -98,7 +107,35 @@ def _upload_route(dependencies: HttpDependencies) -> type[APIRoute]:
                         raise ConversionRequestTooLarge
                     return message
 
-                return await handler(Request(request.scope, receive))
+                if not slots.acquire(blocking=False):
+                    raise ConversionUploadCapacityExceeded
+                try:
+                    bounded_request = Request(request.scope, receive)
+                    outcome: Response | Exception | None = None
+
+                    async def process_upload() -> None:
+                        nonlocal outcome
+                        try:
+                            outcome = await handler(bounded_request)
+                        except Exception as error:
+                            outcome = error
+                        finally:
+                            # FastAPI also closes parsed forms after routing. Close
+                            # here so spools are gone before returning the slot.
+                            with CancelScope(shield=True):
+                                await bounded_request.close()
+
+                    # A server cancellation must wait for any running spool I/O
+                    # or scanner thread to finish before releasing its slot.
+                    async with create_task_group() as tasks:
+                        tasks.start_soon(process_upload)
+                    if isinstance(outcome, Exception):
+                        raise outcome
+                    if outcome is None:
+                        raise RuntimeError("Forward upload ended without a response")
+                    return outcome
+                finally:
+                    slots.release()
 
             return handle_upload
 
@@ -283,7 +320,7 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
         response_model=ConversionResponse,
         status_code=status.HTTP_202_ACCEPTED,
         tags=["conversions"],
-        responses=error_responses(401, 403, 409, 413, 422, 429, 503),
+        responses=capacity_error_responses(401, 403, 409, 413, 422, 429, 503),
     )
 
     @router.get(

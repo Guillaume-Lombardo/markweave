@@ -142,6 +142,7 @@ class Settings(ConversionLimitSettings):
     public_origin: AnyHttpUrl | None = None
     insecure_evaluation_mode: bool = False
     conversion_request_max_bytes: int = Field(gt=0)
+    conversion_upload_max_in_flight: int = Field(default=4, gt=0)
     reversion_upload_max_bytes: int | None = Field(default=None, gt=0)
     reversion_request_max_bytes: int | None = Field(default=None, gt=0)
     reversion_retry_after_seconds: int | None = Field(default=None, gt=0)

@@ -7,6 +7,7 @@ import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import Event
 from typing import Any
 from uuid import uuid4
 
@@ -1125,20 +1126,24 @@ def test_conversion_body_is_bounded_before_authentication_and_multipart_parsing(
     auth.authenticate.assert_not_called()
 
 
-def _conversion_asgi_request(
-    client: TestClient, receive, send, extra_headers=()
-) -> None:
-    scope = {
+def _conversion_scope(extra_headers=()) -> dict:
+    return {
         "type": "http",
         "method": "POST",
         "scheme": "https",
         "path": "/api/v1/conversions",
+        "query_string": b"",
         "headers": [
             (b"content-type", b"multipart/form-data; boundary=private"),
             *extra_headers,
         ],
     }
-    asyncio.run(client.app(scope, receive, send))
+
+
+def _conversion_asgi_request(
+    client: TestClient, receive, send, extra_headers=()
+) -> None:
+    asyncio.run(client.app(_conversion_scope(extra_headers), receive, send))
 
 
 @pytest.mark.unit
@@ -1213,6 +1218,99 @@ def test_conversion_counts_stream_bytes_and_closes_partial_file(
     assert json.loads(send.await_args_list[1].args[0]["body"])["error"]["code"] == (
         "CONVERSION_REQUEST_TOO_LARGE"
     )
+
+
+@pytest.mark.unit
+def test_conversion_capacity_survives_request_cancellation_during_scan(
+    mocker: MockerFixture,
+) -> None:
+    finish_scan = Event()
+    active_scans = [Event() for _ in range(4)]
+    scans = iter(active_scans)
+
+    def scan(_content: bytes) -> None:
+        started = next(scans, None)
+        if started is not None:
+            started.set()
+            assert finish_scan.wait(timeout=10)
+
+    scanner = mocker.Mock(spec=UploadScanner, scan=scan)
+    client, _, _, _ = isolated_client(mocker, scanner=scanner)
+    client.app.state.components.jobs.submit.return_value = job(), False
+    body = (
+        b'--private\r\nContent-Disposition: form-data; name="output"\r\n\r\ndocx\r\n'
+        b'--private\r\nContent-Disposition: form-data; name="source"; filename="a.md"'
+        b"\r\n\r\n# Text\r\n--private--\r\n"
+    )
+
+    async def submit():
+        receive = mocker.AsyncMock(return_value={"type": "http.request", "body": body})
+        send = mocker.AsyncMock()
+        await client.app(_conversion_scope(), receive, send)
+        return send.await_args_list[0].args[0]["status"]
+
+    async def exercise() -> None:
+        tasks = [asyncio.create_task(submit()) for _ in active_scans]
+        try:
+            for started in active_scans:
+                assert await asyncio.to_thread(started.wait, 5)
+            tasks[0].cancel()
+            assert await submit() == 503
+        finally:
+            finish_scan.set()
+            outcomes = await asyncio.gather(*tasks, return_exceptions=True)
+        assert isinstance(outcomes[0], asyncio.CancelledError)
+        assert outcomes[1:] == [202, 202, 202]
+        assert await submit() == 202
+
+    asyncio.run(exercise())
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("cancel", [False, True])
+def test_conversion_releases_spooled_upload_on_disconnect_or_cancellation(
+    mocker: MockerFixture, cancel: bool
+) -> None:
+    scanner = mocker.Mock(spec=UploadScanner)
+    client, _, _, _ = isolated_client(mocker, scanner=scanner)
+    spool = mocker.spy(sys.modules["starlette.formparsers"], "SpooledTemporaryFile")
+    part = b'--private\r\nContent-Disposition: form-data; name="source"; filename="a.md"\r\n\r\n'
+
+    async def exercise() -> None:
+        receiving = asyncio.Event()
+        stop = asyncio.Event()
+        send = mocker.AsyncMock()
+
+        async def receive():
+            if not receiving.is_set():
+                receiving.set()
+                return {
+                    "type": "http.request",
+                    "body": part + b"x" * 2_000_000,
+                    "more_body": True,
+                }
+            stop.set()
+            if cancel:
+                await asyncio.Future()
+            return {"type": "http.disconnect"}
+
+        for _ in range(5):
+            receiving.clear()
+            stop.clear()
+            upload = asyncio.create_task(client.app(_conversion_scope(), receive, send))
+            await asyncio.wait_for(stop.wait(), timeout=5)
+            assert spool.spy_return is not None
+            if cancel:
+                upload.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await upload
+            else:
+                await upload
+            assert spool.spy_return.closed
+        assert spool.call_count == 5
+        scanner.scan.assert_not_called()
+
+    asyncio.run(exercise())
 
 
 @pytest.mark.unit

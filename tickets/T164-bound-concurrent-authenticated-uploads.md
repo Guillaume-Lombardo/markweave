@@ -1,0 +1,42 @@
+---
+ticket: T164
+linear_id: G1L-856
+linear_url: https://linear.app/g1lom/issue/G1L-856
+status: In Progress
+priority: Medium
+project: Markdown to DOCX and PDF Converter
+---
+
+# T164 - Bound concurrent authenticated uploads
+
+## Objective
+
+Bound API memory, multipart spool space, and scanner use before forward-conversion jobs reach
+persistent quota checks.
+
+## Acceptance criteria
+
+- After authentication and CSRF validation, acquire one of a configurable number of per-process
+  upload slots before reading the request body. Reject saturation with a documented HTTP 503 and
+  `Retry-After`, without creating a spool, job, or audit record.
+- Release capacity after success, validation or scanner failure, disconnect, and cancellation.
+  Keep a slot occupied while its scanner or spool I/O is still running.
+- Measure memory and spool use with concurrent authenticated uploads. Document the default and
+  verify that it supports the quickstart and final-image workflows.
+- Cover admission and rejection in unit, integration, and final rootless-image tests. Pass the
+  canonical checks, changed-line coverage of at least 90%, and the hosted CI gate.
+- Document configuration, resource policy, the API error, and the Unreleased changelog. Update
+  the OpenAPI artifacts.
+
+## Dependencies
+
+T163 (G1L-854) authenticated streaming and per-upload hard ceilings, and T18 (G1L-328) resource
+budgets.
+
+## Progress
+
+- 2026-11-27: Started implementation on `feat/t164-global-upload-budget`.
+
+## Synchronization
+
+Keep status, scope, acceptance criteria, dependencies, and progress aligned with G1L-856.

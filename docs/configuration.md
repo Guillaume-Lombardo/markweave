@@ -80,6 +80,7 @@ row and its immutable audits in database backup, restore, and rollback procedure
 | `MARKWEAVE_CONVERSION_UPLOAD_MAX_BYTES` | Required positive integer | Standard forward upload limit |
 | `MARKWEAVE_CONVERSION_UPLOAD_HARD_MAX_BYTES` | Optional, defaults to four times the standard upload limit | Absolute forward upload ceiling, at least the standard limit |
 | `MARKWEAVE_CONVERSION_REQUEST_MAX_BYTES` | Required positive integer | Must exceed the standard upload limit. The difference is the multipart overhead added to the effective hard upload ceiling |
+| `MARKWEAVE_CONVERSION_UPLOAD_MAX_IN_FLIGHT` | Positive integer, defaults to 4 | Shared forward-upload slots per API process, from authenticated multipart reading through job submission |
 | `MARKWEAVE_CONVERSION_MAX_DECOMPRESSED_BYTES` | Required positive integer | Standard uncompressed archive total and absolute limit for each ZIP member |
 | `MARKWEAVE_CONVERSION_HARD_MAX_DECOMPRESSED_BYTES` | Optional, defaults to four times the standard total | Absolute uncompressed archive total, at least the standard limit |
 | `MARKWEAVE_CONVERSION_LARGE_ARCHIVE_OVERRIDE` | Boolean, defaults to `true` | Set to `false` to use the standard limits as the hard ceilings |

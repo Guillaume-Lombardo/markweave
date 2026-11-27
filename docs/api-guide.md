@@ -43,6 +43,9 @@ An `Idempotency-Key` header makes retries owner-scoped and payload-sensitive. Re
 same canonical request returns the existing submission; reusing it with different input is a
 conflict. A successful new submission returns `202 Accepted`, a `Location` header for the job, and
 `Retry-After` guidance.
+When the API process runs out of forward-upload slots, it returns HTTP 503 with
+`CONVERSION_UPLOAD_CAPACITY_EXCEEDED` and `Retry-After` in seconds. The server has not read the
+body or reserved a job. Retry after that interval with the same payload and idempotency key.
 The response `template_mode` is `pandoc-default` or `versioned`; template identifiers are `null` in
 default mode.
 

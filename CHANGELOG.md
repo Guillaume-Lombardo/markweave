@@ -22,6 +22,11 @@ private reporting, and the [support policy](SUPPORT.md) for help with a publishe
 - The Compose quickstarts and bundled local conversion example now allow up to 50 pages per
   PDF, up from 5.
 
+### Security
+
+- Each API process limits concurrent authenticated forward-conversion uploads before reading
+  multipart data. Saturated requests return HTTP 503 with `Retry-After` and leave no job or spool.
+
 <a id="release-0-9-0"></a>
 
 ## [0.9.0] - 2026-11-27

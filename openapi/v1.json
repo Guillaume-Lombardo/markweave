@@ -23230,6 +23230,11 @@
             },
             "description": "The service is not ready",
             "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              },
               "X-Correlation-ID": {
                 "description": "Server-generated request correlation identifier.",
                 "schema": {

@@ -115,7 +115,7 @@ def error_responses(*status_codes: int) -> dict[int | str, dict[str, Any]]:
 
 
 def capacity_error_responses(*status_codes: int) -> dict[int | str, dict[str, Any]]:
-    """Document the retry header on Composer routes with model-call capacity."""
+    """Document the retry header on routes with a service capacity limit."""
 
     responses = error_responses(*status_codes)
     if status.HTTP_503_SERVICE_UNAVAILABLE in responses:
@@ -133,6 +133,10 @@ class ConversionRequestTooLarge(HTTPException):
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail="The conversion request is too large.",
         )
+
+
+class ConversionUploadCapacityExceeded(Exception):
+    """The API process has no free forward-upload slot."""
 
 
 def install_error_handlers(app: FastAPI) -> None:
@@ -554,6 +558,23 @@ def install_error_handlers(app: FastAPI) -> None:
                 "error": {
                     "code": "UPLOAD_SCANNER_UNAVAILABLE",
                     "message": "Upload malware scanning is unavailable.",
+                }
+            },
+        )
+
+    @app.exception_handler(ConversionUploadCapacityExceeded)
+    def conversion_upload_capacity_handler(
+        request: Request, _error: ConversionUploadCapacityExceeded
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            headers={
+                "Retry-After": str(request.app.state.conversion_retry_after_seconds)
+            },
+            content={
+                "error": {
+                    "code": "CONVERSION_UPLOAD_CAPACITY_EXCEEDED",
+                    "message": "Forward upload capacity is exhausted.",
                 }
             },
         )

@@ -68,6 +68,7 @@ def test_security_defaults_and_secret_redaction() -> None:
     assert settings.malware_scanning_mode is MalwareScanningMode.CLAMAV
     assert settings.public_origin is None
     assert settings.insecure_evaluation_mode is False
+    assert settings.conversion_upload_max_in_flight == 4
     assert settings.reversion_upload_max_bytes is None
     assert settings.reversion_request_max_bytes is None
     assert settings.reversion_retry_after_seconds is None
@@ -371,6 +372,7 @@ def test_public_origin_rejects_non_origin_urls(public_origin: str) -> None:
         {"initial_admin_password": ""},
         {"session_token_bytes": 15},
         {"conversion_upload_max_bytes": 0},
+        {"conversion_upload_max_in_flight": 0},
         {"conversion_request_max_bytes": 1_000_000},
         {"conversion_retry_after_seconds": 0},
         {"conversion_mermaid_max_total_source_bytes": 99_999},
