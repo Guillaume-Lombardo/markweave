@@ -45,6 +45,8 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
   publisher only after the first successful release from the renamed repository.
 
 - 2026-11-26: The repository was renamed on 2026-11-26. #362 merged as fac2dda and the main CI on fac2dda (run 45728741404) passed. The second PyPI Trusted Publisher was added by the owner. Remaining before Done: the first successful release from Guillaume-Lombardo/markweave, then removal of the old PyPI publisher.
+- 2026-11-27: 0.9.0 is the first release prepared from the renamed repository. Publication
+  and verification are pending.
 
 ## Synchronization
 
