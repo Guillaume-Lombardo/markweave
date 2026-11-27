@@ -405,8 +405,11 @@ def _changed_inputs(
             previous["scripts/quickstart.sh"] = quickstart.replace(
                 REGISTRY_DIGEST.encode(), other_digest
             )
-        case "quickstart-continuation":
-            current["scripts/quickstart.sh"] = quickstart.replace(b"@", b"@\\\n", 1)
+        case "quickstart-continuation" | "quickstart-continuation-before-pin":
+            current["scripts/quickstart.sh"] = {
+                "quickstart-continuation": quickstart.replace(b"@", b"@\\\n", 1),
+                "quickstart-continuation-before-pin": b": \\\n" + quickstart,
+            }[change]
         case "adoption":
             previous["compose.yaml"] = compose.replace(b":0.8.1@", b":0.8.0@")
         case "awaiting-adoption":
@@ -441,6 +444,12 @@ def _changed_inputs(
         (
             "pull_request",
             "quickstart-continuation",
+            "do not match the public Compose pair",
+            False,
+        ),
+        (
+            "pull_request",
+            "quickstart-continuation-before-pin",
             "do not match the public Compose pair",
             False,
         ),

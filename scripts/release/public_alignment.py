@@ -73,8 +73,8 @@ OCI_SCHEMA_VERSION = 2
 CUTOVER_FRONTEND_ROLES = ("frontend", "router")
 QUICKSTARTS = ("scripts/quickstart.sh", "scripts/quickstart-simple.sh")
 QUICKSTART_PIN = re.compile(
-    r'(?m)^[ \t]*readonly[ \t]+cutover_(backend|frontend)_image="([^"\n]+)"'
-    r"(?:[ \t]+#[^\n]*)?[ \t]*$"
+    r'[ \t]*readonly[ \t]+cutover_(backend|frontend)_image="([^"\n]+)"'
+    r"(?:[ \t]+#[^\n]*)?[ \t]*"
 )
 
 
@@ -590,8 +590,16 @@ def _compose_images(document: str) -> tuple[ComposeIdentity, ComposeIdentity | N
 
 
 def _quickstart_pins(document: bytes) -> list[tuple[str, str]]:
-    # Receipt adoption replaces contiguous image references in these declarations.
-    return sorted(QUICKSTART_PIN.findall(document.decode("utf-8")))
+    # Receipt adoption requires standalone declarations with contiguous image references.
+    pins = []
+    continued = False
+    for line in document.decode("utf-8").splitlines():
+        if not continued and line.lstrip().startswith("#"):
+            continue
+        if not continued and (match := QUICKSTART_PIN.fullmatch(line)):
+            pins.append((match[1], match[2]))
+        continued = line.endswith("\\")
+    return sorted(pins)
 
 
 def _check_quickstart_pins(

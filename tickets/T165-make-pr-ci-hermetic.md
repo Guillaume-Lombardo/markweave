@@ -39,3 +39,5 @@ adoption gates. Restore main CI alerts after a repository rename.
 - 2026-11-27: Rebased after 0.9.0 image adoption. The pull request check compares the synthetic
   merge commit with its first parent and verifies the committed pins against the checked-out
   Compose file and both quickstarts. Each quickstart must match the Compose pair.
+- 2026-11-27: Added a real Git integration test for the stale event base during a pending release.
+  Documented the standalone quickstart declaration format shared with receipt adoption.
