@@ -382,15 +382,8 @@ export function ConversionWorkspace({
                   type="file"
                 />
               </label>
-              {presentation ? (
+              {presentation && (
                 <PresentationControls controller={controller} state={state} />
-              ) : (
-                <DocumentOptionFields
-                  disabled={state.submitting}
-                  inheritLabel="Use template default"
-                  onChange={(options) => controller.setDocumentOptions(options)}
-                  options={documentOptions}
-                />
               )}
               <fieldset className="space-y-2">
                 <legend className="font-semibold">Output</legend>
@@ -483,6 +476,14 @@ export function ConversionWorkspace({
                   ))}
                 </ul>
               </section>
+              {!presentation && (
+                <DocumentOptionFields
+                  disabled={state.submitting}
+                  inheritLabel="Use template default"
+                  onChange={(options) => controller.setDocumentOptions(options)}
+                  options={documentOptions}
+                />
+              )}
               {state.archiveConfirmation && (
                 <p role="status">{state.archiveConfirmation}</p>
               )}
