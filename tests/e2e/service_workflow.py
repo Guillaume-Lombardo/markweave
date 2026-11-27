@@ -28,6 +28,8 @@ from typing import Any
 from urllib.parse import urlsplit
 from xml.etree import ElementTree
 
+from pypdf import PdfReader
+
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
@@ -667,11 +669,23 @@ def retain_conversion_artifact(
     os.chmod(path, 0o600)
 
 
+def validate_pdf(content: bytes, output: str, page_range: range | None) -> None:
+    if not content.startswith(b"%PDF-"):
+        raise WorkflowFailure(f"download {output}: invalid PDF")
+    if page_range is not None:
+        page_count = len(PdfReader(io.BytesIO(content)).pages)
+        if page_count not in page_range:
+            raise WorkflowFailure(f"quickstart PDF: unexpected page count {page_count}")
+        print(f"Quickstart PDF contains {page_count} pages.")
+
+
 def validate_result(  # noqa: PLR0912 - one final artifact contract covers all outputs
     client: ServiceClient,
     job: dict[str, Any],
     output: str,
     artifact_dir: Path | None = None,
+    *,
+    pdf_page_range: range | None = None,
 ) -> None:
     path = f"/api/v1/conversions/{required_string(job, 'id', 'result')}/result"
     result = client.request("GET", path)
@@ -706,8 +720,7 @@ def validate_result(  # noqa: PLR0912 - one final artifact contract covers all o
             raise WorkflowFailure("BOTH result: invalid ZIP") from error
     else:
         pdf = result.body
-    if not pdf.startswith(b"%PDF-"):
-        raise WorkflowFailure(f"download {output}: invalid PDF")
+    validate_pdf(pdf, output, pdf_page_range)
     manifest_result = client.request("GET", f"{path}/manifest")
     expect(manifest_result, 200, f"download {output} manifest")
     manifest = decode_object(manifest_result, f"download {output} manifest")
@@ -1663,11 +1676,21 @@ def checkpoint(arguments: argparse.Namespace) -> None:
     client.login(arguments.admin_username, arguments.admin_password)
     template = create_template(client, arguments.template, run_id=uuid.uuid4().hex[:10])
     source = b"# Restart recovery checkpoint\n\nDurable final-image job.\n"
+    pdf_page_range = None
+    if arguments.quickstart_pdf:
+        source = multipage_markdown(120)
+        pdf_page_range = range(6, 51)
     _job, location = submit_conversion(client, template, arguments.output, source)
     terminal = wait_for_job(client, location)
     if terminal.get("state") != "succeeded":
         raise WorkflowFailure("checkpoint: conversion did not succeed")
-    validate_result(client, terminal, arguments.output, arguments.artifact_dir)
+    validate_result(
+        client,
+        terminal,
+        arguments.output,
+        arguments.artifact_dir,
+        pdf_page_range=pdf_page_range,
+    )
     require_template_audit(client, str(template["id"]))
     state = state_payload(
         profile=arguments.profile,
@@ -1992,6 +2015,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--artifact-dir", type=Path)
     parser.add_argument("--output", choices=("docx", "pdf", "both"), default="docx")
     parser.add_argument(
+        "--quickstart-pdf",
+        action="store_true",
+        help="Use a multipage source and verify the quickstart PDF page range.",
+    )
+    parser.add_argument(
         "--policy-evidence",
         action="store_true",
         help="Persist T59 policy evidence in a source-built final-image checkpoint.",
@@ -2044,6 +2072,10 @@ def validate_arguments(
         parser.error("--state-file is required for checkpoint and recovery commands")
     if arguments.command == "exercise" and arguments.expiration_state_file is None:
         parser.error("--expiration-state-file is required for exercise")
+    if arguments.quickstart_pdf and (
+        arguments.command != "checkpoint" or arguments.output == "docx"
+    ):
+        parser.error("--quickstart-pdf requires a checkpoint with PDF output")
     if arguments.timeout_seconds <= 0:
         parser.error("--timeout-seconds must be positive")
     if arguments.command == "verify-login-origin" and arguments.login_origin is None:

@@ -32,9 +32,10 @@ for serverless conversion, and keep current delivery status in the project track
 
 - 2026-11-27: Started from the adopted 0.9.0 quickstart on
   `fix/t166-quickstart-defaults-docs`.
-- 2026-11-27: Raised the evaluation limit to 50 pages and added regression coverage for
-  Compose settings and bundled PDF conversion. Documented Linux isolation for local conversion
-  and removed the dated ticket table once the specification linked to the live tracker.
+- 2026-11-27: Raised the evaluation limit to 50 pages. Covered multipage PDF downloads through
+  the simple quickstart and multipage conversion in the bundled CLI. Documented Linux isolation
+  for local conversion and removed the dated ticket table once the specification linked to the
+  live tracker.
 
 ## Synchronization
 

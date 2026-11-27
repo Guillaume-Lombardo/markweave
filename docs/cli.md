@@ -137,7 +137,8 @@ allowed to access runtime or storage services directly.
 (product decision D1). It converts your own local Markdown or ZIP file on this host through the
 service's validation and document-engine adapters with the same `MARKWEAVE_*` limits, without an
 account, persistence, storage profile, or ClamAV. Run the host command on Linux with user and
-network namespaces and seccomp available, after [configuring the engines and limits](conversion-cli.md#configuration):
+network namespaces and seccomp available. First follow the
+[engine and limit configuration](conversion-cli.md#configuration).
 
 ```bash
 markweave convert doc.md --local --to docx,pdf -o out/

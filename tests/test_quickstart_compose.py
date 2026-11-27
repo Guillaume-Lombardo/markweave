@@ -1020,6 +1020,7 @@ def test_simple_compose_e2e_exercises_unprivileged_lifecycle_and_rollback() -> N
     assert runner.count("quickstart up") == 5
     assert runner.count("quickstart down") >= 2
     assert "tests.e2e.service_workflow checkpoint" in runner
+    assert "--quickstart-pdf" in runner
     assert "tests.e2e.service_workflow exercise-mermaid" in runner
     assert "verify_helper_service_stopped" in runner
     assert "podman-compose.sock" in runner

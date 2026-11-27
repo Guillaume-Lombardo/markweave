@@ -144,8 +144,9 @@ Local mode is meant for trusted input you own. It does not scan for malware.
 The engine launcher requires a Linux kernel and a runtime policy that lets it create private
 user and network namespaces and apply a seccomp filter. Use the
 [bundled image](#run-it-with-the-bundled-engines) in a Linux/AMD64 Podman environment on macOS.
-On a suitable Linux host, install the required engines, load the [settings below](#configuration),
-and create the output directory before running a host command:
+On a suitable Linux host, install `markweave[server]` and the required engines. Load the
+[local conversion settings](#configuration) and create the output directory before running a
+host command.
 
 ```text
 markweave convert doc.md --local --to docx,pdf --template template.docx -o out/

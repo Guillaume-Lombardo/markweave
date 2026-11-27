@@ -76,7 +76,7 @@ The `--local` mode converts your own file through the same validation, limits, a
 the service, without an account or upload. A host installation requires Linux with user and
 network namespaces and seccomp available to the engine launcher, plus the configured engines.
 Follow the [local settings instructions](docs/conversion-cli.md#configuration) and create `out/`
-before running the host command:
+before running the host command.
 
 ```bash
 markweave convert doc.md --local --to docx,pdf -o out/
