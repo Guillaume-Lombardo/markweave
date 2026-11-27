@@ -2,7 +2,7 @@
 ticket: T111
 linear_id: G1L-636
 linear_url: https://linear.app/g1lom/issue/G1L-636/t111-add-table-of-contents-section-numbering-and-page-breaks
-status: Backlog
+status: In Progress
 priority: High
 project: Markdown to DOCX and PDF Converter
 ---
@@ -36,6 +36,11 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
 
 - 2026-10-09: Created in Linear and mirrored here from the owner-accepted repository analysis.
   Not started.
+- 2026-11-27: Started after T89, T90, and T91 closed. Template document options are
+  resolved and frozen inside the existing job admission transaction.
+- 2026-11-27: Pinned Pandoc and LibreOffice tests verified the editable Word TOC field, numbered
+  headings, a real page break, and populated PDF entries with page numbers. Review follow-ups
+  cover explicit false overrides, an owner-only UNO socket directory, and legacy manifests.
 
 ## Synchronization
 

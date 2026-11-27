@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Protocol
 
 from markweave.conversion.archive import (
@@ -10,6 +11,7 @@ from markweave.conversion.archive import (
     ArchiveLimits,
     prepare_archive,
 )
+from markweave.conversion.document_options import DocumentOptions
 from markweave.conversion.images import ImageLimits
 from markweave.conversion.validation import (
     ApprovedMarkdown,
@@ -48,10 +50,13 @@ class DocxConversionService:
         markdown: str,
         reference_docx: bytes | None,
         *,
+        document_options: DocumentOptions | None = None,
         deadline_monotonic: float | None = None,
         cancellation_requested: Callable[[], bool] | None = None,
     ) -> bytes:
-        approved = validate_markdown(markdown)
+        approved = replace(
+            validate_markdown(markdown), document_options=document_options
+        )
         if deadline_monotonic is None and cancellation_requested is None:
             return self._converter.convert(approved, reference_docx)
         return self._converter.convert(
@@ -66,12 +71,15 @@ class DocxConversionService:
         document: ApprovedDocument,
         reference_docx: bytes | None,
         *,
+        document_options: DocumentOptions | None = None,
         deadline_monotonic: float | None = None,
         cancellation_requested: Callable[[], bool] | None = None,
     ) -> bytes:
         """Convert an already bounded package after binding every local image."""
 
-        approved = validate_document(document)
+        approved = replace(
+            validate_document(document), document_options=document_options
+        )
         if deadline_monotonic is None and cancellation_requested is None:
             return self._converter.convert(approved, reference_docx)
         return self._converter.convert(

@@ -26,6 +26,7 @@ from starlette.types import Message
 
 from markweave.auth.models import Role, User
 from markweave.conversion.archive import conversion_size_limits
+from markweave.conversion.document_options import MAX_TOC_DEPTH, DocumentOptions
 from markweave.conversion.errors import ConversionError
 from markweave.conversion.runtime_manifest import COMPONENT_VERSIONS
 from markweave.conversion.size_policy import (
@@ -254,6 +255,9 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
         idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
         presentation_dialect: Annotated[PresentationDialect | None, Form()] = None,
         slide_level: Annotated[int | None, Form(ge=1, le=6)] = None,
+        toc: Annotated[bool | None, Form()] = None,
+        toc_depth: Annotated[int | None, Form(ge=1, le=MAX_TOC_DEPTH)] = None,
+        number_sections: Annotated[bool | None, Form()] = None,
         allow_large_archive: Annotated[bool, Form()] = False,
         csrf_token: Annotated[str | None, Header(alias="X-CSRF-Token")] = None,
     ) -> ConversionResponse:
@@ -287,6 +291,15 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
                     source_filename=source_filename,
                     source_kind=source_kind,
                     size_override=size_override,
+                    document_options=(
+                        DocumentOptions(toc, toc_depth, number_sections)
+                        if not output.is_presentation
+                        or any(
+                            value is not None
+                            for value in (toc, toc_depth, number_sections)
+                        )
+                        else None
+                    ),
                     presentation_options=(
                         PresentationOptions(
                             presentation_dialect or PresentationDialect.AUTO,
@@ -436,7 +449,7 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
         tags=["conversions"],
         responses={
             200: {
-                "description": "Canonical PDF traceability manifest",
+                "description": "Canonical Word or PDF traceability manifest",
                 "content": {"application/json": {"schema": {"type": "object"}}},
             },
             **error_responses(401, 404, 409, 422, 503),

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from httpx import Response
 from pytest_mock import MockerFixture
 
 from markweave.app import create_app
@@ -194,6 +195,80 @@ def test_template_http_lifecycle_downloads_etags_and_authorization(
         )
         assert deleted.status_code == 204
         assert admin.get(f"/api/v1/templates/{template_id}").status_code == 404
+
+
+def test_document_defaults_freeze_on_submission_and_replay(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        token = _login(client, "admin", "admin-password")
+        headers = {"X-CSRF-Token": token}
+        created = client.post(
+            "/api/v1/templates",
+            headers=headers,
+            data={
+                "name": "Report",
+                "description": "Report structure",
+                "expected_fonts": ["Calibri", "Cambria", "Courier New"],
+                "toc": "true",
+                "toc_depth": "2",
+                "number_sections": "true",
+            },
+            files={"content": ("reference.docx", _docx())},
+        )
+        assert created.status_code == 201
+        template = created.json()
+        assert template["document_options"] == {
+            "toc": True,
+            "toc_depth": 2,
+            "number_sections": True,
+        }
+        form = {
+            "output": "docx",
+            "template_id": template["id"],
+            "template_version_id": template["current_version_id"],
+            "number_sections": "false",
+        }
+
+        def submit(options: dict[str, str], key: str) -> Response:
+            return client.post(
+                "/api/v1/conversions",
+                data=options,
+                files={"source": ("source.md", b"# Report")},
+                headers={**headers, "Idempotency-Key": key},
+            )
+
+        first = submit(form, "original")
+        assert first.status_code == 202
+        assert first.json()["document_options"] == {
+            "toc": True,
+            "toc_depth": 2,
+            "number_sections": False,
+        }
+        response = client.patch(
+            f"/api/v1/templates/{template['id']}",
+            json={
+                "name": "Report",
+                "description": "Changed defaults",
+                "document_options": {},
+            },
+            headers={**headers, "If-Match": created.headers["etag"]},
+        )
+        assert response.status_code == 200
+        assert response.json()["current_version_id"] == template["current_version_id"]
+        replay = submit(form, "original")
+        assert replay.status_code == 202
+        assert replay.json()["id"] == first.json()["id"]
+        assert replay.json()["document_options"] == first.json()["document_options"]
+        assert (
+            submit({**form, "number_sections": "true"}, "original").status_code == 409
+        )
+        assert submit({**form, "toc_depth": "7"}, "invalid-depth").status_code == 422
+        fresh = submit(form, "new")
+        assert fresh.status_code == 202
+        assert fresh.json()["document_options"] == {
+            "toc": False,
+            "toc_depth": 3,
+            "number_sections": False,
+        }
 
 
 def test_invalid_template_is_sanitized_and_never_published(tmp_path: Path) -> None:

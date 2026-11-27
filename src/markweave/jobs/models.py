@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID, uuid5
 
+from markweave.conversion.document_options import DocumentOptions
 from markweave.conversion.size_policy import SizeLimit
 from markweave.observability import require_correlation_id
 from markweave.presentations.models import PresentationOptions
@@ -173,6 +174,7 @@ class JobSubmission:
     source_sha256: str = "0" * SHA256_CHARACTERS
     source_size: int = 1
     presentation_options: PresentationOptions | None = None
+    document_options: DocumentOptions | None = None
     size_override: tuple[SizeLimit, ...] = ()
 
     def __post_init__(self) -> None:
@@ -185,6 +187,8 @@ class JobSubmission:
         _validate_template_pair(self.template_id, self.template_version_id)
         if self.presentation_options is not None and not self.output.is_presentation:
             raise ValueError("Presentation options require a PowerPoint output")
+        if self.document_options is not None and self.output.is_presentation:
+            raise ValueError("Document options require a Word or PDF output")
         if source_kind_for_filename(self.source_filename) is not self.source_kind:
             raise ValueError("Source filename and kind do not match")
         _validate_sha256(self.source_sha256)
@@ -231,6 +235,7 @@ class ConversionJob:
     source_size: int | None = None
     result_manifest_object_id: UUID | None = None
     presentation_options: PresentationOptions | None = None
+    document_options: DocumentOptions | None = None
     large_archive_confirmed: bool = False
     warnings: tuple[str, ...] = ()
 
@@ -245,6 +250,8 @@ class ConversionJob:
         _validate_template_pair(self.template_id, self.template_version_id)
         if self.presentation_options is not None and not self.output.is_presentation:
             raise ValueError("Presentation options require a PowerPoint output")
+        if self.document_options is not None and self.output.is_presentation:
+            raise ValueError("Document options require a Word or PDF output")
         self._validate_source()
         self._validate_lease()
         self._validate_result()
@@ -379,6 +386,7 @@ class JobRequest:
     source_filename: str = "source.md"
     source_kind: SourceKind = SourceKind.MARKDOWN
     presentation_options: PresentationOptions | None = None
+    document_options: DocumentOptions | None = None
     size_override: tuple[SizeLimit, ...] = ()
 
     def __post_init__(self) -> None:
@@ -387,6 +395,8 @@ class JobRequest:
         _validate_template_pair(self.template_id, self.template_version_id)
         if self.presentation_options is not None and not self.output.is_presentation:
             raise ValueError("Presentation options require a PowerPoint output")
+        if self.document_options is not None and self.output.is_presentation:
+            raise ValueError("Document options require a Word or PDF output")
         if not self.source:
             raise ValueError("Conversion source must not be empty")
         if source_kind_for_filename(self.source_filename) is not self.source_kind:

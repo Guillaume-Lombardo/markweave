@@ -133,6 +133,7 @@ def test_template_creation_always_derives_owner_from_actor(
         "description",
         "status",
         "kind",
+        "document_options",
     }
     created = service.create(actor, cast(TemplateCreate, forged_request))
 

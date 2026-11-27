@@ -12,7 +12,7 @@ import tempfile
 import time
 import zipfile
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
 
 from markweave.conversion.archive import ApprovedDocument
@@ -26,6 +26,8 @@ from markweave.conversion.validation import (
     ApprovedMarkdown,
     validate_document,
 )
+
+_PAGE_BREAK_FILTER = Path(__file__).resolve().with_name("page_breaks.lua")
 
 _REQUIRED_DOCX_PARTS = frozenset(
     {"[Content_Types].xml", "_rels/.rels", "word/document.xml"}
@@ -143,7 +145,7 @@ class PandocDocxConverter:
         try:
             result = self._convert_in_workspace(
                 Path(temporary.name),
-                validated,
+                replace(validated, document_options=markdown.document_options),
                 reference_docx,
                 deadline_monotonic=deadline_monotonic,
                 cancellation_requested=cancellation_requested,
@@ -189,6 +191,11 @@ class PandocDocxConverter:
                 reference_path.write_bytes(reference_docx)
         except OSError:
             raise self._workspace_failure() from None
+        structure_arguments = []
+        if self.output_format == "docx":
+            structure_arguments.append(f"--lua-filter={_PAGE_BREAK_FILTER}")
+            if markdown.document_options is not None:
+                structure_arguments.extend(markdown.document_options.pandoc_arguments())
         arguments = [
             self._config.executable,
             f"--from={PANDOC_READER}",
@@ -196,6 +203,7 @@ class PandocDocxConverter:
             f"--resource-path={markdown_path.parent}",
             f"--output={output_path}",
             *self.extra_arguments,
+            *structure_arguments,
             str(markdown_path),
         ]
         if reference_docx is not None:

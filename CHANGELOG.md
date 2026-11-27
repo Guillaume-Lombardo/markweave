@@ -12,6 +12,12 @@ private reporting, and the [support policy](SUPPORT.md) for help with a publishe
 
 ## [Unreleased]
 
+### Added
+
+- Word and PDF conversions support tables of contents, numbered sections, and explicit page
+  breaks. Word templates can set defaults that individual browser, CLI, and API jobs can override.
+  The effective options are recorded in conversion manifests.
+
 ### Fixed
 
 - Distributed restore preserves retained conversions that reference superseded template versions.

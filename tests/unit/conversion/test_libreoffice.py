@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 import signal
+import stat
 import zipfile
 from collections.abc import Callable
 from dataclasses import replace
@@ -24,6 +25,7 @@ from pypdf.generic import (
 from pytest_mock import MockerFixture
 
 from markweave.conversion import libreoffice
+from markweave.conversion.document_options import DocumentOptions
 from markweave.conversion.engine_launcher import ENGINE_UNAVAILABLE_EXIT_STATUS
 from markweave.conversion.errors import ConversionError, ConversionErrorCode
 from markweave.conversion.libreoffice import (
@@ -60,11 +62,12 @@ TRACE = PdfTraceabilityContext(
 )
 
 
-def _docx() -> bytes:
+def _docx(document: str = "safe") -> bytes:
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w") as archive:
-        for name in ("[Content_Types].xml", "_rels/.rels", "word/document.xml"):
+        for name in ("[Content_Types].xml", "_rels/.rels"):
             archive.writestr(name, b"safe")
+        archive.writestr("word/document.xml", document)
     return output.getvalue()
 
 
@@ -119,6 +122,89 @@ def _successful_process(
     popen = mocker.patch.object(libreoffice.subprocess, "Popen", side_effect=start)
     mocker.patch.object(libreoffice, "_terminate_group")
     return process, popen
+
+
+TOC_DOCUMENT = (
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+    '<w:instrText>TOC \\o "1-2"</w:instrText></w:document>'
+)
+
+
+@pytest.mark.parametrize("bundled", [True, False])
+def test_pdf_index_export_uses_the_same_isolated_launcher(
+    tmp_path: Path, mocker: MockerFixture, bundled: bool
+) -> None:
+    soffice = tmp_path / "soffice"
+    interpreter = tmp_path / "python"
+    if bundled:
+        interpreter.touch()
+    mocker.patch.object(libreoffice, "_UNO_PIPE_BASES", (tmp_path,))
+    if not bundled:
+        mocker.patch.object(libreoffice.pwd, "getpwuid", side_effect=KeyError)
+    mocker.patch.object(libreoffice.shutil, "which", return_value=str(soffice))
+    _process, popen = _successful_process(mocker)
+    options = DocumentOptions(True, 2, False)
+
+    result = _converter(tmp_path).convert(
+        _docx(TOC_DOCUMENT), replace(TRACE, document_options=options)
+    )
+
+    argv = popen.call_args.args[0]
+    assert argv[-4:-1] == [
+        str(interpreter if bundled else Path("/usr/bin/python3")),
+        str(libreoffice._INDEX_EXPORT_SCRIPT),
+        str(soffice),
+    ]
+    assert argv[-1].startswith("markweave_") and argv[-1].endswith("/uno")
+    assert not list(tmp_path.glob("OSL_PIPE_*"))
+    assert "engine_launcher.py" in argv[3]
+    assert popen.call_args.kwargs["start_new_session"] is True
+    assert json.loads(result.manifest.canonical_json())["document_options"] == {
+        "toc": True,
+        "toc_depth": 2,
+        "number_sections": False,
+    }
+
+
+@pytest.mark.parametrize(
+    ("document", "expected"),
+    [
+        ("<document/>", ConversionErrorCode.INVALID_DOCX),
+        (
+            TOC_DOCUMENT.removesuffix("</w:document>") + "<broken",
+            ConversionErrorCode.INVALID_DOCX,
+        ),
+        (
+            "<!DOCTYPE bad [<!ENTITY e SYSTEM 'file:///etc/passwd'>]><bad>&e;</bad>",
+            ConversionErrorCode.INVALID_DOCX,
+        ),
+        (TOC_DOCUMENT, ConversionErrorCode.LIBREOFFICE_UNAVAILABLE),
+    ],
+)
+def test_pdf_index_export_rejects_invalid_fields_before_starting(
+    tmp_path: Path, mocker: MockerFixture, document: str, expected: ConversionErrorCode
+) -> None:
+    mocker.patch.object(libreoffice.shutil, "which", return_value=None)
+    popen = mocker.patch.object(libreoffice.subprocess, "Popen")
+    with pytest.raises(ConversionError) as failure:
+        _converter(tmp_path).convert(
+            _docx(document),
+            replace(TRACE, document_options=DocumentOptions(True, 2, False)),
+        )
+    assert failure.value.code is expected
+    popen.assert_not_called()
+
+
+def test_private_uno_pipe_directory_restricts_an_unregistered_uid(
+    tmp_path: Path, mocker: MockerFixture
+) -> None:
+    mocker.patch.object(libreoffice, "_UNO_PIPE_BASES", (tmp_path,))
+    mocker.patch.object(libreoffice.pwd, "getpwuid", side_effect=KeyError)
+    with libreoffice.ExitStack() as cleanup:
+        name = libreoffice._private_uno_pipe(cleanup)
+        directory = (tmp_path / f"OSL_PIPE_{name}").parent
+        assert stat.S_IMODE(directory.stat().st_mode) == 0o700
+    assert not directory.exists()
 
 
 @pytest.mark.parametrize(

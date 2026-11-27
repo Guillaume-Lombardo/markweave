@@ -23,9 +23,11 @@ from urllib.request import (
 )
 from uuid import UUID, uuid4
 
+from markweave.cli.commands.document_options import supplied_fields
 from markweave.cli.errors import CliError
 from markweave.cli.profiles import validate_service_url
 from markweave.cli.types import ConnectionProfile
+from markweave.conversion.document_options import DocumentOptions
 
 _MAX_JSON_BYTES = 1_048_576
 _DOWNLOAD_CHUNK_BYTES = 65_536
@@ -90,6 +92,7 @@ class ConversionHttpClient:
         presentation_dialect: str | None = None,
         slide_level: int | None = None,
         allow_large_archive: bool = False,
+        document_options: DocumentOptions | None = None,
     ) -> ConversionHttpResponse:
         """Submit one multipart conversion without revealing the local filename."""
         body, content_type = _multipart_body(
@@ -101,6 +104,7 @@ class ConversionHttpClient:
             presentation_dialect=presentation_dialect,
             slide_level=slide_level,
             allow_large_archive=allow_large_archive,
+            document_options=document_options,
         )
         headers = {"Content-Type": content_type}
         if idempotency_key is not None:
@@ -307,6 +311,7 @@ def _multipart_body(  # noqa: PLR0913 - explicit multipart API contract
     presentation_dialect: str | None = None,
     slide_level: int | None = None,
     allow_large_archive: bool = False,
+    document_options: DocumentOptions | None = None,
 ) -> tuple[bytes, str]:
     boundary = f"markweave-{uuid4().hex}"
     while boundary.encode("ascii") in source:
@@ -318,6 +323,10 @@ def _multipart_body(  # noqa: PLR0913 - explicit multipart API contract
         fields.append(("presentation_dialect", presentation_dialect))
     if slide_level is not None:
         fields.append(("slide_level", str(slide_level)))
+    fields.extend(
+        (name, str(value).lower())
+        for name, value in supplied_fields(document_options).items()
+    )
     if template_id is not None and template_version_id is not None:
         fields.extend(
             (("template_id", template_id), ("template_version_id", template_version_id))

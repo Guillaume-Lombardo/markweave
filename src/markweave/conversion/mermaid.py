@@ -14,7 +14,7 @@ import tempfile
 import time
 import unicodedata
 from collections.abc import Callable, Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import pairwise
 from pathlib import Path, PurePosixPath
 from typing import Protocol
@@ -356,7 +356,9 @@ def render_mermaid(  # noqa: PLR0913 - explicit rendering policy and cancellatio
         (*markdown.resources, *generated),
         image_limits,
     )
-    return validate_document(document)
+    return replace(
+        validate_document(document), document_options=markdown.document_options
+    )
 
 
 class MermaidPreprocessingConverter:

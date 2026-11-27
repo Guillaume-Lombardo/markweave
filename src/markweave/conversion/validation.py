@@ -12,6 +12,7 @@ from markdown_it.token import Token
 
 from markweave.conversion import image_references as _references
 from markweave.conversion.archive import ApprovedDocument, ApprovedResource
+from markweave.conversion.document_options import DocumentOptions
 from markweave.conversion.errors import ConversionError, validation_error
 from markweave.conversion.images import (
     SUPPORTED_IMAGE_SUFFIXES,
@@ -46,6 +47,7 @@ class ApprovedMarkdown:
     entrypoint: PurePosixPath = field(default_factory=lambda: PurePosixPath("input.md"))
     resources: tuple[ApprovedResource, ...] = ()
     image_limits: ImageLimits | None = None
+    document_options: DocumentOptions | None = None
 
 
 def _is_raw_attribute(value: str, *, complete: bool) -> bool:

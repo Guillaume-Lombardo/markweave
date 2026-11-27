@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as DatabaseSession
+from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.base import Executable
 
 from markweave.persistence.errors import PersistenceError
@@ -182,6 +183,7 @@ class SqlTemplateSelectionRepository(_SqlTemplateStore):
                 priority = case((TemplateRow.id == preferred_id, 0), else_=1)
                 selected = database.execute(
                     select(TemplateRow, source)
+                    .options(joinedload(TemplateRow.document_options))
                     .where(
                         TemplateRow.id.in_((preferred_id, fallback_id)),
                         TemplateRow.status == TemplateStatus.ACTIVE.value,

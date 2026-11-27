@@ -5,6 +5,7 @@ import type {
   ConversionResponse,
   ComposerDraftResponse,
   JobOutput,
+  DocumentOptions,
   TemplateResponse,
 } from "../api/generated/types.gen";
 import {
@@ -19,6 +20,7 @@ import {
   vHandoffConversionApiV1ComposerDraftsFromConversionJobIdPostResponse,
 } from "../api/generated/valibot.gen";
 import { ApiError, ApiTransport, type JsonResult } from "../api/transport";
+import { appendDocumentOptions } from "./document-options";
 import type { SavedConversionInputs } from "./persistence";
 import { PackageError, prepareSelection, type SelectedFile } from "./packaging";
 
@@ -44,6 +46,7 @@ export type ConversionState = {
   phase: "loading" | "ready" | "unavailable";
   dialect: PresentationDialect;
   slideLevel: number;
+  documentOptions?: DocumentOptions;
   plan?: PresentationPlanResponse;
   planning: boolean;
   packaging: boolean;
@@ -252,6 +255,7 @@ export class ConversionController {
       selection: inputs.selection,
       dialect: inputs.dialect,
       slideLevel: inputs.slideLevel,
+      documentOptions: inputs.documentOptions,
     });
     if (inputs.activeJobId) void this.openJob(inputs.activeJobId);
     return true;
@@ -342,6 +346,17 @@ export class ConversionController {
     this.publish({
       ...this.state,
       output,
+      submitting: false,
+      error: undefined,
+      notice: undefined,
+    });
+  }
+
+  setDocumentOptions(documentOptions: DocumentOptions): void {
+    this.invalidateSubmission();
+    this.publish({
+      ...this.state,
+      documentOptions,
       submitting: false,
       error: undefined,
       notice: undefined,
@@ -517,6 +532,8 @@ export class ConversionController {
     if (this.presentation) {
       form.append("presentation_dialect", this.state.dialect);
       form.append("slide_level", String(this.state.slideLevel));
+    } else {
+      appendDocumentOptions(form, this.state.documentOptions);
     }
     if (this.state.selection) {
       form.append("template_id", this.state.selection.id);

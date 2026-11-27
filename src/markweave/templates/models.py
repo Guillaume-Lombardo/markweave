@@ -8,6 +8,8 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID
 
+from markweave.conversion.document_options import DocumentOptions
+
 SHA256_CHARACTERS = 64
 
 
@@ -58,8 +60,11 @@ class TemplateIdentity:
     revision: int = 1
     current_version_id: UUID | None = None
     kind: TemplateKind = TemplateKind.DOCX
+    document_options: DocumentOptions | None = None
 
     def __post_init__(self) -> None:
+        if self.document_options is not None and self.kind is not TemplateKind.DOCX:
+            raise ValueError("Document options require a Word template")
         if not self.normalized_name:
             raise ValueError("Template name must not be blank")
         if self.revision <= 0:
@@ -83,6 +88,7 @@ class TemplateCreate:
     description: str
     status: TemplateStatus = TemplateStatus.ACTIVE
     kind: TemplateKind = TemplateKind.DOCX
+    document_options: DocumentOptions | None = None
 
 
 @dataclass(frozen=True, slots=True)

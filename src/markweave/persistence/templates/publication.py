@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session as DatabaseSession
 
 from markweave.persistence.errors import PersistenceError
 from markweave.persistence.schema import (
+    TemplateDocumentOptionsRow,
     TemplateRow,
     TemplateVersionRow,
 )
@@ -75,6 +76,13 @@ class _TemplatePublicationRepository(_SqlTemplateStore):
                         normalized_name=template.normalized_name,
                         description=template.description,
                         normalized_description=template.normalized_description,
+                        document_options=(
+                            TemplateDocumentOptionsRow(
+                                options=template.document_options.canonical_json()
+                            )
+                            if template.document_options is not None
+                            else None
+                        ),
                         status=template.status.value,
                         revision=template.revision,
                         current_version_id=None,

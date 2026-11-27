@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import zipfile
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -14,6 +15,7 @@ import pytest
 
 from markweave.config import ConfigurationError, Settings
 from markweave.conversion.archive import ArchiveLimits
+from markweave.conversion.document_options import DocumentOptions
 from markweave.conversion.errors import ConversionError, ConversionErrorCode
 from markweave.conversion.images import ImageLimits
 from markweave.conversion.libreoffice import (
@@ -173,6 +175,7 @@ def test_processor_uses_frozen_source_template_and_traceability(
     docx.convert.assert_called_once_with(
         "# Frozen\n",
         template_content,
+        document_options=None,
         deadline_monotonic=42.0,
         cancellation_requested=mocker.ANY,
     )
@@ -243,6 +246,7 @@ def test_processor_archive_and_combined_output_are_deterministic(mocker) -> None
     docx.convert_document.assert_called_with(
         mocker.ANY,
         b"template",
+        document_options=None,
         deadline_monotonic=None,
         cancellation_requested=mocker.ANY,
     )
@@ -265,9 +269,35 @@ def test_processor_accepts_ordinary_markdown_starting_with_pk(mocker) -> None:
     docx.convert.assert_called_once_with(
         "PK prose is ordinary Markdown.\n",
         b"template",
+        document_options=None,
         deadline_monotonic=None,
         cancellation_requested=mocker.ANY,
     )
+
+
+def test_docx_manifest_records_frozen_structure_options(mocker) -> None:
+    source = b"# Frozen\n"
+    options = DocumentOptions(True, 2, True)
+    job = replace(_job(JobOutput.DOCX, source), document_options=options)
+    processor, _objects, docx, _pdf = _processor(mocker, source)
+    result = processor.process_with_template(
+        job,
+        _template(job, b"template"),
+        b"template",
+        cancelled=_Cancellation(),
+        deadline_monotonic=None,
+        progress=mocker.Mock(),
+    )
+    assert docx.convert.call_args.kwargs["document_options"] == options
+    assert result.progress_manifest is not None
+    manifest = json.loads(result.progress_manifest)
+    assert manifest["schema_version"] == 3
+    assert manifest["output_docx_sha256"] == hashlib.sha256(b"docx").hexdigest()
+    assert manifest["document_options"] == {
+        "toc": True,
+        "toc_depth": 2,
+        "number_sections": True,
+    }
 
 
 @pytest.mark.parametrize("signature", (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"))

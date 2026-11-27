@@ -24,6 +24,11 @@ from urllib.request import (
 )
 from uuid import UUID, uuid4
 
+from markweave.cli.commands.document_options import (
+    add_document_arguments,
+    selected_options,
+    supplied_fields,
+)
 from markweave.cli.errors import CliError
 from markweave.cli.output import OutputWriter
 from markweave.cli.profiles import ProfileStore, validate_profile_name
@@ -156,6 +161,7 @@ def register(  # noqa: PLR0915 - the fixed public family is registered together
     )
     create.add_argument("--name", action=_Option, required=True)
     create.add_argument("--description", action=_Option, default="")
+    add_document_arguments(create, _Option)
     _file(create)
     _fonts(create)
 
@@ -167,6 +173,12 @@ def register(  # noqa: PLR0915 - the fixed public family is registered together
     _identifier(update, "template_id", "Template UUID.")
     update.add_argument("--name", action=_Option, required=True)
     update.add_argument("--description", action=_Option, required=True)
+    add_document_arguments(update, _Option)
+    update.add_argument(
+        "--reset-document-options",
+        action=_Flag,
+        help="Restore the built-in document structure defaults.",
+    )
     _etag(update)
 
     replace = _leaf(commands, "replace", "Publish replacement template content.")
@@ -414,6 +426,12 @@ def _update(
     transport: _TemplateTransport,
 ) -> None:
     del context
+    options = supplied_fields(selected_options(command.values))
+    reset_options = command.values.get("reset_document_options", False)
+    if reset_options and options:
+        raise CliError(
+            "invalid_request", "Use --reset-document-options without document options."
+        )
     response = transport.request(
         "PATCH",
         _template_path(command),
@@ -422,6 +440,7 @@ def _update(
         json_body={
             "name": str(command.values["name"]),
             "description": str(command.values["description"]),
+            **({"document_options": options} if options or reset_options else {}),
         },
     )
     payload = _expect_json(response, 200)
@@ -586,7 +605,7 @@ class _TemplateTransport:
         *,
         csrf: bool = False,
         headers: Mapping[str, str] | None = None,
-        json_body: Mapping[str, str] | None = None,
+        json_body: Mapping[str, object] | None = None,
         multipart: tuple[bytes, str] | None = None,
     ) -> _Response:
         request_headers = {"Accept": "application/json"}
@@ -697,6 +716,8 @@ def _template_multipart(
     content = _read_upload(command.values["file"])
     fields: list[tuple[str, str]] = []
     if include_metadata:
+        options = supplied_fields(selected_options(command.values))
+        fields.extend((name, str(value).lower()) for name, value in options.items())
         fields.append(("kind", str(command.values.get("kind", "docx"))))
         fields.extend(
             (

@@ -15,7 +15,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from xml.etree import ElementTree
 
-TRACEABILITY_SCHEMA_VERSION = 2
+TRACEABILITY_SCHEMA_VERSION = 3
 SHA256_CHARACTERS = 64
 REVERSION_FORMAT_EXTENSIONS = (
     ("word", (".doc", ".docx", ".docm")),
@@ -326,8 +326,19 @@ def validate_result(  # noqa: PLR0912,PLR0915 - one assertion workflow covers al
                 archive.namelist()
             ):
                 raise RuntimeError("invalid DOCX result")
-        status, _, unavailable = client.request("GET", f"{path}/manifest")
-        require(status, 409, unavailable)
+        status, _, manifest = client.request("GET", f"{path}/manifest")
+        if job.get("document_options") is None:
+            require(status, 409, manifest)
+        else:
+            require(status, 200, manifest)
+            decoded = json.loads(manifest)
+            if (
+                decoded["schema_version"] != TRACEABILITY_SCHEMA_VERSION
+                or decoded["output_format"] != "docx"
+                or decoded["document_options"] != job["document_options"]
+                or decoded["output_docx_sha256"] != hashlib.sha256(content).hexdigest()
+            ):
+                raise RuntimeError("DOCX manifest invariants mismatch")
         return
     if output == "pdf" and not content.startswith(b"%PDF-"):
         raise RuntimeError("invalid PDF result")
@@ -369,11 +380,17 @@ def validate_result(  # noqa: PLR0912,PLR0915 - one assertion workflow covers al
         compatible_mode = job_template_mode is None and "template_mode" not in decoded
     else:
         template_mode = decoded.get("template_mode")
-        compatible_mode = (
-            schema_version == TRACEABILITY_SCHEMA_VERSION
-            and template_mode == job_template_mode
+        expected_version = (
+            2 if job.get("document_options") is None else TRACEABILITY_SCHEMA_VERSION
         )
-    if not compatible_mode or decoded["output_format"] != "pdf":
+        compatible_mode = (
+            schema_version == expected_version and template_mode == job_template_mode
+        )
+    if (
+        not compatible_mode
+        or decoded["output_format"] != "pdf"
+        or decoded.get("document_options") != job.get("document_options")
+    ):
         raise RuntimeError("PDF manifest invariants mismatch")
     if template_mode == "versioned":
         template_id = decoded["template_id"]

@@ -17,7 +17,7 @@ from sqlalchemy import (
     UniqueConstraint,
     false,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from markweave.auth.models import USERNAME_MAX_LENGTH
 
@@ -179,12 +179,26 @@ class TemplateRow(Base):
     normalized_name: Mapped[str] = mapped_column(String(), nullable=False)
     description: Mapped[str] = mapped_column(String(), nullable=False)
     normalized_description: Mapped[str] = mapped_column(String(), nullable=False)
+    document_options: Mapped[TemplateDocumentOptionsRow | None] = relationship(
+        lazy="selectin", cascade="all, delete-orphan", passive_deletes=True
+    )
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     current_version_id: Mapped[str | None] = mapped_column(String(36))
     publication_state: Mapped[str] = mapped_column(
         String(16), nullable=False, default="published"
     )
+
+
+class TemplateDocumentOptionsRow(Base):
+    """Document structure defaults for one template identity."""
+
+    __tablename__ = "template_document_options"
+
+    template_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("templates.id", ondelete="CASCADE"), primary_key=True
+    )
+    options: Mapped[str] = mapped_column(String(), nullable=False)
 
 
 class TemplateVersionRow(Base):
@@ -389,6 +403,7 @@ class ConversionJobRow(Base):
     template_version_id: Mapped[str | None] = mapped_column(String(36))
     output: Mapped[str] = mapped_column(String(16), nullable=False)
     presentation_options: Mapped[str | None] = mapped_column(String())
+    document_options: Mapped[str | None] = mapped_column(String())
     component_versions: Mapped[str] = mapped_column(String(), nullable=False)
     correlation_id: Mapped[str | None] = mapped_column(String(128))
     state: Mapped[str] = mapped_column(String(16), nullable=False)

@@ -108,6 +108,7 @@ def template_response(
         owner_id=template.owner_id,
         name=template.name,
         kind=template.kind,
+        document_options=template.document_options,
         description=template.description,
         status=template.status,
         revision=template.revision,

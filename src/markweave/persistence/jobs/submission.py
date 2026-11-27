@@ -10,6 +10,10 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session as DatabaseSession
 
+from markweave.conversion.document_options import (
+    DEFAULT_DOCUMENT_OPTIONS,
+    DocumentOptions,
+)
 from markweave.jobs.errors import (
     JobQueueCapacityExceededError,
     JobRepositoryError,
@@ -30,6 +34,7 @@ from markweave.persistence.jobs.common import _job, _SqlJobStore
 from markweave.persistence.schema import (
     ConversionJobRow,
     ConversionSizeAuditRow,
+    TemplateDocumentOptionsRow,
     TemplateRow,
     TemplateVersionRow,
 )
@@ -114,6 +119,10 @@ class _JobSubmissionRepository(_SqlJobStore):
                     )
                     if frozen is None:
                         raise JobRequestError
+                if submission.document_options is not None:
+                    row.document_options = self._freeze_document_options(
+                        database, submission.template_id, submission.document_options
+                    )
                 self._enforce_admission(database, submission.owner_id)
                 database.add(row)
                 if submission.size_override:
@@ -152,6 +161,21 @@ class _JobSubmissionRepository(_SqlJobStore):
     def _lock_admission(self, database: DatabaseSession) -> None:
         if self._admission_policy is not None:
             lock_global_admission(database, self._engine.dialect.name)
+
+    @staticmethod
+    def _freeze_document_options(
+        database: DatabaseSession, template_id: UUID | None, overrides: DocumentOptions
+    ) -> str:
+        defaults = DEFAULT_DOCUMENT_OPTIONS
+        if template_id is not None:
+            template_options = database.get(
+                TemplateDocumentOptionsRow, str(template_id)
+            )
+            if template_options is not None:
+                defaults = DocumentOptions.from_json(template_options.options).resolve(
+                    defaults
+                )
+        return overrides.resolve(defaults).canonical_json()
 
     @staticmethod
     def _find_idempotent(

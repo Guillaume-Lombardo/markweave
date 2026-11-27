@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, Header, Query, Response, Upl
 from starlette.concurrency import run_in_threadpool
 
 from markweave.auth.models import User
+from markweave.conversion.document_options import MAX_TOC_DEPTH, DocumentOptions
 from markweave.http.dependencies import HttpDependencies
 from markweave.http.errors import error_responses
 from markweave.http.responses import (
@@ -123,6 +124,9 @@ def build_router(  # noqa: PLR0915 - route declarations are intentionally groupe
         expected_fonts: Annotated[list[str], Form()],
         content: Annotated[UploadFile, File()],
         kind: Annotated[TemplateKind, Form()] = TemplateKind.DOCX,
+        toc: Annotated[bool | None, Form()] = None,
+        toc_depth: Annotated[int | None, Form(ge=1, le=MAX_TOC_DEPTH)] = None,
+        number_sections: Annotated[bool | None, Form()] = None,
     ) -> TemplateResponse:
         try:
             data = await content.read(settings.template_max_archive_bytes + 1)
@@ -148,7 +152,20 @@ def build_router(  # noqa: PLR0915 - route declarations are intentionally groupe
             template, _version = await run_in_threadpool(
                 dependencies.template_runtime().create_versioned,
                 actor,
-                TemplateCreate(uuid4(), name, description, kind=kind),
+                TemplateCreate(
+                    uuid4(),
+                    name,
+                    description,
+                    kind=kind,
+                    document_options=(
+                        DocumentOptions(toc, toc_depth, number_sections)
+                        if any(
+                            value is not None
+                            for value in (toc, toc_depth, number_sections)
+                        )
+                        else None
+                    ),
+                ),
                 data,
                 _expected_fonts_from_form(expected_fonts),
             )
@@ -198,6 +215,11 @@ def build_router(  # noqa: PLR0915 - route declarations are intentionally groupe
                 expected_revision=expected_revision(template_id, if_match),
                 name=payload.name,
                 description=payload.description,
+                document_options=(
+                    payload.document_options.to_domain()
+                    if payload.document_options is not None
+                    else None
+                ),
             )
         except ValueError:
             raise TemplateRequestError from None

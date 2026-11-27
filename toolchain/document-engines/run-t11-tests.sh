@@ -71,6 +71,7 @@ podman run --rm \
     --gidmap 0:0:1 \
     --read-only \
     --network none \
+    --passwd=false \
     --cap-drop=all \
     --security-opt=no-new-privileges \
     --memory 2g \
@@ -83,9 +84,11 @@ podman run --rm \
     --mount "type=volume,source=${DEPS_VOLUME},target=/deps,ro=true" \
     --workdir /src \
     --env ENGINE_FIXTURE_ROOT=/work \
+    --env ENGINE_EXPECT_UNREGISTERED_UID=1 \
     --env PYTHONDONTWRITEBYTECODE=1 \
     --entrypoint /deps/bin/python \
     "${IMAGE}" -m pytest \
+        tests/integration/document_engines/test_document_structure.py \
         tests/integration/document_engines/test_libreoffice_pdf.py \
         tests/integration/document_engines/test_pdf_rasterizer.py \
         -q --no-cov -p no:cacheprovider

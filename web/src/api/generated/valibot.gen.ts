@@ -670,6 +670,28 @@ export const vCredentialWriteRequest = v.object({
 });
 
 /**
+ * DocumentOptions
+ *
+ * Optional Word document settings, with unset fields inherited at submission.
+ */
+export const vDocumentOptions = v.object({
+    number_sections: v.nullish(v.boolean()),
+    toc: v.nullish(v.boolean()),
+    toc_depth: v.nullish(v.pipe(v.number(), v.integer()))
+});
+
+/**
+ * DocumentOptionsRequest
+ *
+ * Template defaults for future Word and PDF jobs.
+ */
+export const vDocumentOptionsRequest = v.strictObject({
+    number_sections: v.nullish(v.boolean()),
+    toc: v.nullish(v.boolean()),
+    toc_depth: v.nullish(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(6)))
+});
+
+/**
  * ErrorDetail
  *
  * Stable machine-readable functional error detail.
@@ -1120,12 +1142,15 @@ export const vPresentationDialect = v.picklist([
  */
 export const vBodyCreateConversionApiV1ConversionsPost = v.object({
     allow_large_archive: v.optional(v.boolean(), false),
+    number_sections: v.nullish(v.boolean()),
     output: vJobOutput,
     presentation_dialect: v.nullish(vPresentationDialect),
     slide_level: v.nullish(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(6))),
     source: v.string(),
     template_id: v.nullish(v.pipe(v.string(), v.uuid())),
-    template_version_id: v.nullish(v.pipe(v.string(), v.uuid()))
+    template_version_id: v.nullish(v.pipe(v.string(), v.uuid())),
+    toc: v.nullish(v.boolean()),
+    toc_depth: v.nullish(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(6)))
 });
 
 /**
@@ -1429,7 +1454,10 @@ export const vBodyCreateTemplateApiV1TemplatesPost = v.object({
     description: v.string(),
     expected_fonts: v.array(v.string()),
     kind: v.optional(vTemplateKind, 'docx'),
-    name: v.string()
+    name: v.string(),
+    number_sections: v.nullish(v.boolean()),
+    toc: v.nullish(v.boolean()),
+    toc_depth: v.nullish(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(6)))
 });
 
 /**
@@ -1437,6 +1465,7 @@ export const vBodyCreateTemplateApiV1TemplatesPost = v.object({
  */
 export const vTemplateMetadataRequest = v.object({
     description: v.string(),
+    document_options: v.nullish(vDocumentOptionsRequest),
     name: v.string()
 });
 
@@ -1458,6 +1487,7 @@ export const vConversionResponse = v.object({
     component_versions: v.array(v.tuple([v.string(), v.string()])),
     correlation_id: v.string(),
     created_at: v.pipe(v.string(), v.isoTimestamp()),
+    document_options: v.nullish(vDocumentOptions),
     error_code: v.nullable(v.string()),
     error_message: v.nullable(v.string()),
     expires_at: v.nullable(v.pipe(v.string(), v.isoTimestamp())),
@@ -1514,6 +1544,7 @@ export const vTemplateStatus = v.picklist(['active', 'archived']);
 export const vTemplateResponse = v.object({
     current_version_id: v.nullable(v.pipe(v.string(), v.uuid())),
     description: v.string(),
+    document_options: v.nullish(vDocumentOptions),
     id: v.pipe(v.string(), v.uuid()),
     kind: v.optional(vTemplateKind, 'docx'),
     name: v.string(),
@@ -3069,7 +3100,7 @@ export const vDownloadConversionManifestApiV1ConversionsJobIdResultManifestGetPa
 });
 
 /**
- * Canonical PDF traceability manifest
+ * Canonical Word or PDF traceability manifest
  */
 export const vDownloadConversionManifestApiV1ConversionsJobIdResultManifestGetResponse = v.record(v.string(), v.unknown());
 

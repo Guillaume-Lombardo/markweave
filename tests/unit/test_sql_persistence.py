@@ -165,6 +165,7 @@ def test_inprocess_sql_repository_control_flow() -> None:
         "sessions",
         "system_template_selection",
         "template_audit_records",
+        "template_document_options",
         "template_preferences",
         "template_versions",
         "templates",

@@ -8,10 +8,12 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as DatabaseSession
 
+from markweave.conversion.document_options import DocumentOptions
 from markweave.persistence.errors import PersistenceError
 from markweave.persistence.schema import (
     ConversionJobRow,
     SystemTemplateSelectionRow,
+    TemplateDocumentOptionsRow,
     TemplatePreferenceRow,
     TemplateRow,
     TemplateVersionRow,
@@ -50,6 +52,13 @@ class _TemplateIdentityRepository(_SqlTemplateStore):
                         normalized_name=template.normalized_name,
                         description=template.description,
                         normalized_description=template.normalized_description,
+                        document_options=(
+                            TemplateDocumentOptionsRow(
+                                options=template.document_options.canonical_json()
+                            )
+                            if template.document_options is not None
+                            else None
+                        ),
                         status=template.status.value,
                         revision=template.revision,
                         current_version_id=(
@@ -75,7 +84,7 @@ class _TemplateIdentityRepository(_SqlTemplateStore):
         except SQLAlchemyError:
             raise PersistenceError from None
 
-    def update_metadata(
+    def update_metadata(  # noqa: PLR0913 - explicit template metadata and CAS
         self,
         template_id: UUID,
         *,
@@ -83,17 +92,20 @@ class _TemplateIdentityRepository(_SqlTemplateStore):
         name: str,
         description: str,
         audit: TemplateAuditRecord,
+        document_options: DocumentOptions | None = None,
     ) -> TemplateIdentity:
+        values = {
+            "name": name,
+            "normalized_name": normalize_template_text(name),
+            "description": description,
+            "normalized_description": normalize_template_text(description),
+        }
         return self._cas_update(
             template_id,
             expected_revision,
-            {
-                "name": name,
-                "normalized_name": normalize_template_text(name),
-                "description": description,
-                "normalized_description": normalize_template_text(description),
-            },
+            values,
             audit,
+            document_options=document_options,
         )
 
     def set_status(
@@ -259,6 +271,8 @@ class _TemplateIdentityRepository(_SqlTemplateStore):
         expected_revision: int,
         values: dict[str, object],
         audit: TemplateAuditRecord,
+        *,
+        document_options: DocumentOptions | None = None,
     ) -> TemplateIdentity:
         try:
             with DatabaseSession(self._engine) as database, database.begin():
@@ -284,6 +298,14 @@ class _TemplateIdentityRepository(_SqlTemplateStore):
                     ).scalar_one_or_none()
                 if changed is None:
                     raise TemplateConflictError
+                if document_options is not None:
+                    serialized = document_options.canonical_json()
+                    if changed.document_options is None:
+                        changed.document_options = TemplateDocumentOptionsRow(
+                            options=serialized
+                        )
+                    else:
+                        changed.document_options.options = serialized
                 database.add(_audit_row(audit))
                 database.flush()
                 return _template(changed)

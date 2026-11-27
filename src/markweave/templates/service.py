@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 from markweave.auth.models import Role, User
 from markweave.auth.service import AuthorizationService
+from markweave.conversion.document_options import DocumentOptions
 from markweave.storage import (
     ObjectKey,
     ObjectNotFoundError,
@@ -68,6 +69,7 @@ class TemplateAuthorization:
     template_id: UUID
     operation: TemplateOperation
     administrator_intervention: bool
+    kind: TemplateKind
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +121,7 @@ class TemplateService:
             description=request.description,
             status=request.status,
             kind=request.kind,
+            document_options=request.document_options,
         )
         self._catalog.add(template)
         return template
@@ -142,6 +145,7 @@ class TemplateService:
             1,
             version_id,
             request.kind,
+            request.document_options,
         )
         validated = validator(content, TemplateFontDeclaration(expected_fonts))
         if validated.kind is not template.kind:
@@ -177,7 +181,7 @@ class TemplateService:
             publication_lease_expires_at=None,
         )
 
-    def update_metadata(
+    def update_metadata(  # noqa: PLR0913 - explicit template metadata and CAS
         self,
         actor: User,
         template_id: UUID,
@@ -185,6 +189,7 @@ class TemplateService:
         expected_revision: int,
         name: str,
         description: str,
+        document_options: DocumentOptions | None = None,
     ) -> TemplateIdentity:
         authorization = self.authorize_mutation(actor, template_id)
         candidate = TemplateIdentity(
@@ -193,12 +198,15 @@ class TemplateService:
             name,
             description,
             TemplateStatus.ACTIVE,
+            kind=authorization.kind,
+            document_options=document_options,
         )
         return self._catalog.update_metadata(
             template_id,
             expected_revision=expected_revision,
             name=candidate.name,
             description=candidate.description,
+            document_options=candidate.document_options,
             audit=self._audit_from_authorization(
                 authorization, TemplateOperation.UPDATE_METADATA
             ),
@@ -457,6 +465,7 @@ class TemplateService:
             owner_id=template.owner_id,
             template_id=template.id,
             operation=operation,
+            kind=template.kind,
             administrator_intervention=(
                 actor.role is Role.ADMIN
                 and (

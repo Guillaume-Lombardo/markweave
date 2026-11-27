@@ -10,6 +10,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { DocumentOptionFields } from "./document-options";
 import { PresentationControls } from "./presentation-controls";
 import { Alert, AppShell, Progress } from "../../components/primitives";
 import { useAuth } from "../auth/context";
@@ -81,7 +82,15 @@ export function ConversionWorkspace({
     controller.snapshot,
     controller.snapshot,
   );
-  const { source, output, selection, dialect, slideLevel, active } = state;
+  const {
+    source,
+    output,
+    selection,
+    dialect,
+    slideLevel,
+    documentOptions,
+    active,
+  } = state;
   const activeJobId = active?.id;
   const [query, setQuery] = useState("");
   const [dragging, setDragging] = useState(false);
@@ -153,7 +162,15 @@ export function ConversionWorkspace({
         writeConversionInputs(
           ownerId,
           presentation,
-          { source, output, selection, dialect, slideLevel, activeJobId },
+          {
+            source,
+            output,
+            selection,
+            dialect,
+            slideLevel,
+            documentOptions,
+            activeJobId,
+          },
           query,
           storageEpoch,
         ),
@@ -172,6 +189,7 @@ export function ConversionWorkspace({
     selection,
     dialect,
     slideLevel,
+    documentOptions,
     activeJobId,
     query,
   ]);
@@ -185,7 +203,15 @@ export function ConversionWorkspace({
         await writeConversionInputs(
           ownerId,
           presentation,
-          { source, output, selection, dialect, slideLevel, activeJobId },
+          {
+            source,
+            output,
+            selection,
+            dialect,
+            slideLevel,
+            documentOptions,
+            activeJobId,
+          },
           query,
           storageEpoch,
         );
@@ -450,6 +476,14 @@ export function ConversionWorkspace({
                   ))}
                 </ul>
               </section>
+              {!presentation && (
+                <DocumentOptionFields
+                  disabled={state.submitting}
+                  inheritLabel="Use template default"
+                  onChange={(options) => controller.setDocumentOptions(options)}
+                  options={documentOptions}
+                />
+              )}
               {state.archiveConfirmation && (
                 <p role="status">{state.archiveConfirmation}</p>
               )}
