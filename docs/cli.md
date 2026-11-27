@@ -136,13 +136,21 @@ allowed to access runtime or storage services directly.
 `markweave convert SOURCE --local` is the only business command that does not use the HTTP API
 (product decision D1). It converts your own local Markdown or ZIP file on this host through the
 service's validation and document-engine adapters with the same `MARKWEAVE_*` limits, without an
-account, persistence, storage profile, or ClamAV. It probes each required engine, records the
-actual versions in a traceability manifest, warns when one differs from its approved pin, and fails
-instead with `--require-pinned`. `--timeout`, `SIGINT`, and `SIGTERM` stop the running engine
-process group without publishing outputs. Remote options are refused in local mode, so a command
-never silently switches between the service and the host. See
-[Conversion CLI](conversion-cli.md#convert-locally-without-a-server) for configuration, outputs,
-reproducibility limits, and the container invocation with the bundled engines.
+account, persistence, storage profile, or ClamAV. Run the host command on Linux with user and
+network namespaces and seccomp available, after [configuring the engines and limits](conversion-cli.md#configuration):
+
+```bash
+markweave convert doc.md --local --to docx,pdf -o out/
+```
+
+Use the [bundled-image command](conversion-cli.md#run-it-with-the-bundled-engines) on macOS with
+a Linux/AMD64 Podman environment or on Linux to use the approved engines. Both commands require
+an existing output directory. Local conversion records engine versions in a traceability
+manifest, warns when one differs from its approved pin, and fails with `--require-pinned`.
+`--timeout`, `SIGINT`, and `SIGTERM` stop the running engine process group without publishing
+outputs. Remote options are refused in local mode. See
+[Conversion CLI](conversion-cli.md#convert-locally-without-a-server) for output and reproducibility
+details.
 
 ## Reverse-conversion jobs
 

@@ -207,6 +207,17 @@ def test_published_compose_uses_only_canonical_environment_names() -> None:
     assert all(key.startswith("MARKWEAVE_") for key in environment)
 
 
+def test_quickstart_and_bundled_local_example_allow_fifty_pdf_pages() -> None:
+    setting = "MARKWEAVE_CONVERSION_PDF_MAX_PAGES"
+    environment = _compose()["services"]["markweave"]["environment"]
+    local_environment = (ROOT / "examples/local-conversion.env").read_text(
+        encoding="utf-8"
+    )
+
+    assert environment[setting] == "50"
+    assert f"{setting}=50" in local_environment.splitlines()
+
+
 def test_committed_quickstart_fixture_is_stable_docx_with_declared_fonts() -> None:
     encoded = TEMPLATE.read_bytes()
     template = base64.b64decode(b"".join(encoded.splitlines()), validate=True)

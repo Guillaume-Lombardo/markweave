@@ -137,14 +137,46 @@ without `--local`. Abbreviations accepted before local mode keep their remote me
 shared with a remote option, such as `--out` or `--r`, still selects `--output` or `--retries`, so
 spell local options in full.
 
+Local mode is meant for trusted input you own. It does not scan for malware.
+
+### Run it on a Linux host
+
+The engine launcher requires a Linux kernel and a runtime policy that lets it create private
+user and network namespaces and apply a seccomp filter. Use the
+[bundled image](#run-it-with-the-bundled-engines) in a Linux/AMD64 Podman environment on macOS.
+On a suitable Linux host, install the required engines, load the [settings below](#configuration),
+and create the output directory before running a host command:
+
 ```text
 markweave convert doc.md --local --to docx,pdf --template template.docx -o out/
 markweave --timeout 300 convert bundle.zip --local --to pdf --require-pinned -o out/
 markweave --json convert doc.md --local --overwrite -o out/
 ```
 
-Local mode is meant for trusted input you own. It does not scan for malware and is not a
-substitute for the service when the input is untrusted.
+### Run it with the bundled engines
+
+The final image is the documented way to run local mode with the approved engines. Mount the
+directory containing your files under `/work`, pass the example settings, and keep the hardened
+runtime options of the [container deployment guide](container-deployment.md), including the
+reviewed Chromium seccomp profile. With rootless Podman, `--userns=keep-id` keeps the outputs owned
+by your user:
+
+```bash
+podman run --rm --userns=keep-id --user "$(id -u):0" \
+  --read-only --cap-drop=all --security-opt=no-new-privileges \
+  --security-opt=seccomp=toolchain/document-engines/chrome-seccomp.json \
+  --network=none --memory=1g --pids-limit=256 \
+  --tmpfs /tmp:rw,nosuid,nodev,noexec,size=64m,mode=1777 \
+  --tmpfs /work:rw,nosuid,nodev,size=256m,mode=0770 --shm-size=256m \
+  --env-file examples/local-conversion.env \
+  --volume "$PWD:/work/documents:Z" \
+  ghcr.io/guillaume-lombardo/md-converter:VERSION@sha256:DIGEST \
+  convert /work/documents/doc.md --local --to docx,pdf \
+  --template /work/documents/template.docx --require-pinned -o /work/documents/out
+```
+
+Replace the image placeholder with the immutable published reference of a release that includes
+local mode, as pinned in the quickstart Compose file. The output directory must already exist.
 
 ### Configuration
 
@@ -152,14 +184,15 @@ Local mode uses the service's `MARKWEAVE_*` conversion, engine, and template var
 same names and constraints. Starting in 0.8.0, the presence of a former `MD_CONVERTER_*` alias
 fails configuration loading and reports its canonical replacement. The repository provides
 [`examples/local-conversion.env`](../examples/local-conversion.env) with the quickstart evaluation
-values from `compose.yaml`. They are not sized production limits; review them for your workload.
+values from `compose.yaml`, including a 50-page PDF limit. Size these limits separately for
+production workloads.
 
 ```bash
 set -a; . examples/local-conversion.env; set +a
 export MARKWEAVE_CONVERSION_FONT_MANIFEST_PATH="$PWD/toolchain/document-engines/fonts/manifest.json"
 ```
 
-The example file sets the final image's engine paths and font manifest. On a host, adjust
+The example file sets the final image's engine paths and font manifest. On a Linux host, adjust
 `MARKWEAVE_TEMPLATE_PANDOC_EXECUTABLE`, `MARKWEAVE_TEMPLATE_LIBREOFFICE_EXECUTABLE`,
 `MARKWEAVE_CONVERSION_MERMAID_EXECUTABLE`, and `MARKWEAVE_CONVERSION_CHROMIUM_EXECUTABLE` as
 needed. `MARKWEAVE_CONVERSION_FONT_MANIFEST_PATH` is required only for PDF output, whose
@@ -233,28 +266,3 @@ fails with `conversion_timeout`. `SIGINT` (Ctrl-C) and `SIGTERM`, including `pod
 cooperative cancellation: the running engine's whole process group is terminated, its private
 workspace is removed, and the command fails with `conversion_cancelled`. Expected failures exit with
 status `1`; invalid or mixed options exit with status `2`.
-
-### Run it with the bundled engines
-
-The final image is the documented way to run local mode with the approved engines. Mount the
-directory containing your files under `/work`, pass the example settings, and keep the hardened
-runtime options of the [container deployment guide](container-deployment.md), including the
-reviewed Chromium seccomp profile. With rootless Podman, `--userns=keep-id` keeps the outputs owned
-by your user:
-
-```bash
-podman run --rm --userns=keep-id --user "$(id -u):0" \
-  --read-only --cap-drop=all --security-opt=no-new-privileges \
-  --security-opt=seccomp=toolchain/document-engines/chrome-seccomp.json \
-  --network=none --memory=1g --pids-limit=256 \
-  --tmpfs /tmp:rw,nosuid,nodev,noexec,size=64m,mode=1777 \
-  --tmpfs /work:rw,nosuid,nodev,size=256m,mode=0770 --shm-size=256m \
-  --env-file examples/local-conversion.env \
-  --volume "$PWD:/work/documents:Z" \
-  ghcr.io/guillaume-lombardo/md-converter:VERSION@sha256:DIGEST \
-  convert /work/documents/doc.md --local --to docx,pdf \
-  --template /work/documents/template.docx --require-pinned -o /work/documents/out
-```
-
-Replace the image placeholder with the immutable published reference of a release that includes
-local mode, as pinned in the quickstart Compose file. The output directory must already exist.

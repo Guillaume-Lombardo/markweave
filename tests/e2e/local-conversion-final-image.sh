@@ -36,8 +36,12 @@ fail() {
 }
 
 mkdir -- "$work/input"
-printf '# Local final image\n\nReal **conversion** without a server.\n' \
-  >"$work/input/document.md"
+{
+  printf '# Local final image\n\nReal **conversion** without a server.\n'
+  for paragraph in $(seq 1 160); do
+    printf '\nParagraph %s. This sample checks that a document with more than five pages can be converted with the bundled settings.\n' "$paragraph"
+  done
+} >"$work/input/document.md"
 cat >"$work/input/diagram.md" <<'MARKDOWN'
 # Diagram
 
@@ -132,6 +136,8 @@ import sys
 import zipfile
 from pathlib import Path
 
+from pypdf import PdfReader
+
 result = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 output = Path(sys.argv[2])
 assert result["status"] == "succeeded", result
@@ -144,7 +150,7 @@ assert sorted(path.name for path in output.iterdir()) == [
 ]
 with zipfile.ZipFile(io.BytesIO((output / "document.docx").read_bytes())) as docx:
     assert b"without a server" in docx.read("word/document.xml")
-assert (output / "document.pdf").read_bytes().startswith(b"%PDF-")
+assert 5 < len(PdfReader(output / "document.pdf").pages) <= 50
 manifest = json.loads((output / "document.traceability.json").read_bytes())
 assert manifest["mode"] == "local"
 assert manifest["template"]["mode"] == "local-file"

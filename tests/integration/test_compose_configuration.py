@@ -69,6 +69,7 @@ def test_supported_mode_keeps_the_reviewed_security_posture(
     services: dict[str, Any] = _render_mode(mode, "11279")["services"]
     application = services["markweave"]
     environment = application["environment"]
+    assert environment["MARKWEAVE_CONVERSION_PDF_MAX_PAGES"] == "50"
 
     published = [
         (name, port)
