@@ -2,10 +2,12 @@
 
 from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime
+from threading import BoundedSemaphore
 from typing import Annotated, Any
 from urllib.parse import quote
 from uuid import UUID
 
+from anyio import CancelScope, current_time, fail_after
 from fastapi import (
     APIRouter,
     Depends,
@@ -32,7 +34,14 @@ from markweave.conversion.size_policy import (
     require_size_confirmation,
 )
 from markweave.http.dependencies import HttpDependencies
-from markweave.http.errors import ConversionRequestTooLarge, error_responses
+from markweave.http.errors import (
+    ConversionRequestTooLarge,
+    ConversionUploadCapacityExceeded,
+    ConversionUploadTimedOut,
+    capacity_error_responses,
+    error_responses,
+)
+from markweave.http.middleware import CONVERSION_UPLOAD_LIFETIME
 from markweave.http.responses import conversion_response, template_response
 from markweave.http.schemas import (
     ConversionOptionsResponse,
@@ -64,6 +73,8 @@ _RESULT_EXTENSIONS = {
 
 
 def _upload_route(dependencies: HttpDependencies) -> type[APIRoute]:
+    slots = BoundedSemaphore(dependencies.settings.conversion_upload_max_in_flight)
+
     class ConversionUploadRoute(APIRoute):
         def get_route_handler(
             self,
@@ -88,17 +99,41 @@ def _upload_route(dependencies: HttpDependencies) -> type[APIRoute]:
                     request,
                     request.headers.get("X-CSRF-Token"),
                 )
+                lifetime = getattr(request.state, CONVERSION_UPLOAD_LIFETIME)
+                if not slots.acquire(blocking=False):
+                    raise ConversionUploadCapacityExceeded
+                lifetime.callback(slots.release)
+                deadline = (
+                    current_time()
+                    + dependencies.settings.conversion_upload_body_timeout_seconds
+                )
                 received_bytes = 0
 
                 async def receive() -> Message:
                     nonlocal received_bytes
-                    message = await request.receive()
+                    remaining = deadline - current_time()
+                    if remaining <= 0:
+                        raise ConversionUploadTimedOut
+                    try:
+                        with fail_after(remaining):
+                            message = await request.receive()
+                    except TimeoutError:
+                        raise ConversionUploadTimedOut from None
+                    if current_time() >= deadline:
+                        raise ConversionUploadTimedOut
                     received_bytes += len(message.get("body", b""))
                     if received_bytes > maximum_bytes:
                         raise ConversionRequestTooLarge
                     return message
 
-                return await handler(Request(request.scope, receive))
+                bounded_request = Request(request.scope, receive)
+                try:
+                    return await handler(bounded_request)
+                finally:
+                    # FastAPI also closes parsed forms, but its cleanup can be
+                    # interrupted by the request's cancellation.
+                    with CancelScope(shield=True):
+                        await bounded_request.close()
 
             return handle_upload
 
@@ -283,7 +318,7 @@ def build_router(dependencies: HttpDependencies) -> APIRouter:
         response_model=ConversionResponse,
         status_code=status.HTTP_202_ACCEPTED,
         tags=["conversions"],
-        responses=error_responses(401, 403, 409, 413, 422, 429, 503),
+        responses=capacity_error_responses(401, 403, 408, 409, 413, 422, 429, 503),
     )
 
     @router.get(

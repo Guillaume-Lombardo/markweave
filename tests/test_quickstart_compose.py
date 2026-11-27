@@ -193,6 +193,12 @@ def test_application_has_disk_workspace_and_memory_headroom() -> None:
     assert environment["MARKWEAVE_PUBLIC_ORIGIN"] == (
         "${MARKWEAVE_PUBLIC_ORIGIN:-http://localhost:8080}"
     )
+    assert environment["MARKWEAVE_CONVERSION_UPLOAD_MAX_IN_FLIGHT"] == (
+        "${MARKWEAVE_CONVERSION_UPLOAD_MAX_IN_FLIGHT:-4}"
+    )
+    assert environment["MARKWEAVE_CONVERSION_UPLOAD_BODY_TIMEOUT_SECONDS"] == (
+        "${MARKWEAVE_CONVERSION_UPLOAD_BODY_TIMEOUT_SECONDS:-120}"
+    )
     assert environment["MARKWEAVE_CLAMAV_HOST"] == "clamav"
     assert environment["MARKWEAVE_STORAGE_PROFILE"] == "standalone"
     assert environment["MARKWEAVE_STANDALONE_DATA_DIRECTORY"] == "/data"
@@ -203,7 +209,7 @@ def test_application_has_disk_workspace_and_memory_headroom() -> None:
 def test_published_compose_uses_only_canonical_environment_names() -> None:
     environment = _compose()["services"]["markweave"]["environment"]
 
-    assert len(environment) == 78
+    assert len(environment) == 80
     assert all(key.startswith("MARKWEAVE_") for key in environment)
 
 

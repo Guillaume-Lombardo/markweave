@@ -92,6 +92,7 @@ ERROR_DESCRIPTIONS = {
     401: "Authentication failed or is required",
     403: "The operation is forbidden",
     404: "The requested resource was not found",
+    408: "The upload body did not arrive before its deadline",
     409: "The request conflicts with current state",
     412: "A request precondition failed",
     413: "The request body is too large",
@@ -115,7 +116,7 @@ def error_responses(*status_codes: int) -> dict[int | str, dict[str, Any]]:
 
 
 def capacity_error_responses(*status_codes: int) -> dict[int | str, dict[str, Any]]:
-    """Document the retry header on Composer routes with model-call capacity."""
+    """Document the retry header on routes with a service capacity limit."""
 
     responses = error_responses(*status_codes)
     if status.HTTP_503_SERVICE_UNAVAILABLE in responses:
@@ -125,8 +126,16 @@ def capacity_error_responses(*status_codes: int) -> dict[int | str, dict[str, An
     return responses
 
 
-class ConversionRequestTooLarge(HTTPException):
+class ConversionUploadHTTPError(HTTPException):
+    """A sanitized error that may interrupt FastAPI's multipart parsing."""
+
+    code: str
+
+
+class ConversionRequestTooLarge(ConversionUploadHTTPError):
     """Abort multipart parsing when the conversion body exceeds its ceiling."""
+
+    code = "CONVERSION_REQUEST_TOO_LARGE"
 
     def __init__(self) -> None:
         super().__init__(
@@ -135,21 +144,39 @@ class ConversionRequestTooLarge(HTTPException):
         )
 
 
+class ConversionUploadTimedOut(ConversionUploadHTTPError):
+    """Abort multipart parsing when the upload body deadline expires."""
+
+    code = "CONVERSION_UPLOAD_TIMED_OUT"
+
+    def __init__(self) -> None:
+        super().__init__(
+            status_code=status.HTTP_408_REQUEST_TIMEOUT,
+            detail="The forward upload did not finish before its deadline.",
+        )
+
+
+class ConversionUploadCapacityExceeded(Exception):
+    """The API process has no free forward-upload slot."""
+
+
 def install_error_handlers(app: FastAPI) -> None:
     """Install sanitized functional and request-validation error handlers."""
 
-    @app.exception_handler(ConversionRequestTooLarge)
-    def conversion_request_size_handler(
-        _request: Request, error: ConversionRequestTooLarge
+    @app.exception_handler(ConversionUploadHTTPError)
+    def conversion_upload_error_handler(
+        request: Request, error: ConversionUploadHTTPError
     ) -> JSONResponse:
+        # An HTTP/1.1 timeout can leave part of the previous body unread.
         return JSONResponse(
             status_code=error.status_code,
-            content={
-                "error": {
-                    "code": "CONVERSION_REQUEST_TOO_LARGE",
-                    "message": error.detail,
-                }
-            },
+            headers=(
+                {"Connection": "close"}
+                if error.status_code == status.HTTP_408_REQUEST_TIMEOUT
+                and request.scope.get("http_version") == "1.1"
+                else None
+            ),
+            content={"error": {"code": error.code, "message": error.detail}},
         )
 
     @app.exception_handler(ConversionSizeError)
@@ -554,6 +581,23 @@ def install_error_handlers(app: FastAPI) -> None:
                 "error": {
                     "code": "UPLOAD_SCANNER_UNAVAILABLE",
                     "message": "Upload malware scanning is unavailable.",
+                }
+            },
+        )
+
+    @app.exception_handler(ConversionUploadCapacityExceeded)
+    def conversion_upload_capacity_handler(
+        request: Request, _error: ConversionUploadCapacityExceeded
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            headers={
+                "Retry-After": str(request.app.state.conversion_retry_after_seconds)
+            },
+            content={
+                "error": {
+                    "code": "CONVERSION_UPLOAD_CAPACITY_EXCEEDED",
+                    "message": "Forward upload capacity is exhausted.",
                 }
             },
         )

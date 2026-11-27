@@ -1,7 +1,53 @@
 """HTTP-only request bounding middleware."""
 
+from contextlib import ExitStack
+
+from anyio import create_task_group
 from fastapi import status
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+CONVERSION_UPLOAD_LIFETIME = "markweave_conversion_upload_lifetime"
+
+
+class ConversionUploadLifetime:
+    """Hold the admission slot through FastAPI's multipart and response cleanup."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self._app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        root_path = scope.get("root_path", "")
+        if (
+            scope["type"] != "http"
+            or scope["method"] != "POST"
+            or scope["path"]
+            not in {
+                "/api/v1/conversions",
+                f"{root_path}/api/v1/conversions",
+            }
+        ):
+            await self._app(scope, receive, send)
+            return
+
+        # FastAPI retains the parsed form until its middleware stack has unwound,
+        # even while sending an error response.
+        with ExitStack() as lifetime:
+            scope.setdefault("state", {})[CONVERSION_UPLOAD_LIFETIME] = lifetime
+            error: Exception | None = None
+
+            async def process_upload() -> None:
+                nonlocal error
+                try:
+                    await self._app(scope, receive, send)
+                except Exception as caught:
+                    error = caught
+
+            # A cancelled server task must wait for running spool I/O and scanner
+            # threads before giving up its slot.
+            async with create_task_group() as tasks:
+                tasks.start_soon(process_upload)
+            if error is not None:
+                raise error
 
 
 class BoundedRequestBody:

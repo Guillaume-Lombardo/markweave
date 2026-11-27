@@ -1,9 +1,12 @@
-"""Exercise confirmation and resizing against the deployed rootless images."""
+"""Exercise forward upload limits against the deployed rootless images."""
 
+import http.client
 import io
 import json
 import os
 import zipfile
+from contextlib import ExitStack
+from urllib.parse import urlsplit
 
 import pytest
 from PIL import Image
@@ -89,3 +92,112 @@ def test_confirmed_archive_and_resized_docx() -> None:
         and any(size["actual_bytes"] == len(archive) for size in entry["sizes"])
         for entry in json.loads(audit.body)
     )
+
+
+def _assert_upload_timeout(connection: http.client.HTTPConnection) -> None:
+    assert connection.sock is not None
+    with connection.sock.dup() as transport, connection.getresponse() as timed_out:
+        assert timed_out.status == 408
+        assert timed_out.getheader("Connection") == "close"
+        assert json.loads(timed_out.read())["error"]["code"] == (
+            "CONVERSION_UPLOAD_TIMED_OUT"
+        )
+        transport.settimeout(3)
+        assert transport.recv(1) == b""
+
+
+def _finish_upload(connection: http.client.HTTPConnection, body: bytes) -> None:
+    connection.send(body)
+    with connection.getresponse() as admitted:
+        assert admitted.status == 202
+        admitted.read()
+
+
+def test_forward_upload_saturation_rejects_before_reading_and_allows_retry() -> None:
+    base_url = os.environ["MARKWEAVE_E2E_CONVERSION_URL"]
+    origin = urlsplit(base_url)
+    assert origin.scheme == "http"
+    host = origin.hostname
+    assert host is not None
+    client = ServiceClient(base_url)
+    login = client.request(
+        "POST",
+        "/api/v1/login",
+        body=b'{"username":"e2e-admin","password":"e2e-admin-password"}',
+        content_type="application/json",
+    )
+    expect(login, 200, "sign in for concurrent forward uploads")
+    cookie = next(
+        raw.split(";", 1)[0]
+        for raw in login.set_cookies
+        if raw.startswith("md_converter_session=")
+    )
+    csrf = decode_object(login, "read upload session")["csrf_token"]
+    body, content_type = multipart(
+        [("output", "docx")], [("source", "capacity.md", b"# Upload capacity")]
+    )
+    path = "/api/v1/conversions"
+    before = decode_object(client.request("GET", path), "list jobs before upload")
+    before_audit = client.request("GET", "/api/v1/audit")
+    expect(before_audit, 200, "read audit before upload")
+
+    def start_upload(connections: ExitStack) -> http.client.HTTPConnection:
+        connection = http.client.HTTPConnection(host, origin.port, timeout=20)
+        connections.callback(connection.close)
+        connection.putrequest("POST", path)
+        connection.putheader("Cookie", cookie)
+        connection.putheader("X-CSRF-Token", csrf)
+        connection.putheader("Content-Type", content_type)
+        connection.putheader("Content-Length", str(len(body)))
+        connection.putheader("Expect", "100-continue")
+        connection.endheaders()
+        return connection
+
+    def hold_all_slots(connections: ExitStack) -> list[http.client.HTTPConnection]:
+        pending = [start_upload(connections) for _ in range(4)]
+        for connection in pending:
+            assert connection.sock is not None
+            # Uvicorn acknowledges only when the application first reads the body.
+            with connection.sock.makefile("rb") as stream:
+                assert stream.readline().split()[:2] == [b"HTTP/1.1", b"100"]
+                assert stream.readline() == b"\r\n"
+        return pending
+
+    with ExitStack() as connections:
+        pending = hold_all_slots(connections)
+        # Send no body. If the application asks for it, getresponse will time out.
+        with start_upload(connections).getresponse() as rejected:
+            assert rejected.status == 503
+            assert rejected.getheader("Retry-After") == "1"
+            assert json.loads(rejected.read())["error"]["code"] == (
+                "CONVERSION_UPLOAD_CAPACITY_EXCEEDED"
+            )
+        assert (
+            decode_object(client.request("GET", path), "list jobs at capacity")["total"]
+            == before["total"]
+        )
+        assert client.request("GET", "/api/v1/audit").body == before_audit.body
+
+        _finish_upload(pending[0], body)
+        retried = client.request(
+            "POST",
+            path,
+            body=body,
+            content_type=content_type,
+            headers={"X-CSRF-Token": csrf},
+        )
+        expect(retried, 202, "retry forward upload after a slot is released")
+        finished = wait_for_job(client, retried.headers["location"])
+        assert finished["state"] == "succeeded"
+
+        for connection in pending[1:]:
+            _assert_upload_timeout(connection)
+        assert (
+            decode_object(client.request("GET", path), "list jobs after body timeout")[
+                "total"
+            ]
+            == before["total"] + 2
+        )
+        # Reacquire every slot to detect leaks among the expired uploads.
+        fresh = hold_all_slots(connections)
+        _finish_upload(fresh[0], body)

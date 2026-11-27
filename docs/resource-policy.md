@@ -1,10 +1,30 @@
 # Resource policy and cleanup
 
-Every production quota and resource ceiling is explicit. The application has no built-in
-production values for these settings: operators must size them from their workload and the T00
-measurements, then provide them through `MARKWEAVE_*` environment variables.
+Size production quotas and resource ceilings from the workload and T00 measurements, then
+configure them through `MARKWEAVE_*` environment variables.
 
 ## Admission
+
+Each API process has four forward-upload slots by default
+(`MARKWEAVE_CONVERSION_UPLOAD_MAX_IN_FLIGHT`). They are shared by all authenticated callers of
+`POST /api/v1/conversions`. The API checks the session and CSRF token before reserving a slot.
+The slot covers multipart reading and spooling, scanning, validation, job submission, and
+response cleanup. The API allows 120 seconds by default for the entire request body
+(`MARKWEAVE_CONVERSION_UPLOAD_BODY_TIMEOUT_SECONDS`). Receiving another chunk does not reset
+the deadline. After expiry the API discards the partial upload and returns HTTP 408.
+When every slot is in use, the server returns HTTP 503 and `Retry-After` before reading the body.
+Rejected uploads create no spool, job, or audit record. An upload is eligible for an idempotent
+replay once it gets a slot.
+
+Slots use the hard request ceiling for sizing, regardless of the declared content length.
+Multiply the per-process slot count by the effective hard request ceiling to budget for
+concurrent multipart input and spool space. Also allow memory for parser overhead, the source
+bytes in memory during scanning and submission, and the rest of the application. Four slots
+under the quickstart's 4,100,000-byte hard request ceiling allow at most 16,400,000 bytes of
+concurrent multipart input and four forward scans per API process. The quickstart allocates
+64 MiB for the backend's `/tmp`. Revisit both settings together if you raise the hard request
+ceiling, and size shared resources for the sum across API processes and replicas. Include
+ingress buffering and traffic to other upload endpoints when sizing the deployment.
 
 `MARKWEAVE_JOB_ACTIVE_LIMIT_PER_USER` bounds each owner's jobs in `queued` or `running` state.
 `MARKWEAVE_JOB_GLOBAL_QUEUE_CAPACITY` bounds the global persistent workload in `queued` or
@@ -79,9 +99,6 @@ validation, processing, database reservation, or object-store write. The adapter
 oversized response, noncanonical or unterminated record, multiple records, trailing data, or other
 indeterminate protocol output fails closed with stable
 `UPLOAD_SCANNER_UNAVAILABLE` and HTTP 503. No durable quarantine is retained.
-
-All implemented numeric ceilings and schedules remain required operator-supplied configuration;
-this repository deliberately supplies no implicit production values.
 
 ## Required settings
 
