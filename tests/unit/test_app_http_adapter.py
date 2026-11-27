@@ -1136,6 +1136,7 @@ def _conversion_scope(extra_headers=()) -> dict:
         "type": "http",
         "method": "POST",
         "scheme": "https",
+        "http_version": "1.1",
         "path": "/api/v1/conversions",
         "query_string": b"",
         "headers": [
@@ -1226,7 +1227,7 @@ def test_conversion_counts_stream_bytes_and_closes_partial_file(
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("phase", ["scan", "spool"])
+@pytest.mark.parametrize("phase", ["scan", "spool", "close"])
 def test_conversion_capacity_survives_cancellation_of_running_thread_io(
     mocker: MockerFixture, phase: str
 ) -> None:
@@ -1241,23 +1242,26 @@ def test_conversion_capacity_survives_cancellation_of_running_thread_io(
         thread_started.set()
         assert finish_thread.wait(timeout=10)
 
+    def paused(method):
+        def run(*args):
+            pause()
+            return method(*args)
+
+        return run
+
     def make_spool(**kwargs):
         file = real_spool(**kwargs)
-        original_write = file.write
-
-        def write(chunk: bytes):
-            pause()
-            return original_write(chunk)
-
         if phase == "spool":
-            file.write = write
+            file.write = paused(file.write)
+        elif phase == "close":
+            file.close = paused(file.close)
         files.append(file)
         return file
 
     spool = mocker.patch.object(
         formparsers, "SpooledTemporaryFile", side_effect=make_spool
     )
-    if phase == "spool":
+    if phase in {"spool", "close"}:
         mocker.patch.object(formparsers.MultiPartParser, "spool_max_size", 1)
     else:
         scanner.scan.side_effect = lambda _content: pause()
@@ -1341,9 +1345,9 @@ def test_conversion_keeps_slot_until_multipart_validation_response_finishes(
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("delay_after_write", [False, True])
+@pytest.mark.parametrize("phase", ["waiting", "before_read", "after_read"])
 def test_conversion_body_deadline_closes_partial_spool(
-    mocker: MockerFixture, delay_after_write: bool
+    mocker: MockerFixture, phase: str
 ) -> None:
     scanner = mocker.Mock(spec=UploadScanner)
     client, _, _, _ = isolated_client(
@@ -1352,11 +1356,13 @@ def test_conversion_body_deadline_closes_partial_spool(
         conversion_upload_max_in_flight=1,
         conversion_upload_body_timeout_seconds=0.25,
     )
-    if delay_after_write:
-        # Expire the total budget before the parser asks for its next chunk.
+    if phase != "waiting":
+        # A buffered chunk can arrive even if the event loop has not dispatched
+        # the timer callback yet. Check the clock before and after each receive.
         mocker.patch(
             "markweave.http.routers.conversions.current_time",
-            side_effect=[0, 0, 1] * 2,
+            side_effect=([0, 0, 0, 1] if phase == "before_read" else [0, 0, 0, 0, 1])
+            * 2,
         )
     spool = mocker.spy(sys.modules["starlette.formparsers"], "SpooledTemporaryFile")
     part = b'--private\r\nContent-Disposition: form-data; name="source"; filename="a.md"\r\n\r\n'
@@ -1368,12 +1374,15 @@ def test_conversion_body_deadline_closes_partial_spool(
                 "body": part + b"x" * 2_000_000,
                 "more_body": True,
             }
+        if phase == "after_read":
+            return {"type": "http.request", "body": b"\r\n--private--\r\n"}
         return await asyncio.Future()
 
     for _ in range(2):
         send = mocker.AsyncMock()
         _conversion_asgi_request(client, receive, send)
         assert send.await_args_list[0].args[0]["status"] == 408
+        assert (b"connection", b"close") in send.await_args_list[0].args[0]["headers"]
         assert json.loads(send.await_args_list[1].args[0]["body"])["error"]["code"] == (
             "CONVERSION_UPLOAD_TIMED_OUT"
         )

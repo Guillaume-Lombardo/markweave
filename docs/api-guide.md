@@ -47,7 +47,8 @@ When the API process runs out of forward-upload slots, it returns HTTP 503 with
 `CONVERSION_UPLOAD_CAPACITY_EXCEEDED` and `Retry-After` in seconds. The server has not read the
 body or reserved a job. Retry after that interval with the same payload and idempotency key.
 An incomplete upload that exceeds the body deadline returns HTTP 408 with
-`CONVERSION_UPLOAD_TIMED_OUT`. The server discards the partial upload.
+`CONVERSION_UPLOAD_TIMED_OUT`. The server discards the partial upload and closes HTTP/1.1
+connections after sending this response.
 The response `template_mode` is `pandoc-default` or `versioned`; template identifiers are `null` in
 default mode.
 

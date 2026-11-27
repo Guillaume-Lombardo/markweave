@@ -119,6 +119,8 @@ def _upload_route(dependencies: HttpDependencies) -> type[APIRoute]:
                             message = await request.receive()
                     except TimeoutError:
                         raise ConversionUploadTimedOut from None
+                    if current_time() >= deadline:
+                        raise ConversionUploadTimedOut
                     received_bytes += len(message.get("body", b""))
                     if received_bytes > maximum_bytes:
                         raise ConversionRequestTooLarge

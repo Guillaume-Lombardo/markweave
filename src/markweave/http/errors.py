@@ -165,16 +165,18 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(ConversionUploadHTTPError)
     def conversion_upload_error_handler(
-        _request: Request, error: ConversionUploadHTTPError
+        request: Request, error: ConversionUploadHTTPError
     ) -> JSONResponse:
+        # An HTTP/1.1 timeout can leave part of the previous body unread.
         return JSONResponse(
             status_code=error.status_code,
-            content={
-                "error": {
-                    "code": error.code,
-                    "message": error.detail,
-                }
-            },
+            headers=(
+                {"Connection": "close"}
+                if error.status_code == status.HTTP_408_REQUEST_TIMEOUT
+                and request.scope.get("http_version") == "1.1"
+                else None
+            ),
+            content={"error": {"code": error.code, "message": error.detail}},
         )
 
     @app.exception_handler(ConversionSizeError)

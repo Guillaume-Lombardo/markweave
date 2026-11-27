@@ -94,6 +94,15 @@ def test_confirmed_archive_and_resized_docx() -> None:
     )
 
 
+def _assert_upload_timeout(connection: http.client.HTTPConnection) -> None:
+    with connection.getresponse() as timed_out:
+        assert timed_out.status == 408
+        assert timed_out.getheader("Connection") == "close"
+        assert json.loads(timed_out.read())["error"]["code"] == (
+            "CONVERSION_UPLOAD_TIMED_OUT"
+        )
+
+
 def test_forward_upload_saturation_rejects_before_reading_and_allows_retry() -> None:
     base_url = os.environ["MARKWEAVE_E2E_CONVERSION_URL"]
     origin = urlsplit(base_url)
@@ -123,7 +132,7 @@ def test_forward_upload_saturation_rejects_before_reading_and_allows_retry() -> 
     expect(before_audit, 200, "read audit before upload")
 
     def start_upload(connections: ExitStack) -> http.client.HTTPConnection:
-        connection = http.client.HTTPConnection(host, origin.port, timeout=10)
+        connection = http.client.HTTPConnection(host, origin.port, timeout=20)
         connections.callback(connection.close)
         connection.putrequest("POST", path)
         connection.putheader("Cookie", cookie)
@@ -171,3 +180,22 @@ def test_forward_upload_saturation_rejects_before_reading_and_allows_retry() -> 
         expect(retried, 202, "retry forward upload after a slot is released")
         finished = wait_for_job(client, retried.headers["location"])
         assert finished["state"] == "succeeded"
+
+        _assert_upload_timeout(pending[1])
+        assert (
+            decode_object(client.request("GET", path), "list jobs after body timeout")[
+                "total"
+            ]
+            == before["total"] + 2
+        )
+        expect(
+            client.request(
+                "POST",
+                path,
+                body=body,
+                content_type=content_type,
+                headers={"X-CSRF-Token": csrf},
+            ),
+            202,
+            "submit on a new connection after body timeout",
+        )

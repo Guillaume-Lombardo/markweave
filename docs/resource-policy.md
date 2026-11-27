@@ -23,8 +23,8 @@ bytes in memory during scanning and submission, and the rest of the application.
 under the quickstart's 4,100,000-byte hard request ceiling allow at most 16,400,000 bytes of
 concurrent multipart input and four forward scans per API process. The quickstart allocates
 64 MiB for the backend's `/tmp`. Revisit both settings together if you raise the hard request
-ceiling, and size shared resources for the sum across API processes and replicas. Ingress
-buffering and other upload endpoints use their own resource budgets.
+ceiling, and size shared resources for the sum across API processes and replicas. Include
+ingress buffering and traffic to other upload endpoints when sizing the deployment.
 
 `MARKWEAVE_JOB_ACTIVE_LIMIT_PER_USER` bounds each owner's jobs in `queued` or `running` state.
 `MARKWEAVE_JOB_GLOBAL_QUEUE_CAPACITY` bounds the global persistent workload in `queued` or

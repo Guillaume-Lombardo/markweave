@@ -44,6 +44,11 @@ budgets.
   from holding a slot indefinitely.
   Reproduce the pressure measurement with
   `uv run pytest --no-cov tests/integration/sqlite/test_conversion_upload_capacity.py -k pressure -o junit_family=legacy --junitxml=upload-pressure.xml`.
+- 2026-11-27: Four authenticated 3,900,000-byte streams occupied 15,600,000 logical spool
+  bytes and 15,466,496 bytes in the open temporary files before flush. In the local run, peak
+  traced Python allocations were 3.2 MB during spooling and 16.9 MB while all four scans held
+  their sources. All spool files were closed by the scan phase. The measurement excludes
+  native allocations and socket buffers.
 
 ## Synchronization
 
