@@ -15,6 +15,10 @@ private reporting, and the [support policy](SUPPORT.md) for help with a publishe
 ### Fixed
 
 - Distributed restore preserves retained conversions that reference superseded template versions.
+- Routine pull request CI checks release metadata locally and contacts public release services
+  only when the source version, release attempt, or deployment pins change.
+- Main CI failure tracking resolves the current repository name before creating or updating
+  the alert issue, so a repository rename no longer causes a redirected write.
 
 <a id="release-0-9-0"></a>
 

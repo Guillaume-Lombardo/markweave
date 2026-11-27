@@ -473,28 +473,36 @@ def test_ci_uses_only_github_hosted_runners() -> None:
     ("needle", "replacement", "message"),
     [
         (
-            "      packages: read",
-            "      packages: write",
-            "light job permissions must be exactly contents: read and packages: read",
+            "      contents: read\n    steps:",
+            "      contents: read\n      packages: write\n    steps:",
+            "light job permissions must be exactly contents: read",
         ),
         (
             "github.event.pull_request.head.repo.full_name == github.repository",
             "github.repository == github.repository",
-            "public alignment must receive only the ephemeral read-only GHCR credentials",
+            "public alignment must receive the exact event commits and only the "
+            "ephemeral read-only GitHub API token",
         ),
         (
-            "          GHCR_TOKEN: ${{ (github.event_name == 'push'",
-            "          GHCR_TOKEN: attacker-controlled",
-            "public alignment must receive only the ephemeral read-only GHCR credentials",
+            "          GITHUB_API_TOKEN: ${{ github.repository == 'Guillaume-Lombardo/markweave'",
+            "          GITHUB_API_TOKEN: attacker-controlled",
+            "public alignment must receive the exact event commits and only the "
+            "ephemeral read-only GitHub API token",
         ),
         (
-            "          GHCR_USERNAME: ${{ (github.event_name == 'push'",
-            "          GHCR_USERNAME: hard-coded",
-            "public alignment must receive only the ephemeral read-only GHCR credentials",
+            "          HEAD_SHA: ${{ github.sha }}\n        run: >-",
+            "          HEAD_SHA: ${{ github.event.pull_request.head.sha }}\n        run: >-",
+            "public alignment must receive the exact event commits and only the "
+            "ephemeral read-only GitHub API token",
+        ),
+        (
+            "      - name: Verify public release alignment\n        env:",
+            "      - name: Verify public release alignment\n        if: ${{ false }}\n        env:",
+            "step 'Verify public release alignment' in job 'light' must not define a condition",
         ),
     ],
 )
-def test_ci_limits_public_alignment_registry_fallback_credentials(
+def test_ci_binds_public_alignment_to_reviewed_commits_and_read_only_credentials(
     needle: str, replacement: str, message: str
 ) -> None:
     workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")

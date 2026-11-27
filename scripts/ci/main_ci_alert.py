@@ -8,14 +8,9 @@ from typing import Any, TypedDict
 
 TITLE = "Main CI is failing"
 LABEL = "ci-main-failure"
-ISSUES = "repos/{owner}/{repo}/issues"
 BOT_LOGIN = "github-actions[bot]"
 STATE_PREFIX = "<!-- main-ci-state "
 DRY_RUN_SOURCE = "release-qualification"
-DRY_RUN_SUCCESSES = (
-    "repos/{owner}/{repo}/actions/workflows/release-qualification-dry-run.yml/runs"
-    "?branch=main&status=success&per_page=1"
-)
 TRACKING_SOURCES = {
     "schedule": "Scheduled CI",
     "push": "Push to main",
@@ -50,9 +45,9 @@ def _api(*args: str, payload: dict[str, Any] | None = None) -> Any:
     return json.loads(_gh("api", *args))
 
 
-def _tracking_issue() -> dict[str, Any] | None:
+def _tracking_issue(issues: str) -> dict[str, Any] | None:
     pages = _api(
-        "--paginate", "--slurp", f"{ISSUES}?state=all&labels={LABEL}&per_page=100"
+        "--paginate", "--slurp", f"{issues}?state=all&labels={LABEL}&per_page=100"
     )
     matches = [
         issue
@@ -89,7 +84,7 @@ def _render_body(latest: dict[str, Run]) -> str:
     return "\n".join(lines)
 
 
-def reconcile(source: str, run: Run) -> None:
+def reconcile(repository: str, source: str, run: Run) -> None:
     """Apply the result once, with recovery tracked separately for each source."""
     if source not in TRACKING_SOURCES or run["conclusion"] not in {
         "failure",
@@ -98,11 +93,15 @@ def reconcile(source: str, run: Run) -> None:
         raise ValueError("Expected a tracked main CI gate result")
 
     if source == DRY_RUN_SOURCE and run["conclusion"] == "failure":
-        successful_runs = _api(DRY_RUN_SUCCESSES)["workflow_runs"]
+        successful_runs = _api(
+            f"repos/{repository}/actions/workflows/release-qualification-dry-run.yml/runs"
+            "?branch=main&status=success&per_page=1"
+        )["workflow_runs"]
         if any(result["run_number"] > run["number"] for result in successful_runs):
             return
 
-    issue = _tracking_issue()
+    issues = f"repos/{repository}/issues"
+    issue = _tracking_issue(issues)
     if issue is None:
         if run["conclusion"] == "success":
             return
@@ -115,11 +114,13 @@ def reconcile(source: str, run: Run) -> None:
             "--description",
             "Tracks failures of CI on main",
             "--force",
+            "--repo",
+            repository,
         )
         _api(
             "--method",
             "POST",
-            ISSUES,
+            issues,
             payload={
                 "title": TITLE,
                 "labels": [LABEL],
@@ -140,7 +141,7 @@ def reconcile(source: str, run: Run) -> None:
     _api(
         "--method",
         "PATCH",
-        f"{ISSUES}/{issue['number']}",
+        f"{issues}/{issue['number']}",
         payload={
             "body": _render_body(latest),
             "state": "open" if failing else "closed",
@@ -149,11 +150,15 @@ def reconcile(source: str, run: Run) -> None:
 
 
 def main() -> None:
-    repository = os.environ["GITHUB_REPOSITORY"]
+    # The checkout and event can still refer to an old name after a rename.
+    # Resolve the stable repository ID before any issue or label mutation.
+    repository_id = int(os.environ["GITHUB_REPOSITORY_ID"])
+    repository = _api(f"repositories/{repository_id}")["full_name"]
     server = os.environ["GITHUB_SERVER_URL"]
     run_id = os.environ["GITHUB_RUN_ID"]
     attempt = int(os.environ["GITHUB_RUN_ATTEMPT"])
     reconcile(
+        repository,
         os.environ.get("CI_TRACKING_SOURCE") or os.environ["GITHUB_EVENT_NAME"],
         {
             "number": int(os.environ["GITHUB_RUN_NUMBER"]),

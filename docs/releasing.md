@@ -16,7 +16,12 @@ numbers, and stale attempts on a new version fail closed. Pull requests, forks, 
 Release events cannot start publication. Manual dispatch cannot publish Python artifacts; it is
 reserved for the container-only recovery described below.
 
-The read-only CI workflow also verifies the public release identity through fixed HTTPS endpoints.
+The read-only CI workflow verifies the public release identity through fixed HTTPS endpoints on
+main pushes, Release events, scheduled and manual runs, and candidates that change
+`project.version`, `tool.markweave.release.attempt`, or the public Compose or quickstart image pins.
+Other pull requests and merge-group candidates check local release metadata and image pins
+without contacting PyPI, GitHub Releases, or GHCR for alignment. A candidate that carries an
+unchanged pending release must adopt the published images before other changes can proceed.
 In the normal state, `project.version`, the latest PyPI version, the Compose image tag, the
 published GitHub tag and Release receipt, and the anonymous GHCR manifest digest must all agree;
 the Compose reference must include that immutable digest. The only exception is an exact version
@@ -27,13 +32,9 @@ this exception. A later revision at the unchanged new version also fails until t
 has been adopted, except the protected recovery revision that increments `attempt` by exactly one
 over its base at that same unpublished version.
 
-Past release incidents, one-time transition exceptions, source SHAs, run IDs and immutable receipts
-are retained in [release history](archive/evidence/release-migration-history.md#release-incidents-and-receipts-through-073).
-The Python-only `0.7.4` release and its one-time exact `0.7.4` to `0.7.5` continuation are recorded
-in the [0.7.4 incident record](archive/evidence/release-migration-history.md#incomplete-074-container-release).
-Those exceptions do not authorize another release or a replay of a completed transition. The
-adopted `0.7.5` receipts are recorded in the
-[0.7.5 publication record](archive/evidence/release-migration-history.md#published-075-corrective-release).
+The retired exceptions for `0.6.0`, `0.7.2`, and `0.7.4` remain in the archived
+[release history](archive/evidence/release-migration-history.md), with the original source SHAs,
+run IDs, and publication receipts.
 
 ## GitHub and PyPI trust configuration
 

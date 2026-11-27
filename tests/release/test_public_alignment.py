@@ -6,13 +6,11 @@ import hashlib
 import io
 import json
 import ssl
-import subprocess
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from email.message import Message
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -22,7 +20,6 @@ from scripts.release.public_alignment import (
     BaseIdentity,
     ComposeIdentity,
     HttpResponse,
-    RegistryCredentials,
     check_alignment,
     parse_compose_identity,
     parse_frontend_compose_identity,
@@ -30,7 +27,6 @@ from scripts.release.public_alignment import (
 )
 
 SOURCE_SHA = "a" * 40
-REGISTRY_CREDENTIALS = RegistryCredentials("github-actions", "read-only-token")
 REGISTRY_MANIFEST = b'{"schemaVersion":2,"config":{}}'
 REGISTRY_DIGEST = f"sha256:{hashlib.sha256(REGISTRY_MANIFEST).hexdigest()}"
 
@@ -103,55 +99,6 @@ def _public_transport(*, version: str = "0.4.0") -> FakeTransport:
             ),
         }
     )
-
-
-def _skipped_container_transport() -> FakeTransport:
-    version = "0.6.0"
-    tag = f"v{version}"
-    backend_token = public_alignment.GHCR_TOKEN_URL
-    frontend_token = (
-        "https://ghcr.io/token?service=ghcr.io&scope=repository:"
-        f"{public_alignment.FRONTEND_REGISTRY_PATH}:pull"
-    )
-    transport = _public_transport(version="0.5.2")
-    transport.responses.update(
-        {
-            public_alignment.PYPI_URL: _json_response({"info": {"version": version}}),
-            f"{public_alignment.GITHUB_API}/releases/tags/{tag}": _json_response(
-                {
-                    "tag_name": tag,
-                    "target_commitish": SOURCE_SHA,
-                    "draft": False,
-                    "prerelease": False,
-                    "published_at": "2026-09-03T01:43:35Z",
-                    "assets": [],
-                }
-            ),
-            f"{public_alignment.GITHUB_API}/git/ref/tags/{tag}": _json_response(
-                {"object": {"type": "commit", "sha": SOURCE_SHA}}
-            ),
-            backend_token: _json_response({"token": "backend-pull-token"}),
-            f"https://ghcr.io/v2/{public_alignment.REGISTRY_PATH}/manifests/{version}": HttpResponse(
-                404,
-                {"content-type": "application/json"},
-                b'{"errors":[{"code":"MANIFEST_UNKNOWN","message":"manifest unknown"}]}',
-            ),
-            frontend_token: [
-                HttpResponse(
-                    403,
-                    {"content-type": "application/json"},
-                    b'{"errors":[{"code":"DENIED","message":"requested access to the resource is denied"}]}',
-                ),
-                _json_response({"token": "frontend-pull-token"}),
-            ],
-            f"https://ghcr.io/v2/{public_alignment.FRONTEND_REGISTRY_PATH}/manifests/{version}": HttpResponse(
-                404,
-                {"content-type": "application/json"},
-                b'{"errors":[{"code":"MANIFEST_UNKNOWN","message":"manifest unknown"}]}',
-            ),
-        }
-    )
-    return transport
 
 
 def _paired_transport(*, version: str = "0.6.1") -> FakeTransport:
@@ -269,216 +216,6 @@ def test_accepts_only_exact_pending_release_transition(event_name: str) -> None:
     )
 
     assert state == "pending"
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("event_name", ["pull_request", "merge_group", "push"])
-def test_accepts_exact_061_transition_after_skipped_060_containers(
-    event_name: str,
-) -> None:
-    transport = _skipped_container_transport()
-
-    state = check_alignment(
-        project_version="0.6.1",
-        compose=ComposeIdentity("0.5.2", REGISTRY_DIGEST),
-        event_name=event_name,
-        transport=transport,
-        base=BaseIdentity("0.6.0", SOURCE_SHA),
-        registry_credentials=REGISTRY_CREDENTIALS,
-    )
-
-    assert state == "pending-skipped-container"
-    assert [url for url, _headers in transport.requests] == [
-        public_alignment.PYPI_URL,
-        f"{public_alignment.GITHUB_API}/releases/tags/v0.5.2",
-        f"{public_alignment.GITHUB_API}/git/ref/tags/v0.5.2",
-        f"{public_alignment.GITHUB_RELEASES}/v0.5.2/registry-publication.json",
-        public_alignment.GHCR_TOKEN_URL,
-        f"https://ghcr.io/v2/{public_alignment.REGISTRY_PATH}/manifests/0.5.2",
-        f"{public_alignment.GITHUB_API}/releases/tags/v0.6.0",
-        f"{public_alignment.GITHUB_API}/git/ref/tags/v0.6.0",
-        public_alignment.GHCR_TOKEN_URL,
-        f"https://ghcr.io/v2/{public_alignment.REGISTRY_PATH}/manifests/0.6.0",
-        (
-            "https://ghcr.io/token?service=ghcr.io&scope=repository:"
-            f"{public_alignment.FRONTEND_REGISTRY_PATH}:pull"
-        ),
-        (
-            "https://ghcr.io/token?service=ghcr.io&scope=repository:"
-            f"{public_alignment.FRONTEND_REGISTRY_PATH}:pull"
-        ),
-        f"https://ghcr.io/v2/{public_alignment.FRONTEND_REGISTRY_PATH}/manifests/0.6.0",
-    ]
-    frontend_token_requests = [
-        headers
-        for url, headers in transport.requests
-        if url
-        == (
-            "https://ghcr.io/token?service=ghcr.io&scope=repository:"
-            f"{public_alignment.FRONTEND_REGISTRY_PATH}:pull"
-        )
-    ]
-    assert "Authorization" not in frontend_token_requests[0]
-    assert frontend_token_requests[1]["Authorization"].startswith("Basic ")
-
-
-@pytest.mark.unit
-def test_skipped_container_transition_still_verifies_deployed_exact_bytes() -> None:
-    with pytest.raises(AlignmentError, match="receipt does not match"):
-        check_alignment(
-            project_version="0.6.1",
-            compose=ComposeIdentity("0.5.2", f"sha256:{'c' * 64}"),
-            event_name="pull_request",
-            transport=_skipped_container_transport(),
-            base=BaseIdentity("0.6.0", SOURCE_SHA),
-            registry_credentials=REGISTRY_CREDENTIALS,
-        )
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    ("mutation", "message"),
-    [
-        ("backend-present", "not proven publicly absent"),
-        ("frontend-present", "not proven publicly absent"),
-        ("frontend-auth-token-denied", "invalid pull token response"),
-        ("backend-malformed-404", "absence response is invalid"),
-        ("frontend-unrelated-404", "absence response is invalid"),
-        ("frontend-oversized-404", "not proven publicly absent"),
-        ("receipt-present", "already has a publication receipt"),
-        ("wrong-source", "does not match the exact base source"),
-    ],
-)
-def test_skipped_container_transition_rejects_any_inconsistent_public_surface(
-    mutation: str, message: str
-) -> None:
-    transport = _skipped_container_transport()
-    manifest = HttpResponse(
-        200, {"docker-content-digest": REGISTRY_DIGEST}, REGISTRY_MANIFEST
-    )
-    if mutation == "backend-present":
-        transport.responses[
-            f"https://ghcr.io/v2/{public_alignment.REGISTRY_PATH}/manifests/0.6.0"
-        ] = manifest
-    elif mutation == "frontend-present":
-        transport.responses[
-            f"https://ghcr.io/v2/{public_alignment.FRONTEND_REGISTRY_PATH}/manifests/0.6.0"
-        ] = manifest
-    elif mutation == "frontend-auth-token-denied":
-        repository_path = public_alignment.FRONTEND_REGISTRY_PATH
-        token_url = (
-            "https://ghcr.io/token?service=ghcr.io&scope=repository:"
-            f"{repository_path}:pull"
-        )
-        transport.responses[token_url] = [
-            HttpResponse(
-                403,
-                {"content-type": "application/json"},
-                b'{"errors":[{"code":"DENIED","message":"requested access to the resource is denied"}]}',
-            ),
-            HttpResponse(403, {}, b""),
-        ]
-    elif mutation == "backend-malformed-404":
-        transport.responses[
-            f"https://ghcr.io/v2/{public_alignment.REGISTRY_PATH}/manifests/0.6.0"
-        ] = HttpResponse(404, {}, b"not-json")
-    elif mutation == "frontend-unrelated-404":
-        transport.responses[
-            f"https://ghcr.io/v2/{public_alignment.FRONTEND_REGISTRY_PATH}/manifests/0.6.0"
-        ] = HttpResponse(
-            404,
-            {},
-            b'{"errors":[{"code":"NAME_UNKNOWN","message":"repository name not known to registry"}]}',
-        )
-    elif mutation == "frontend-oversized-404":
-        transport.responses[
-            f"https://ghcr.io/v2/{public_alignment.FRONTEND_REGISTRY_PATH}/manifests/0.6.0"
-        ] = HttpResponse(404, {}, b"x" * 4_097)
-    elif mutation == "receipt-present":
-        release_url = f"{public_alignment.GITHUB_API}/releases/tags/v0.6.0"
-        release_response = transport.responses[release_url]
-        assert isinstance(release_response, HttpResponse)
-        release = json.loads(release_response.body)
-        release["assets"] = [{"name": "registry-publication.json"}]
-        transport.responses[release_url] = _json_response(release)
-
-    with pytest.raises(AlignmentError, match=message):
-        check_alignment(
-            project_version="0.6.1",
-            compose=ComposeIdentity("0.5.2", REGISTRY_DIGEST),
-            event_name="pull_request",
-            transport=transport,
-            base=BaseIdentity(
-                "0.6.0", "b" * 40 if mutation == "wrong-source" else SOURCE_SHA
-            ),
-            registry_credentials=REGISTRY_CREDENTIALS,
-        )
-
-
-@pytest.mark.unit
-def test_backend_anonymous_denial_never_requests_credentials() -> None:
-    transport = _skipped_container_transport()
-    token_url = public_alignment.GHCR_TOKEN_URL
-    transport.responses[token_url] = [
-        _json_response({"token": "deployed-backend-token"}),
-        HttpResponse(
-            403,
-            {"content-type": "application/json"},
-            b'{"errors":[{"code":"DENIED","message":"requested access to the resource is denied"}]}',
-        ),
-        _json_response({"token": "must-not-be-requested"}),
-    ]
-
-    with pytest.raises(AlignmentError, match="backend anonymous access was denied"):
-        check_alignment(
-            project_version="0.6.1",
-            compose=ComposeIdentity("0.5.2", REGISTRY_DIGEST),
-            event_name="pull_request",
-            transport=transport,
-            base=BaseIdentity("0.6.0", SOURCE_SHA),
-            registry_credentials=REGISTRY_CREDENTIALS,
-        )
-
-    backend_token_requests = [
-        headers for url, headers in transport.requests if url == token_url
-    ]
-    assert len(backend_token_requests) == 2
-    assert all("Authorization" not in headers for headers in backend_token_requests)
-
-
-@pytest.mark.unit
-def test_skipped_container_transition_rejects_missing_fallback_credentials() -> None:
-    with pytest.raises(AlignmentError, match="credentials are unavailable"):
-        check_alignment(
-            project_version="0.6.1",
-            compose=ComposeIdentity("0.5.2", REGISTRY_DIGEST),
-            event_name="pull_request",
-            transport=_skipped_container_transport(),
-            base=BaseIdentity("0.6.0", SOURCE_SHA),
-        )
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    ("project_version", "compose_version", "base_version"),
-    [
-        ("0.6.2", "0.5.2", "0.6.0"),
-        ("0.6.1", "0.5.1", "0.6.0"),
-        ("0.6.1", "0.5.2", "0.5.2"),
-    ],
-)
-def test_skipped_container_transition_is_limited_to_exact_versions(
-    project_version: str, compose_version: str, base_version: str
-) -> None:
-    with pytest.raises(AlignmentError, match="exact pending"):
-        check_alignment(
-            project_version=project_version,
-            compose=ComposeIdentity(compose_version, REGISTRY_DIGEST),
-            event_name="pull_request",
-            transport=_skipped_container_transport(),
-            base=BaseIdentity(base_version, SOURCE_SHA),
-            registry_credentials=REGISTRY_CREDENTIALS,
-        )
 
 
 @pytest.mark.unit
@@ -606,7 +343,118 @@ def test_rejects_pypi_compose_drift_before_trusting_other_surfaces() -> None:
             base=BaseIdentity("0.4.0", SOURCE_SHA),
         )
 
-    assert len(transport.requests) == 1
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        ("pull_request", "unrelated", "skipped", False),
+        ("merge_group", "unrelated", "skipped", False),
+        ("pull_request", "release-attempt", "aligned", True),
+        (
+            "pull_request",
+            "backend-pin",
+            "PyPI version and Compose image tag differ",
+            True,
+        ),
+        ("pull_request", "frontend-pin", "does not match", True),
+        ("pull_request", "quickstart-pin", "aligned", True),
+        ("pull_request", "simple-pin", "aligned", True),
+        ("pull_request", "adoption", "aligned", True),
+        ("pull_request", "awaiting-adoption", "adopt published images", False),
+        ("push", "unrelated", "aligned", True),
+        ("release", "unrelated", "aligned", True),
+        ("schedule", "unrelated", "aligned", True),
+        ("workflow_dispatch", "unrelated", "aligned", True),
+    ],
+)
+def test_cli_contacts_public_services_only_when_required(
+    tmp_path: Path,
+    mocker,
+    capsys,
+    scenario: tuple[str, str, str, bool],
+) -> None:
+    event, change, expected, contact_public = scenario
+    project = b'[project]\nversion = "0.8.1"\n'
+    backend = f"{public_alignment.IMAGE_REPOSITORY}:0.8.1@{REGISTRY_DIGEST}"
+    frontend = f"{public_alignment.FRONTEND_IMAGE_REPOSITORY}:0.8.1@{REGISTRY_DIGEST}"
+    compose = (
+        f"services:\n  markweave:\n    image: {backend}\n"
+        "  frontend:\n"
+        f'    image: "${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{frontend}}}"\n'
+        "  router:\n"
+        f'    image: "${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{frontend}}}"\n'
+    ).encode()
+    quickstart = f'readonly cutover_backend_image="{backend}"\n'.encode()
+    previous = {
+        "pyproject.toml": project,
+        "compose.yaml": compose,
+        "scripts/quickstart.sh": quickstart,
+        "scripts/quickstart-simple.sh": quickstart,
+    }
+    current = previous.copy()
+    other_digest = f"sha256:{'b' * 64}".encode()
+    match change:
+        case "unrelated":
+            current["pyproject.toml"] += b'description = "updated"\n'
+            current["compose.yaml"] += b"# deployment configuration\n"
+            current["scripts/quickstart.sh"] = b"# helper change\n\n" + quickstart
+        case "release-attempt":
+            current["pyproject.toml"] += b"[tool.markweave.release]\nattempt = 2\n"
+        case "backend-pin":
+            current["compose.yaml"] = compose.replace(b":0.8.1@", b":0.8.2@", 1)
+        case "frontend-pin":
+            current["compose.yaml"] = compose.replace(
+                frontend.encode(),
+                frontend.encode().replace(REGISTRY_DIGEST.encode(), other_digest),
+            )
+        case "quickstart-pin":
+            current["scripts/quickstart.sh"] = quickstart.replace(
+                REGISTRY_DIGEST.encode(), other_digest
+            )
+        case "simple-pin":
+            current["scripts/quickstart-simple.sh"] = b""
+        case "adoption":
+            previous["compose.yaml"] = compose.replace(b":0.8.1@", b":0.8.0@")
+        case "awaiting-adoption":
+            previous["pyproject.toml"] = current["pyproject.toml"] = project.replace(
+                b"0.8.1", b"0.8.2"
+            )
+    (tmp_path / "scripts").mkdir()
+    for path, contents in current.items():
+        (tmp_path / path).write_bytes(contents)
+    base_sha = "a" * 40
+    head_sha = "b" * 40
+
+    def git_show(args: tuple[str, ...]) -> bytes:
+        sha, path = args[-1].split(":", maxsplit=1)
+        assert sha in {base_sha, head_sha}
+        return (previous if sha == base_sha else current)[path]
+
+    mocker.patch.object(public_alignment, "_git_output", side_effect=git_show)
+    transport = _paired_transport(version="0.8.1")
+    client = mocker.patch.object(
+        public_alignment, "UrlLibTransport", return_value=transport
+    )
+
+    result = public_alignment.main(
+        [
+            "--repository",
+            str(tmp_path),
+            "--event-name",
+            event,
+            "--base",
+            base_sha,
+            "--head",
+            head_sha,
+        ]
+    )
+
+    assert result == (0 if expected in {"aligned", "skipped"} else 1)
+    captured = capsys.readouterr()
+    assert expected in (captured.err if result else captured.out)
+    assert bool(transport.requests) is contact_public
+    assert client.called is contact_public
 
 
 @pytest.mark.unit
@@ -791,48 +639,6 @@ def test_main_reads_exact_base_and_head_only_for_pending_transition(
 
 
 @pytest.mark.unit
-def test_main_binds_skipped_container_exception_to_the_exact_base_sha(
-    tmp_path: Path, mocker, capsys, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    (tmp_path / "pyproject.toml").write_text(
-        '[project]\nversion = "0.6.1"\n', encoding="utf-8"
-    )
-    (tmp_path / "compose.yaml").write_text(
-        f"services:\n  markweave:\n    image: {public_alignment.IMAGE_REPOSITORY}:0.5.2@{REGISTRY_DIGEST}\n",
-        encoding="utf-8",
-    )
-    mocker.patch(
-        "scripts.release.public_alignment._git_output",
-        side_effect=[
-            b'[project]\nversion = "0.6.0"\n',
-            b'[project]\nversion = "0.6.1"\n',
-        ],
-    )
-    mocker.patch(
-        "scripts.release.public_alignment.UrlLibTransport",
-        return_value=_skipped_container_transport(),
-    )
-    monkeypatch.setenv("GHCR_USERNAME", REGISTRY_CREDENTIALS.username)
-    monkeypatch.setenv("GHCR_TOKEN", REGISTRY_CREDENTIALS.token)
-
-    result = public_alignment.main(
-        [
-            "--repository",
-            str(tmp_path),
-            "--event-name",
-            "pull_request",
-            "--base",
-            SOURCE_SHA,
-            "--head",
-            "e" * 40,
-        ]
-    )
-
-    assert result == 0
-    assert "alignment: pending-skipped-container" in capsys.readouterr().out
-
-
-@pytest.mark.unit
 def test_http_redirects_are_limited_to_the_fixed_github_release_cdn() -> None:
     handler = public_alignment._TrustedRedirect()
     request = urllib.request.Request("https://github.com/release/receipt")
@@ -1003,871 +809,3 @@ def test_url_lib_transport_does_not_retry_tls_certificate_failures(mocker) -> No
 
     opener.open.assert_called_once()
     pause.assert_not_called()
-
-
-def _partial_072_transport() -> FakeTransport:
-    transport = _paired_transport(version="0.7.1")
-    api = public_alignment.GITHUB_API
-    source = public_alignment.PARTIAL_072_SOURCE
-    run_id = public_alignment.PARTIAL_072_RUN
-    transport.responses[public_alignment.PYPI_URL] = _json_response(
-        {"info": {"version": "0.7.2"}}
-    )
-    transport.responses[f"{api}/releases/tags/v0.7.2"] = _json_response(
-        {
-            "tag_name": "v0.7.2",
-            "target_commitish": source,
-            "draft": False,
-            "prerelease": False,
-            "published_at": "2026-09-22T12:00:00Z",
-            "assets": [],
-        }
-    )
-    transport.responses[f"{api}/git/ref/tags/v0.7.2"] = _json_response(
-        {"object": {"type": "commit", "sha": source}}
-    )
-    transport.responses[f"{api}/actions/runs/{run_id}"] = _json_response(
-        {
-            "id": run_id,
-            "head_sha": source,
-            "head_branch": "main",
-            "event": "push",
-            "path": ".github/workflows/release.yml",
-            "status": "completed",
-            "conclusion": "failure",
-            "run_attempt": 1,
-        }
-    )
-    transport.responses[f"{api}/actions/runs/{run_id}/artifacts?per_page=2"] = (
-        _json_response(
-            {
-                "total_count": 1,
-                "artifacts": [
-                    {
-                        "id": public_alignment.PARTIAL_072_ARTIFACT,
-                        "name": "python-release-v0.7.2",
-                        "expired": False,
-                        "workflow_run": {
-                            "id": run_id,
-                            "head_sha": source,
-                            "head_branch": "main",
-                            "repository_id": public_alignment.REPOSITORY_ID,
-                            "head_repository_id": public_alignment.REPOSITORY_ID,
-                        },
-                    }
-                ],
-            }
-        )
-    )
-    for repository in (
-        public_alignment.REGISTRY_PATH,
-        public_alignment.FRONTEND_REGISTRY_PATH,
-        public_alignment.REVERSE_REGISTRY_PATH,
-    ):
-        token_url = (
-            f"https://ghcr.io/token?service=ghcr.io&scope=repository:{repository}:pull"
-        )
-        transport.responses[token_url] = _json_response({"token": "pull-token"})
-        for tag in ("0.7.2", f"source-{source}"):
-            transport.responses[f"https://ghcr.io/v2/{repository}/manifests/{tag}"] = (
-                HttpResponse(
-                    404,
-                    {},
-                    b'{"errors":[{"code":"MANIFEST_UNKNOWN","message":"manifest unknown"}]}',
-                )
-            )
-    return transport
-
-
-def _check_partial_072(transport: FakeTransport, **overrides) -> str:
-    options: dict[str, Any] = {
-        "project_version": "0.7.3",
-        "compose": ComposeIdentity("0.7.1", REGISTRY_DIGEST),
-        "frontend": ComposeIdentity("0.7.1", REGISTRY_DIGEST),
-        "event_name": "pull_request",
-        "transport": transport,
-        "base": BaseIdentity("0.7.2", public_alignment.PARTIAL_072_SOURCE),
-        "registry_credentials": REGISTRY_CREDENTIALS,
-    }
-    return check_alignment(**(options | overrides))
-
-
-@pytest.mark.unit
-def test_partial_072_transition_checks_all_six_tags_and_deployed_pair() -> None:
-    transport = _partial_072_transport()
-    assert _check_partial_072(transport) == "pending-partial-0.7.2"
-    manifests = [url for url, _ in transport.requests if "/manifests/" in url]
-    assert len(manifests) == 8
-    assert sum(url.endswith("/0.7.2") for url in manifests) == 3
-    assert sum("/source-" in url for url in manifests) == 3
-    assert sum(url.endswith("/0.7.1") for url in manifests) == 2
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "override",
-    [
-        {"project_version": "0.7.2"},
-        {"project_version": "0.7.4"},
-        {"base": BaseIdentity("0.7.2", SOURCE_SHA)},
-        {"base": None},
-        {"base": BaseIdentity("0.7.1", public_alignment.PARTIAL_072_SOURCE)},
-        {"compose": ComposeIdentity("0.6.1", REGISTRY_DIGEST)},
-        {"frontend": None},
-        {"frontend": ComposeIdentity("0.6.1", REGISTRY_DIGEST)},
-        {"event_name": "schedule"},
-        {"event_name": "workflow_dispatch"},
-    ],
-)
-def test_partial_072_rejects_other_transitions(override: dict) -> None:
-    with pytest.raises(AlignmentError):
-        _check_partial_072(_partial_072_transport(), **override)
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("surface", ["run", "artifact", "release", "tag", "deployed"])
-def test_partial_072_rejects_forged_evidence(surface: str) -> None:
-    transport = _partial_072_transport()
-    api = public_alignment.GITHUB_API
-    run = f"{api}/actions/runs/{public_alignment.PARTIAL_072_RUN}"
-    urls = {
-        "run": run,
-        "artifact": f"{run}/artifacts?per_page=2",
-        "release": f"{api}/releases/tags/v0.7.2",
-        "tag": f"{api}/git/ref/tags/v0.7.2",
-        "deployed": f"{public_alignment.GITHUB_RELEASES}/v0.7.1/frontend-registry-publication.json",
-    }
-    response = transport.responses[urls[surface]]
-    assert isinstance(response, HttpResponse)
-    document = json.loads(response.body)
-    if surface == "run":
-        document["head_sha"] = SOURCE_SHA
-    elif surface == "artifact":
-        document["artifacts"][0]["id"] += 1
-    elif surface == "release":
-        document["assets"] = [{"name": "release-images.json"}]
-    elif surface == "tag":
-        document["object"]["sha"] = SOURCE_SHA
-    else:
-        document["registry_manifest_digest"] = "sha256:" + "f" * 64
-    transport.responses[urls[surface]] = _json_response(document)
-    with pytest.raises(AlignmentError):
-        _check_partial_072(transport)
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "repository",
-    [
-        public_alignment.REGISTRY_PATH,
-        public_alignment.FRONTEND_REGISTRY_PATH,
-        public_alignment.REVERSE_REGISTRY_PATH,
-    ],
-)
-@pytest.mark.parametrize(
-    "tag", ["0.7.2", f"source-{public_alignment.PARTIAL_072_SOURCE}"]
-)
-@pytest.mark.parametrize(
-    "response",
-    [
-        HttpResponse(200, {}, REGISTRY_MANIFEST),
-        HttpResponse(403, {}, b"{}"),
-        HttpResponse(404, {}, b"[]"),
-        HttpResponse(404, {}, b"not-json"),
-        HttpResponse(404, {}, b'{"errors":[]}'),
-    ],
-)
-def test_partial_072_requires_proven_absence_for_every_tag(
-    repository: str, tag: str, response: HttpResponse
-) -> None:
-    transport = _partial_072_transport()
-    transport.responses[f"https://ghcr.io/v2/{repository}/manifests/{tag}"] = response
-    with pytest.raises(AlignmentError):
-        _check_partial_072(transport)
-
-
-@pytest.mark.unit
-def test_partial_072_reverse_denial_uses_only_read_only_fallback() -> None:
-    transport = _partial_072_transport()
-    url = f"https://ghcr.io/token?service=ghcr.io&scope=repository:{public_alignment.REVERSE_REGISTRY_PATH}:pull"
-    denied = HttpResponse(
-        403,
-        {},
-        b'{"errors":[{"code":"DENIED","message":"requested access to the resource is denied"}]}',
-    )
-    transport.responses[url] = [denied, _json_response({"token": "pull"})] * 2
-    assert _check_partial_072(transport) == "pending-partial-0.7.2"
-    assert (
-        sum(
-            "Authorization" in headers
-            for called, headers in transport.requests
-            if called == url
-        )
-        == 2
-    )
-    transport = _partial_072_transport()
-    transport.responses[url] = denied
-    with pytest.raises(AlignmentError, match="credentials are unavailable"):
-        _check_partial_072(transport, registry_credentials=None)
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "mutation",
-    ["extra", "missing", "expired", "workflow", "repository", "malformed", "denied"],
-)
-def test_partial_072_rejects_invalid_artifact_inventory(mutation: str) -> None:
-    transport = _partial_072_transport()
-    url = f"{public_alignment.GITHUB_API}/actions/runs/{public_alignment.PARTIAL_072_RUN}/artifacts?per_page=2"
-    response = transport.responses[url]
-    assert isinstance(response, HttpResponse)
-    document = json.loads(response.body)
-    if mutation == "extra":
-        document["total_count"] = 2
-    elif mutation == "missing":
-        document["artifacts"] = []
-    elif mutation == "expired":
-        document["artifacts"][0]["expired"] = True
-    elif mutation == "workflow":
-        document["artifacts"][0]["workflow_run"]["id"] += 1
-    elif mutation == "repository":
-        document["artifacts"][0]["workflow_run"]["head_repository_id"] += 1
-    elif mutation == "malformed":
-        document["artifacts"] = [None]
-    transport.responses[url] = (
-        HttpResponse(403, {}, b"{}")
-        if mutation == "denied"
-        else _json_response(document)
-    )
-    with pytest.raises(AlignmentError):
-        _check_partial_072(transport)
-
-
-@pytest.mark.unit
-def test_partial_072_network_failure_cannot_establish_absence(mocker) -> None:
-    transport = _partial_072_transport()
-    original = transport.request
-
-    def request(url, *, headers):
-        if public_alignment.REVERSE_REGISTRY_PATH + "/manifests/" in url:
-            raise AlignmentError("public endpoint request failed")
-        return original(url, headers=headers)
-
-    mocker.patch.object(transport, "request", side_effect=request)
-    with pytest.raises(AlignmentError, match="request failed"):
-        _check_partial_072(transport)
-
-
-@pytest.mark.integration
-@pytest.mark.light_coverage
-def test_partial_072_real_git_transition_rejects_unreviewed_base(
-    tmp_path: Path, mocker, capsys
-) -> None:
-    """Real Git before/head identities cannot impersonate the approved release SHA."""
-
-    def git(*arguments: str) -> str:
-        return subprocess.check_output(
-            ["/usr/bin/git", "-C", str(tmp_path), *arguments], text=True
-        ).strip()
-
-    git("init", "--quiet")
-    project = tmp_path / "pyproject.toml"
-    project.write_text('[project]\nversion = "0.7.2"\n')
-    git("add", "pyproject.toml")
-    git(
-        "-c",
-        "user.name=Test",
-        "-c",
-        "user.email=test@example.invalid",
-        "commit",
-        "--quiet",
-        "-m",
-        "base",
-    )
-    base = git("rev-parse", "HEAD")
-    project.write_text('[project]\nversion = "0.7.3"\n')
-    git("add", "pyproject.toml")
-    git(
-        "-c",
-        "user.name=Test",
-        "-c",
-        "user.email=test@example.invalid",
-        "commit",
-        "--quiet",
-        "-m",
-        "head",
-    )
-    head = git("rev-parse", "HEAD")
-    backend = public_alignment.IMAGE_REPOSITORY + ":0.7.1@" + REGISTRY_DIGEST
-    frontend = public_alignment.FRONTEND_IMAGE_REPOSITORY + ":0.7.1@" + REGISTRY_DIGEST
-    (tmp_path / "compose.yaml").write_text(
-        "services:\n"
-        f'  markweave:\n    image: "${{MARKWEAVE_CUTOVER_BACKEND_IMAGE:-{backend}}}"\n'
-        f'  frontend:\n    image: "${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{frontend}}}"\n'
-        f'  router:\n    image: "${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{frontend}}}"\n'
-    )
-    transport = _partial_072_transport()
-    mocker.patch.object(public_alignment, "UrlLibTransport", return_value=transport)
-    assert (
-        public_alignment.main(
-            [
-                "--repository",
-                str(tmp_path),
-                "--event-name",
-                "pull_request",
-                "--base",
-                base,
-                "--head",
-                head,
-            ]
-        )
-        == 1
-    )
-    assert "not the exact 0.7.3 transition" in capsys.readouterr().err
-    assert len(transport.requests) == 1
-
-
-PARTIAL_074_ARTIFACTS_URL = (
-    f"{public_alignment.GITHUB_API}/actions/runs/"
-    f"{public_alignment.PARTIAL_074_RUN}/artifacts?per_page=2"
-)
-DENIED_TOKEN = HttpResponse(
-    403,
-    {},
-    b'{"errors":[{"code":"DENIED","message":"requested access to the resource is denied"}]}',
-)
-
-
-def _partial_074_transport() -> FakeTransport:
-    transport = _paired_transport(version="0.7.3")
-    api = public_alignment.GITHUB_API
-    source = public_alignment.PARTIAL_074_SOURCE
-    run_id = public_alignment.PARTIAL_074_RUN
-    transport.responses[public_alignment.PYPI_URL] = _json_response(
-        {"info": {"version": "0.7.4"}}
-    )
-    transport.responses[f"{api}/releases/tags/v0.7.4"] = _json_response(
-        {
-            "tag_name": "v0.7.4",
-            "target_commitish": source,
-            "draft": False,
-            "prerelease": False,
-            "published_at": "2026-10-11T23:02:35Z",
-            "assets": [],
-        }
-    )
-    transport.responses[f"{api}/git/ref/tags/v0.7.4"] = _json_response(
-        {"object": {"type": "commit", "sha": source}}
-    )
-    transport.responses[f"{api}/actions/runs/{run_id}"] = _json_response(
-        {
-            "id": run_id,
-            "head_sha": source,
-            "head_branch": "main",
-            "event": "push",
-            "path": ".github/workflows/release.yml",
-            "status": "completed",
-            "conclusion": "failure",
-            "run_attempt": 1,
-        }
-    )
-    transport.responses[PARTIAL_074_ARTIFACTS_URL] = _json_response(
-        {
-            "total_count": 1,
-            "artifacts": [
-                {
-                    "id": public_alignment.PARTIAL_074_ARTIFACT,
-                    "name": "python-release-v0.7.4",
-                    "expired": False,
-                    "digest": public_alignment.PARTIAL_074_ARTIFACT_DIGEST,
-                    "workflow_run": {
-                        "id": run_id,
-                        "head_sha": source,
-                        "head_branch": "main",
-                        "repository_id": public_alignment.REPOSITORY_ID,
-                        "head_repository_id": public_alignment.REPOSITORY_ID,
-                    },
-                }
-            ],
-        }
-    )
-    for repository in (
-        public_alignment.REGISTRY_PATH,
-        public_alignment.FRONTEND_REGISTRY_PATH,
-        public_alignment.REVERSE_REGISTRY_PATH,
-    ):
-        token_url = (
-            f"https://ghcr.io/token?service=ghcr.io&scope=repository:{repository}:pull"
-        )
-        transport.responses[token_url] = _json_response({"token": "pull-token"})
-        for tag in ("0.7.4", f"source-{source}"):
-            transport.responses[f"https://ghcr.io/v2/{repository}/manifests/{tag}"] = (
-                HttpResponse(
-                    404,
-                    {},
-                    b'{"errors":[{"code":"MANIFEST_UNKNOWN","message":"manifest unknown"}]}',
-                )
-            )
-    return transport
-
-
-def _check_partial_074(transport: FakeTransport, **overrides) -> str:
-    options: dict[str, Any] = {
-        "project_version": "0.7.5",
-        "compose": ComposeIdentity("0.7.3", REGISTRY_DIGEST),
-        "frontend": ComposeIdentity("0.7.3", REGISTRY_DIGEST),
-        "event_name": "pull_request",
-        "transport": transport,
-        "base": BaseIdentity("0.7.4", public_alignment.PARTIAL_074_SOURCE),
-        "registry_credentials": REGISTRY_CREDENTIALS,
-    }
-    return check_alignment(**(options | overrides))
-
-
-@pytest.mark.unit
-def test_partial_074_record_matches_the_reviewed_failed_release() -> None:
-    partial = public_alignment.PARTIAL_RELEASES["0.7.4"]
-    assert partial == public_alignment.PARTIAL_074
-    assert (
-        partial.source_sha,
-        partial.run_id,
-        partial.artifact_id,
-        partial.artifact_digest,
-        partial.continuation_version,
-        partial.deployed_version,
-        partial.state,
-    ) == (
-        "5d0ac0bb329018fa3a88d7ba516e575de9abc100",
-        38182704382,
-        11718675473,
-        "sha256:5f07b4b657dbb6eaa32395670b63aabb53187bd60b49da4e29e74d27b0bb36e4",
-        "0.7.5",
-        "0.7.3",
-        "pending-partial-0.7.4",
-    )
-    assert set(public_alignment.PARTIAL_RELEASES) == {"0.7.2", "0.7.4"}
-    assert public_alignment.PARTIAL_072.continuation_version == "0.7.3"
-    assert public_alignment.PARTIAL_072.artifact_digest is None
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("event_name", ["pull_request", "merge_group", "push"])
-def test_partial_074_transition_checks_all_six_tags_and_deployed_pair(
-    event_name: str,
-) -> None:
-    transport = _partial_074_transport()
-    assert _check_partial_074(transport, event_name=event_name) == (
-        "pending-partial-0.7.4"
-    )
-    manifests = [url for url, _ in transport.requests if "/manifests/" in url]
-    assert len(manifests) == 8
-    assert sum(url.endswith("/0.7.4") for url in manifests) == 3
-    assert (
-        sum(
-            url.endswith(f"/source-{public_alignment.PARTIAL_074_SOURCE}")
-            for url in manifests
-        )
-        == 3
-    )
-    assert sum(url.endswith("/0.7.3") for url in manifests) == 2
-    assert not any("0.7.2" in url for url, _ in transport.requests)
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "override",
-    [
-        {"project_version": "0.7.4"},
-        {"project_version": "0.7.3"},
-        {"project_version": "0.7.6"},
-        {"project_version": "0.8.0"},
-        {"base": BaseIdentity("0.7.4", SOURCE_SHA)},
-        {"base": BaseIdentity("0.7.4", public_alignment.PARTIAL_072_SOURCE)},
-        {"base": None},
-        {"base": BaseIdentity("0.7.3", public_alignment.PARTIAL_074_SOURCE)},
-        {"base": BaseIdentity("0.7.2", public_alignment.PARTIAL_072_SOURCE)},
-        {"compose": ComposeIdentity("0.7.1", REGISTRY_DIGEST)},
-        {"compose": ComposeIdentity("0.7.2", REGISTRY_DIGEST)},
-        {"frontend": None},
-        {"frontend": ComposeIdentity("0.7.1", REGISTRY_DIGEST)},
-        {"event_name": "schedule"},
-        {"event_name": "workflow_dispatch"},
-        {"event_name": "release"},
-        {"event_name": "pull_request_target"},
-    ],
-)
-def test_partial_074_rejects_other_transitions(override: dict) -> None:
-    with pytest.raises(AlignmentError):
-        _check_partial_074(_partial_074_transport(), **override)
-
-
-@pytest.mark.unit
-def test_partial_074_rejects_the_current_unchanged_main_state() -> None:
-    """The merged 0.7.4 source itself stays blocked until the 0.7.5 transition."""
-    for event_name in ("schedule", "push", "pull_request"):
-        with pytest.raises(AlignmentError):
-            _check_partial_074(
-                _partial_074_transport(),
-                project_version="0.7.4",
-                base=None,
-                event_name=event_name,
-            )
-    with pytest.raises(AlignmentError, match=r"not the exact 0\.7\.5 transition"):
-        _check_partial_074(
-            _partial_074_transport(),
-            project_version="0.7.4",
-            base=BaseIdentity("0.7.3", SOURCE_SHA),
-            event_name="push",
-        )
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("pypi_version", ["0.7.3", "0.7.5", "0.7.6"])
-def test_partial_074_requires_pypi_to_stop_at_the_partial_release(
-    pypi_version: str,
-) -> None:
-    transport = _partial_074_transport()
-    transport.responses[public_alignment.PYPI_URL] = _json_response(
-        {"info": {"version": pypi_version}}
-    )
-    with pytest.raises(AlignmentError):
-        _check_partial_074(transport)
-    assert not any("/actions/runs/" in url for url, _ in transport.requests)
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    ("surface", "mutation"),
-    [
-        ("run", ("head_sha", SOURCE_SHA)),
-        ("run", ("conclusion", "success")),
-        ("run", ("status", "in_progress")),
-        ("run", ("event", "workflow_dispatch")),
-        ("run", ("run_attempt", 2)),
-        ("run", ("head_branch", "release")),
-        ("run", ("path", ".github/workflows/container-release.yml")),
-        ("run", ("id", public_alignment.PARTIAL_072_RUN)),
-        ("release", ("assets", [{"name": "release-images.json"}])),
-        ("release", ("target_commitish", SOURCE_SHA)),
-        ("release", ("draft", True)),
-        ("release", ("prerelease", True)),
-        ("release", ("tag_name", "v0.7.5")),
-        ("tag", ("object", {"type": "commit", "sha": SOURCE_SHA})),
-        (
-            "tag",
-            ("object", {"type": "tag", "sha": public_alignment.PARTIAL_074_SOURCE}),
-        ),
-        ("deployed", ("registry_manifest_digest", "sha256:" + "f" * 64)),
-        ("deployed", ("version", "0.7.4")),
-    ],
-)
-def test_partial_074_rejects_forged_evidence(
-    surface: str, mutation: tuple[str, object]
-) -> None:
-    transport = _partial_074_transport()
-    api = public_alignment.GITHUB_API
-    urls = {
-        "run": f"{api}/actions/runs/{public_alignment.PARTIAL_074_RUN}",
-        "release": f"{api}/releases/tags/v0.7.4",
-        "tag": f"{api}/git/ref/tags/v0.7.4",
-        "deployed": f"{public_alignment.GITHUB_RELEASES}/v0.7.3/frontend-registry-publication.json",
-    }
-    response = transport.responses[urls[surface]]
-    assert isinstance(response, HttpResponse)
-    document = json.loads(response.body)
-    key, value = mutation
-    document[key] = value
-    transport.responses[urls[surface]] = _json_response(document)
-    with pytest.raises(AlignmentError):
-        _check_partial_074(transport)
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "repository",
-    [
-        public_alignment.REGISTRY_PATH,
-        public_alignment.FRONTEND_REGISTRY_PATH,
-        public_alignment.REVERSE_REGISTRY_PATH,
-    ],
-)
-@pytest.mark.parametrize(
-    "tag", ["0.7.4", f"source-{public_alignment.PARTIAL_074_SOURCE}"]
-)
-@pytest.mark.parametrize(
-    "response",
-    [
-        HttpResponse(200, {}, REGISTRY_MANIFEST),
-        HttpResponse(403, {}, b"{}"),
-        HttpResponse(404, {}, b"[]"),
-        HttpResponse(404, {}, b"not-json"),
-        HttpResponse(404, {}, b'{"errors":[]}'),
-        HttpResponse(
-            404,
-            {},
-            b'{"errors":[{"code":"NAME_UNKNOWN","message":"repository name not known"}]}',
-        ),
-    ],
-)
-def test_partial_074_requires_proven_absence_for_every_tag(
-    repository: str, tag: str, response: HttpResponse
-) -> None:
-    transport = _partial_074_transport()
-    transport.responses[f"https://ghcr.io/v2/{repository}/manifests/{tag}"] = response
-    with pytest.raises(AlignmentError):
-        _check_partial_074(transport)
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "repository",
-    [public_alignment.FRONTEND_REGISTRY_PATH, public_alignment.REVERSE_REGISTRY_PATH],
-)
-def test_partial_074_private_denial_uses_only_read_only_fallback(
-    repository: str,
-) -> None:
-    transport = _partial_074_transport()
-    url = f"https://ghcr.io/token?service=ghcr.io&scope=repository:{repository}:pull"
-    responses = [DENIED_TOKEN, _json_response({"token": "pull"})] * 2
-    if repository == public_alignment.FRONTEND_REGISTRY_PATH:
-        responses.append(_json_response({"token": "deployed-pull"}))
-    transport.responses[url] = responses
-    assert _check_partial_074(transport) == "pending-partial-0.7.4"
-    assert (
-        sum(
-            "Authorization" in headers
-            for called, headers in transport.requests
-            if called == url
-        )
-        == 2
-    )
-    transport = _partial_074_transport()
-    transport.responses[url] = DENIED_TOKEN
-    with pytest.raises(AlignmentError, match="credentials are unavailable"):
-        _check_partial_074(transport, registry_credentials=None)
-
-
-@pytest.mark.unit
-def test_partial_074_backend_denial_never_establishes_absence() -> None:
-    transport = _partial_074_transport()
-    url = public_alignment.GHCR_TOKEN_URL
-    transport.responses[url] = [
-        _json_response({"token": "deployed-pull"}),
-        DENIED_TOKEN,
-    ]
-    with pytest.raises(AlignmentError, match="backend anonymous access was denied"):
-        _check_partial_074(transport)
-    assert not any(
-        "Authorization" in headers
-        for called, headers in transport.requests
-        if called == url
-    )
-
-
-_MISSING = object()
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    ("scope", "key", "value"),
-    [
-        ("artifact", "expired", True),
-        ("artifact", "digest", "sha256:" + "0" * 64),
-        ("artifact", "digest", _MISSING),
-        ("artifact", "name", "container-release-v0.7.4"),
-        ("artifact", "id", public_alignment.PARTIAL_072_ARTIFACT),
-        ("workflow", "id", public_alignment.PARTIAL_074_RUN + 1),
-        ("workflow", "head_sha", SOURCE_SHA),
-        ("workflow", "head_branch", "fix/T133-release-0.7.5"),
-        ("workflow", "repository_id", public_alignment.REPOSITORY_ID + 1),
-        ("workflow", "head_repository_id", public_alignment.REPOSITORY_ID + 1),
-        ("artifact", "workflow_run", None),
-        ("inventory", "total_count", 2),
-        ("inventory", "artifacts", []),
-        ("inventory", "artifacts", [None]),
-        ("inventory", "artifacts", _MISSING),
-    ],
-)
-def test_partial_074_rejects_invalid_artifact_inventory(
-    scope: str, key: str, value: object
-) -> None:
-    transport = _partial_074_transport()
-    response = transport.responses[PARTIAL_074_ARTIFACTS_URL]
-    assert isinstance(response, HttpResponse)
-    document = json.loads(response.body)
-    target = {
-        "inventory": document,
-        "artifact": document["artifacts"][0],
-        "workflow": document["artifacts"][0]["workflow_run"],
-    }[scope]
-    if value is _MISSING:
-        del target[key]
-    else:
-        target[key] = value
-    transport.responses[PARTIAL_074_ARTIFACTS_URL] = _json_response(document)
-    with pytest.raises(AlignmentError):
-        _check_partial_074(transport)
-
-
-@pytest.mark.unit
-def test_partial_074_rejects_extra_or_unreadable_artifact_listing() -> None:
-    transport = _partial_074_transport()
-    response = transport.responses[PARTIAL_074_ARTIFACTS_URL]
-    assert isinstance(response, HttpResponse)
-    document = json.loads(response.body)
-    extra = dict(document["artifacts"][0], id=public_alignment.PARTIAL_074_ARTIFACT + 1)
-    document["artifacts"].append(extra)
-    document["total_count"] = 2
-    transport.responses[PARTIAL_074_ARTIFACTS_URL] = _json_response(document)
-    with pytest.raises(AlignmentError, match="only its Python artifact"):
-        _check_partial_074(transport)
-    transport = _partial_074_transport()
-    transport.responses[PARTIAL_074_ARTIFACTS_URL] = HttpResponse(403, {}, b"{}")
-    with pytest.raises(AlignmentError, match="invalid response"):
-        _check_partial_074(transport)
-
-
-@pytest.mark.unit
-def test_partial_074_network_failure_cannot_establish_absence(mocker) -> None:
-    transport = _partial_074_transport()
-    original = transport.request
-
-    def request(url, *, headers):
-        if public_alignment.FRONTEND_REGISTRY_PATH + "/manifests/0.7.4" in url:
-            raise AlignmentError("public endpoint request failed")
-        return original(url, headers=headers)
-
-    mocker.patch.object(transport, "request", side_effect=request)
-    with pytest.raises(AlignmentError, match="request failed"):
-        _check_partial_074(transport)
-
-
-@pytest.mark.unit
-def test_partial_072_exception_cannot_admit_the_074_continuation() -> None:
-    """Each reviewed record is selected only by its own exact PyPI version."""
-    transport = _partial_072_transport()
-    with pytest.raises(AlignmentError, match=r"not the exact 0\.7\.3 transition"):
-        _check_partial_072(
-            transport,
-            project_version="0.7.5",
-            compose=ComposeIdentity("0.7.3", REGISTRY_DIGEST),
-            frontend=ComposeIdentity("0.7.3", REGISTRY_DIGEST),
-            base=BaseIdentity("0.7.4", public_alignment.PARTIAL_074_SOURCE),
-        )
-
-
-@pytest.mark.integration
-@pytest.mark.light_coverage
-def test_partial_074_real_git_transition_rejects_unreviewed_base(
-    tmp_path: Path, mocker, capsys
-) -> None:
-    """Real Git before/head identities cannot impersonate the partial 0.7.4 SHA."""
-
-    def git(*arguments: str) -> str:
-        return subprocess.check_output(
-            ["/usr/bin/git", "-C", str(tmp_path), *arguments], text=True
-        ).strip()
-
-    def commit(version: str) -> str:
-        (tmp_path / "pyproject.toml").write_text(f'[project]\nversion = "{version}"\n')
-        git("add", "pyproject.toml")
-        git(
-            "-c",
-            "user.name=Test",
-            "-c",
-            "user.email=test@example.invalid",
-            "commit",
-            "--quiet",
-            "-m",
-            version,
-        )
-        return git("rev-parse", "HEAD")
-
-    git("init", "--quiet")
-    base = commit("0.7.4")
-    head = commit("0.7.5")
-    backend = public_alignment.IMAGE_REPOSITORY + ":0.7.3@" + REGISTRY_DIGEST
-    frontend = public_alignment.FRONTEND_IMAGE_REPOSITORY + ":0.7.3@" + REGISTRY_DIGEST
-    (tmp_path / "compose.yaml").write_text(
-        "services:\n"
-        f'  markweave:\n    image: "${{MARKWEAVE_CUTOVER_BACKEND_IMAGE:-{backend}}}"\n'
-        f'  frontend:\n    image: "${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{frontend}}}"\n'
-        f'  router:\n    image: "${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{frontend}}}"\n'
-    )
-    for event_name in ("pull_request", "push"):
-        transport = _partial_074_transport()
-        mocker.patch.object(public_alignment, "UrlLibTransport", return_value=transport)
-        assert (
-            public_alignment.main(
-                [
-                    "--repository",
-                    str(tmp_path),
-                    "--event-name",
-                    event_name,
-                    "--base",
-                    base,
-                    "--head",
-                    head,
-                ]
-            )
-            == 1
-        )
-        assert "not the exact 0.7.5 transition" in capsys.readouterr().err
-        assert len(transport.requests) == 1
-    assert (
-        public_alignment.main(
-            ["--repository", str(tmp_path), "--event-name", "schedule"]
-        )
-        == 1
-    )
-    assert "requires fully published alignment" in capsys.readouterr().err
-
-
-@pytest.mark.unit
-def test_main_reports_the_partial_074_state_for_the_exact_base(
-    tmp_path: Path, mocker, capsys
-) -> None:
-    backend = public_alignment.IMAGE_REPOSITORY + ":0.7.3@" + REGISTRY_DIGEST
-    frontend = public_alignment.FRONTEND_IMAGE_REPOSITORY + ":0.7.3@" + REGISTRY_DIGEST
-    (tmp_path / "pyproject.toml").write_text('[project]\nversion = "0.7.5"\n')
-    (tmp_path / "compose.yaml").write_text(
-        "services:\n"
-        f'  markweave:\n    image: "${{MARKWEAVE_CUTOVER_BACKEND_IMAGE:-{backend}}}"\n'
-        f'  frontend:\n    image: "${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{frontend}}}"\n'
-        f'  router:\n    image: "${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{frontend}}}"\n'
-    )
-    head = "c" * 40
-    git = mocker.patch.object(
-        public_alignment,
-        "_git_output",
-        side_effect=[
-            b'[project]\nversion = "0.7.4"\n',
-            b'[project]\nversion = "0.7.5"\n',
-        ],
-    )
-    mocker.patch.object(
-        public_alignment, "UrlLibTransport", return_value=_partial_074_transport()
-    )
-    mocker.patch.dict("os.environ", {"GHCR_USERNAME": "actor", "GHCR_TOKEN": "t"})
-    assert (
-        public_alignment.main(
-            [
-                "--repository",
-                str(tmp_path),
-                "--event-name",
-                "push",
-                "--base",
-                public_alignment.PARTIAL_074_SOURCE,
-                "--head",
-                head,
-            ]
-        )
-        == 0
-    )
-    assert (
-        capsys.readouterr().out == "public release alignment: pending-partial-0.7.4\n"
-    )
-    assert [call.args[0][-1] for call in git.call_args_list] == [
-        f"{public_alignment.PARTIAL_074_SOURCE}:pyproject.toml",
-        f"{head}:pyproject.toml",
-    ]
