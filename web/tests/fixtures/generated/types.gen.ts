@@ -9109,6 +9109,10 @@ export type CreateConversionApiV1ConversionsPostErrors = {
      */
     403: ErrorResponse;
     /**
+     * The upload body did not arrive before its deadline
+     */
+    408: ErrorResponse;
+    /**
      * The request conflicts with current state
      */
     409: ErrorResponse;
