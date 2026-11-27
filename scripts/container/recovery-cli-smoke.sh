@@ -101,7 +101,7 @@ done
 [[ "$ready" == true ]]
 ensure_postgres_database "$postgres" target
 ensure_postgres_database "$postgres" missing
-for database in older_source older_target older_bad_target older_newer_source \
+for database in head_source head_target older_source older_target older_bad_target older_newer_source \
   older_newer_target older_floor_source older_floor_target; do
   ensure_postgres_database "$postgres" "$database"
 done
@@ -376,7 +376,23 @@ historical_set() {
     -- distributed-historical-set --path "$destination" "$@" | tail -n 1
 }
 
-# A populated distributed set at 20260923_24 restores to head with its references.
+# A production backup at head preserves a job on a superseded version.
+run_setup "${common_s3[@]}" \
+  --env RECOVERY_DATABASE="$postgres_root/head_source" \
+  --env RECOVERY_SOURCE_BUCKET=head-source-bucket \
+  --env RECOVERY_CREATE_BUCKETS=head-source-bucket,head-target-bucket \
+  -- distributed-older-initialize --revision head \
+  --records /e2e/distributed-head.records.json
+head_json="$(distributed_backup head_source head-source-bucket /e2e/distributed-head-sets)"
+head_id="$(jq -er '.backup_id' <<<"$head_json")"
+distributed_restore head_target head-target-bucket \
+  "/e2e/distributed-head-sets/$head_id" >/dev/null
+run_setup "${common_s3[@]}" \
+  --env RECOVERY_DATABASE="$postgres_root/head_target" \
+  --env RECOVERY_TARGET_BUCKET=head-target-bucket \
+  -- distributed-older-verify --records /e2e/distributed-head.records.json
+
+# A populated distributed set at 20260923_24 preserves the same frozen pair at head.
 run_setup "${common_s3[@]}" \
   --env RECOVERY_DATABASE="$postgres_root/older_source" \
   --env RECOVERY_SOURCE_BUCKET=older-source-bucket \
@@ -413,6 +429,26 @@ expect_recovery_failure "PostgreSQL backup schema is incompatible" \
 run_setup "${common_s3[@]}" \
   --env RECOVERY_DATABASE="$postgres_root/older_bad_target" \
   --env RECOVERY_MISSING_BUCKET=older-rejected-bucket -- verify-empty-target
+
+for alteration in missing-version wrong-template wrong-owner missing-job-template-fields; do
+  bad_sets="/e2e/distributed-$alteration-sets"
+  bad_id="$(historical_set older_source older-source-bucket "$bad_sets" \
+    --invalid-template-reference "$alteration")"
+  [[ "$bad_id" =~ ^[0-9a-f]{64}$ ]]
+  if rejected_json="$(distributed_restore older_bad_target older-rejected-bucket \
+    "$bad_sets/$bad_id" 2>&1)"; then
+    echo "distributed restore accepted an invalid template reference: $alteration" >&2
+    exit 1
+  fi
+  expected_error="PostgreSQL restore failed"
+  if [[ "$alteration" == missing-job-template-fields ]]; then
+    expected_error="PostgreSQL backup schema is incompatible"
+  fi
+  expect_recovery_failure "$expected_error" "$rejected_json"
+  run_setup "${common_s3[@]}" \
+    --env RECOVERY_DATABASE="$postgres_root/older_bad_target" \
+    --env RECOVERY_MISSING_BUCKET=older-rejected-bucket -- verify-empty-target
+done
 
 # A set labelled with a revision unknown to this release, produced by the unchanged
 # production backup, is refused by restore before any target write.

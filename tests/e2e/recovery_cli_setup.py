@@ -363,6 +363,7 @@ class OlderSchemaRecords:
     revision_id: str
     template_id: str
     template_version_id: str
+    current_version_id: str
     objects: dict[str, bytes]
 
     def key(self, scope: str) -> str:
@@ -373,35 +374,47 @@ def _table(connection: Connection, name: str) -> Table:
     return Table(name, MetaData(), autoload_with=connection)
 
 
-def populate_older_schema(engine: Engine) -> OlderSchemaRecords:
-    """Insert one user with a template, a conversion job, and a Composer revision."""
+def populate_older_schema(
+    engine: Engine, *, archive_template: bool = False
+) -> OlderSchemaRecords:
+    """Insert a retained job on another user's superseded template version."""
 
     owner = str(uuid4())
+    template_owner = str(uuid4())
     template_id, version_id = str(uuid4()), str(uuid4())
+    current_version_id = str(uuid4())
     job_id, upload_id, result_id = str(uuid4()), str(uuid4()), str(uuid4())
     source_id, draft_id = str(uuid4()), str(uuid4())
     revision_id, artifact_id = str(uuid4()), str(uuid4())
     now = datetime(2026, 9, 23, 12, 0, tzinfo=UTC)
     source_reference = f'{{"object_id": "{source_id}"}}'
     with engine.begin() as connection:
+        users = _table(connection, "users")
+        user = {
+            "id": owner,
+            "username": "Older schema owner",
+            "normalized_username": f"older-{uuid4().hex}",
+            "password_hash": "hash:older",
+            "role": "user",
+            "active": True,
+            "auth_version": 0,
+            "password_change_required": False,
+        }
+        connection.execute(insert(users), user)
         connection.execute(
-            insert(_table(connection, "users")),
-            {
-                "id": owner,
-                "username": "Older schema owner",
+            insert(users),
+            user
+            | {
+                "id": template_owner,
+                "username": "Older template owner",
                 "normalized_username": f"older-{uuid4().hex}",
-                "password_hash": "hash:older",
-                "role": "user",
-                "active": True,
-                "auth_version": 0,
-                "password_change_required": False,
             },
         )
         connection.execute(
             insert(_table(connection, "templates")),
             {
                 "id": template_id,
-                "owner_id": owner,
+                "owner_id": template_owner,
                 "name": "Older template",
                 "normalized_name": "older template",
                 "description": "",
@@ -412,23 +425,22 @@ def populate_older_schema(engine: Engine) -> OlderSchemaRecords:
                 "kind": "docx",
             },
         )
-        connection.execute(
-            insert(_table(connection, "template_versions")),
-            {
-                "id": version_id,
-                "template_id": template_id,
-                "version_number": 1,
-                "object_owner_id": owner,
-                "sha256": "a" * 64,
-                "size": 8,
-                "created_at": now,
-                "created_by": owner,
-                "declared_fonts": "[]",
-                "resolved_fonts": "[]",
-                "validation_trace": "{}",
-                "publication_state": "published",
-            },
-        )
+        versions = _table(connection, "template_versions")
+        version = {
+            "id": version_id,
+            "template_id": template_id,
+            "version_number": 1,
+            "object_owner_id": template_owner,
+            "sha256": "a" * 64,
+            "size": 8,
+            "created_at": now,
+            "created_by": template_owner,
+            "declared_fonts": "[]",
+            "resolved_fonts": "[]",
+            "validation_trace": "{}",
+            "publication_state": "published",
+        }
+        connection.execute(insert(versions), version)
         # Select the published version as current, as template publication does.
         templates = _table(connection, "templates")
         connection.execute(
@@ -458,6 +470,26 @@ def populate_older_schema(engine: Engine) -> OlderSchemaRecords:
                 "template_id": template_id,
                 "template_version_id": version_id,
             },
+        )
+        replacement = b"template v2"
+        connection.execute(
+            insert(versions),
+            version
+            | {
+                "id": current_version_id,
+                "version_number": 2,
+                "sha256": hashlib.sha256(replacement).hexdigest(),
+                "size": len(replacement),
+            },
+        )
+        connection.execute(
+            templates.update()
+            .where(templates.c.id == template_id)
+            .values(
+                current_version_id=current_version_id,
+                revision=2,
+                status="archived" if archive_template else "active",
+            )
         )
         connection.execute(
             insert(_table(connection, "composer_sources")),
@@ -525,8 +557,10 @@ def populate_older_schema(engine: Engine) -> OlderSchemaRecords:
         revision_id,
         template_id,
         version_id,
+        current_version_id,
         {
-            f"template-versions/{owner}/{version_id}": b"template",
+            f"template-versions/{template_owner}/{version_id}": b"template",
+            f"template-versions/{template_owner}/{current_version_id}": replacement,
             f"uploads/{owner}/{upload_id}": b"# source",
             f"results/{owner}/{result_id}": b"result",
             f"composer-sources/{owner}/{source_id}": b"source",
@@ -601,7 +635,7 @@ def _verify_older_database(
             if tuple(pair) != (
                 records.template_id,
                 records.template_version_id,
-                records.template_version_id,
+                records.current_version_id,
             ):
                 raise RuntimeError("restored earlier-schema template pair is invalid")
     finally:
@@ -637,11 +671,11 @@ def standalone_older_verify(path: Path, records_path: Path) -> None:
             raise RuntimeError("restored earlier-schema object is invalid")
 
 
-def distributed_older_initialize(records_path: Path) -> None:
+def distributed_older_initialize(records_path: Path, revision: str) -> None:
     database_url = os.environ["RECOVERY_DATABASE"]
     engine = create_database_engine(database_url)
     try:
-        upgrade_database_to(engine, PRE_FILL_PLAN_REVISION)
+        upgrade_database_to(engine, revision)
         records = populate_older_schema(engine)
     finally:
         engine.dispose()
@@ -680,7 +714,10 @@ def distributed_empty_initialize(revision: str) -> None:
 
 
 def distributed_historical_set(
-    destination: Path, schema_revision: str | None, omit_tables: frozenset[str]
+    destination: Path,
+    schema_revision: str | None,
+    omit_tables: frozenset[str],
+    invalid_template_reference: str | None,
 ) -> None:
     client = _s3()
     try:
@@ -695,6 +732,7 @@ def distributed_historical_set(
             ),
             schema_revision=schema_revision,
             omit_tables=omit_tables,
+            invalid_template_reference=invalid_template_reference,
         )
     finally:
         client.close()
@@ -796,6 +834,7 @@ def write_historical_distributed_set(  # noqa: PLR0913 - explicit provider ident
     *,
     schema_revision: str | None = None,
     omit_tables: frozenset[str] = frozenset(),
+    invalid_template_reference: str | None = None,
 ) -> str:
     """Publish a checksummed distributed set for a historical schema revision."""
 
@@ -818,6 +857,8 @@ def write_historical_distributed_set(  # noqa: PLR0913 - explicit provider ident
             ).one()
     finally:
         engine.dispose()
+    if invalid_template_reference is not None:
+        _invalidate_template_reference(payload, invalid_template_reference)
     payload_path.write_bytes(canonical_json(payload) + b"\n")
     size, digest = sha256_file(payload_path)
     members = [RecoveryMember(DATABASE_PAYLOAD, size, digest)]
@@ -851,6 +892,30 @@ def write_historical_distributed_set(  # noqa: PLR0913 - explicit provider ident
     write_manifest(staging, manifest)
     os.replace(staging, destination / manifest.backup_id)
     return manifest.backup_id
+
+
+def _invalidate_template_reference(payload: dict[str, Any], alteration: str) -> None:
+    tables = {table["name"]: table["rows"] for table in payload["tables"]}
+    job = tables["conversion_jobs"][0]
+    template = tables["templates"][0]
+    match alteration:
+        case "missing-version":
+            job["template_version_id"] = str(uuid4())
+        case "wrong-template":
+            other_template = template | {
+                "id": str(uuid4()),
+                "current_version_id": None,
+            }
+            tables["templates"].append(other_template)
+            job["template_id"] = other_template["id"]
+        case "wrong-owner":
+            template["owner_id"] = job["owner_id"]
+        case "missing-job-template-fields":
+            incomplete_job = job | {"id": str(uuid4())}
+            del incomplete_job["template_id"], incomplete_job["template_version_id"]
+            tables["conversion_jobs"].append(incomplete_job)
+        case _:
+            raise ValueError("Unknown template reference alteration")
 
 
 # Fixed test-only schema changes that a supported restore must refuse.
@@ -891,14 +956,19 @@ def _operations(arguments: argparse.Namespace) -> dict[str, Callable[[], None]]:
         "standalone-older-initialize": lambda: standalone_older_initialize(path),
         "standalone-older-alter": lambda: standalone_older_alter(path, statement),
         "standalone-older-verify": lambda: standalone_older_verify(path, records),
-        "distributed-older-initialize": lambda: distributed_older_initialize(records),
+        "distributed-older-initialize": lambda: distributed_older_initialize(
+            records, arguments.revision or PRE_FILL_PLAN_REVISION
+        ),
         "distributed-older-alter": lambda: distributed_older_alter(statement),
         "distributed-older-verify": lambda: distributed_older_verify(records),
         "distributed-empty-initialize": lambda: distributed_empty_initialize(
             arguments.revision
         ),
         "distributed-historical-set": lambda: distributed_historical_set(
-            path, arguments.schema_revision, frozenset(arguments.omit_table)
+            path,
+            arguments.schema_revision,
+            frozenset(arguments.omit_table),
+            arguments.invalid_template_reference,
         ),
     }
 
@@ -912,6 +982,15 @@ def main() -> None:
     parser.add_argument("--revision")
     parser.add_argument("--schema-revision")
     parser.add_argument("--omit-table", action="append", default=[])
+    parser.add_argument(
+        "--invalid-template-reference",
+        choices=(
+            "missing-version",
+            "wrong-template",
+            "wrong-owner",
+            "missing-job-template-fields",
+        ),
+    )
     arguments = parser.parse_args()
     operations = _operations(arguments)
     if arguments.operation not in operations:

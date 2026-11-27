@@ -97,7 +97,7 @@ def _assert_restored_at_head(target: Path, records: OlderSchemaRecords) -> None:
                 )
                 .join(TemplateRow, TemplateRow.id == ConversionJobRow.template_id)
                 .where(ConversionJobRow.id == records.job_id)
-            ).one() == (records.template_version_id, records.template_version_id)
+            ).one() == (records.template_version_id, records.current_version_id)
             assert (
                 connection.scalar(
                     select(ComposerRevisionRow.publication_state).where(
@@ -112,8 +112,8 @@ def _assert_restored_at_head(target: Path, records: OlderSchemaRecords) -> None:
         assert (target / "objects" / key).read_bytes() == content
 
 
-@pytest.mark.parametrize("revision", [PRE_FILL_PLAN_REVISION, "20260923_22"])
-def test_standalone_restores_earlier_schema_set_to_head_with_references(
+@pytest.mark.parametrize("revision", ["head", PRE_FILL_PLAN_REVISION, "20260923_22"])
+def test_standalone_restores_set_to_head_with_superseded_template_version(
     tmp_path: Path, revision: str
 ) -> None:
     data, records = _older_data(tmp_path, revision)

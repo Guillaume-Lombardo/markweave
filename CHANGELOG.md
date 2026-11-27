@@ -10,6 +10,12 @@ Use the [upgrade guide](docs/upgrading.md) for supported transitions and rollbac
 [release process](docs/releasing.md) for artifact evidence, the [security policy](SECURITY.md) for
 private reporting, and the [support policy](SUPPORT.md) for help with a published release.
 
+## [Unreleased]
+
+### Fixed
+
+- Distributed restore preserves retained conversions that reference superseded template versions.
+
 <a id="release-0-9-0"></a>
 
 ## [0.9.0] - 2026-11-27
