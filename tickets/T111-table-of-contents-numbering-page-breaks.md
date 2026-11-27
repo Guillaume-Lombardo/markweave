@@ -38,6 +38,9 @@ Created from the repository analysis accepted by the owner on 2026-10-09 (sectio
   Not started.
 - 2026-11-27: Started after T89, T90, and T91 closed. Template document options are
   resolved and frozen inside the existing job admission transaction.
+- 2026-11-27: Pinned Pandoc and LibreOffice tests verified the editable Word TOC field, numbered
+  headings, a real page break, and populated PDF entries with page numbers. Review follow-ups
+  cover explicit false overrides, an owner-only UNO socket directory, and legacy manifests.
 
 ## Synchronization
 

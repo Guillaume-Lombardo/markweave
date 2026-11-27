@@ -28,11 +28,12 @@ attempt, explicit template mode, nullable template identifiers, and safe functio
 paths, SQL, leases, or worker identifiers. Status responses also include result expiration and
 the locked converter, Pandoc, Mermaid CLI, Chromium, and LibreOffice versions needed for
 traceability.
-PDF and combined results also expose their canonical external traceability JSON at
+Word and PDF jobs expose their canonical external traceability JSON at
 `GET /api/v1/conversions/{job_id}/result/manifest`. The worker writes the result and deterministic
 owner-bound manifest sidecar before publishing both identifiers in the same fenced database
 transition. Publication failure or cancellation compensates both objects; expiration removes every
-attempt from both namespaces. DOCX-only jobs have no manifest result.
+attempt from both namespaces. Version 3 manifests record the effective document options. Earlier
+DOCX-only jobs may omit the manifest.
 Status also returns the durable correlation identifier accepted at submission. An embedded or
 external worker restores the same identifier when it claims the job; the content-free logging and
 metric contract is documented in [`observability.md`](observability.md).

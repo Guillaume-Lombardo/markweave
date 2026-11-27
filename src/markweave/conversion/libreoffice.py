@@ -365,6 +365,7 @@ def _safe_docx(data: bytes, limits: PdfLimits) -> bool:
 
 def _has_toc_field(docx: bytes) -> bool:
     """Recognize the field in the generated, already-bounded Word document."""
+    has_toc = False
     try:
         with (
             zipfile.ZipFile(io.BytesIO(docx)) as archive,
@@ -374,11 +375,11 @@ def _has_toc_field(docx: bytes) -> bool:
                 if node.tag == f"{_WORD_NAMESPACE}instrText" and (
                     node.text or ""
                 ).split()[:1] == ["TOC"]:
-                    return True
+                    has_toc = True
                 node.clear()
     except OSError, zipfile.BadZipFile, ParseError, DefusedXmlException:
         _error(ConversionErrorCode.INVALID_DOCX, "DOCX input is invalid.")
-    return False
+    return has_toc
 
 
 def _private_uno_pipe(cleanup: ExitStack) -> str:

@@ -171,6 +171,10 @@ def test_pdf_index_export_uses_the_same_isolated_launcher(
     [
         ("<document/>", ConversionErrorCode.INVALID_DOCX),
         (
+            TOC_DOCUMENT.removesuffix("</w:document>") + "<broken",
+            ConversionErrorCode.INVALID_DOCX,
+        ),
+        (
             "<!DOCTYPE bad [<!ENTITY e SYSTEM 'file:///etc/passwd'>]><bad>&e;</bad>",
             ConversionErrorCode.INVALID_DOCX,
         ),
