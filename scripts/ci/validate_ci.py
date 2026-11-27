@@ -483,7 +483,7 @@ READ_ONLY_WORKFLOW_POLICIES = {
             ),
             ("mutation", "Retain mutation evidence"): "${{ always() }}",
         },
-        canonical_digest="c74f30c1ffc51589d17df4e6a9d1f329c1e13184268fde1b106ddf5284668367",
+        canonical_digest="443373b31c77e6a0470459bc967aaee2f5550894ebe663797ea8519495d1c15c",
     ),
     "mutation.yml": WorkflowPolicy(
         triggers=frozenset({"schedule", "workflow_dispatch"}),
@@ -972,10 +972,7 @@ def _validate_public_alignment_credentials(
         if step.get("name") == "Verify public release alignment"
     ]
     expected = {
-        "BASE_SHA": (
-            "${{ github.event.pull_request.base.sha || "
-            "github.event.merge_group.base_sha || github.event.before }}"
-        ),
+        "BASE_SHA": "${{ github.event.merge_group.base_sha || github.event.before }}",
         "EVENT_NAME": "${{ github.event_name }}",
         "GITHUB_API_TOKEN": (
             f"${{{{ {TRUSTED_REPOSITORY_CONDITION} && (github.event_name == 'push' "

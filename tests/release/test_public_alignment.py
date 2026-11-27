@@ -299,13 +299,18 @@ def test_main_derives_attempt_retry_from_the_exact_base_and_head(
     expected = 0 if head_attempt == 2 else 1
     head = f'[project]\nversion = "0.5.0"\n[tool.markweave.release]\nattempt = {head_attempt}\n'
     (tmp_path / "pyproject.toml").write_text(head, encoding="utf-8")
-    (tmp_path / "compose.yaml").write_text(
-        f"services:\n  markweave:\n    image: {public_alignment.IMAGE_REPOSITORY}:0.4.0@{REGISTRY_DIGEST}\n",
-        encoding="utf-8",
-    )
+    compose = (
+        f"services:\n  markweave:\n    image: {public_alignment.IMAGE_REPOSITORY}:0.4.0@{REGISTRY_DIGEST}\n"
+    ).encode()
+    (tmp_path / "compose.yaml").write_bytes(compose)
     mocker.patch(
         "scripts.release.public_alignment._git_output",
-        side_effect=[b'[project]\nversion = "0.5.0"\n', head.encode()],
+        side_effect=[
+            f"{SOURCE_SHA} {'c' * 40}\n".encode(),
+            compose,
+            b'[project]\nversion = "0.5.0"\n',
+            head.encode(),
+        ],
     )
     mocker.patch(
         "scripts.release.public_alignment.UrlLibTransport",
@@ -344,6 +349,73 @@ def test_rejects_pypi_compose_drift_before_trusting_other_surfaces() -> None:
         )
 
 
+def _paired_inputs(backend: str, frontend: str) -> dict[str, bytes]:
+    project = b'[project]\nversion = "0.8.1"\n'
+    compose = (
+        f"services:\n  markweave:\n    image: {backend}\n"
+        "  frontend:\n"
+        f'    image: "${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{frontend}}}"\n'
+        "  router:\n"
+        f'    image: "${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{frontend}}}"\n'
+    ).encode()
+    quickstart = (
+        f'readonly cutover_backend_image="${{MARKWEAVE_CUTOVER_BACKEND_IMAGE:-{backend}}}"\n'
+        f'readonly cutover_frontend_image="${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{frontend}}}"\n'
+    ).encode()
+    return {
+        "pyproject.toml": project,
+        "compose.yaml": compose,
+        "scripts/quickstart.sh": quickstart,
+        "scripts/quickstart-simple.sh": quickstart,
+    }
+
+
+def _changed_inputs(
+    change: str, previous: dict[str, bytes], backend: str, frontend: str
+) -> dict[str, bytes]:
+    compose = previous["compose.yaml"]
+    project = previous["pyproject.toml"]
+    quickstart = previous["scripts/quickstart.sh"]
+    current = previous.copy()
+    other_digest = f"sha256:{'b' * 64}".encode()
+    match change:
+        case "unrelated":
+            current["pyproject.toml"] += b'description = "updated"\n'
+            current["compose.yaml"] += b"# deployment configuration\n"
+            current["scripts/quickstart.sh"] = b"# helper change\n\n" + quickstart
+        case "release-attempt":
+            current["pyproject.toml"] += b"[tool.markweave.release]\nattempt = 2\n"
+        case "backend-pin":
+            new_backend = backend.replace(":0.8.1@", ":0.8.2@").encode()
+            for path in ("compose.yaml", *public_alignment.QUICKSTARTS):
+                current[path] = current[path].replace(backend.encode(), new_backend)
+        case "frontend-pin":
+            new_frontend = frontend.encode().replace(
+                REGISTRY_DIGEST.encode(), other_digest
+            )
+            for path in ("compose.yaml", *public_alignment.QUICKSTARTS):
+                current[path] = current[path].replace(frontend.encode(), new_frontend)
+        case "quickstart-pin":
+            current["scripts/quickstart.sh"] = quickstart.replace(
+                REGISTRY_DIGEST.encode(), other_digest
+            ).replace(b'="', b'=\\\n"', 1)
+        case "simple-pin":
+            current["scripts/quickstart-simple.sh"] = b""
+        case "quickstart-repair":
+            previous["scripts/quickstart.sh"] = quickstart.replace(
+                REGISTRY_DIGEST.encode(), other_digest
+            )
+        case "quickstart-continuation":
+            current["scripts/quickstart.sh"] = quickstart.replace(b'="', b'=\\\n"', 1)
+        case "adoption":
+            previous["compose.yaml"] = compose.replace(b":0.8.1@", b":0.8.0@")
+        case "awaiting-adoption":
+            previous["pyproject.toml"] = current["pyproject.toml"] = project.replace(
+                b"0.8.1", b"0.8.2"
+            )
+    return current
+
+
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "scenario",
@@ -358,8 +430,27 @@ def test_rejects_pypi_compose_drift_before_trusting_other_surfaces() -> None:
             True,
         ),
         ("pull_request", "frontend-pin", "does not match", True),
-        ("pull_request", "quickstart-pin", "aligned", True),
-        ("pull_request", "simple-pin", "aligned", True),
+        (
+            "pull_request",
+            "quickstart-pin",
+            "do not match the public Compose pair",
+            False,
+        ),
+        ("pull_request", "simple-pin", "do not match the public Compose pair", False),
+        ("pull_request", "quickstart-repair", "aligned", True),
+        ("pull_request", "quickstart-continuation", "skipped", False),
+        (
+            "pull_request",
+            "dirty-compose",
+            "does not match the checked-out source",
+            False,
+        ),
+        (
+            "pull_request",
+            "dirty-quickstart",
+            "does not match the checked-out source",
+            False,
+        ),
         ("pull_request", "adoption", "aligned", True),
         ("pull_request", "awaiting-adoption", "adopt published images", False),
         ("push", "unrelated", "aligned", True),
@@ -375,58 +466,23 @@ def test_cli_contacts_public_services_only_when_required(
     scenario: tuple[str, str, str, bool],
 ) -> None:
     event, change, expected, contact_public = scenario
-    project = b'[project]\nversion = "0.8.1"\n'
     backend = f"{public_alignment.IMAGE_REPOSITORY}:0.8.1@{REGISTRY_DIGEST}"
     frontend = f"{public_alignment.FRONTEND_IMAGE_REPOSITORY}:0.8.1@{REGISTRY_DIGEST}"
-    compose = (
-        f"services:\n  markweave:\n    image: {backend}\n"
-        "  frontend:\n"
-        f'    image: "${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{frontend}}}"\n'
-        "  router:\n"
-        f'    image: "${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{frontend}}}"\n'
-    ).encode()
-    quickstart = f'readonly cutover_backend_image="{backend}"\n'.encode()
-    previous = {
-        "pyproject.toml": project,
-        "compose.yaml": compose,
-        "scripts/quickstart.sh": quickstart,
-        "scripts/quickstart-simple.sh": quickstart,
-    }
-    current = previous.copy()
-    other_digest = f"sha256:{'b' * 64}".encode()
-    match change:
-        case "unrelated":
-            current["pyproject.toml"] += b'description = "updated"\n'
-            current["compose.yaml"] += b"# deployment configuration\n"
-            current["scripts/quickstart.sh"] = b"# helper change\n\n" + quickstart
-        case "release-attempt":
-            current["pyproject.toml"] += b"[tool.markweave.release]\nattempt = 2\n"
-        case "backend-pin":
-            current["compose.yaml"] = compose.replace(b":0.8.1@", b":0.8.2@", 1)
-        case "frontend-pin":
-            current["compose.yaml"] = compose.replace(
-                frontend.encode(),
-                frontend.encode().replace(REGISTRY_DIGEST.encode(), other_digest),
-            )
-        case "quickstart-pin":
-            current["scripts/quickstart.sh"] = quickstart.replace(
-                REGISTRY_DIGEST.encode(), other_digest
-            )
-        case "simple-pin":
-            current["scripts/quickstart-simple.sh"] = b""
-        case "adoption":
-            previous["compose.yaml"] = compose.replace(b":0.8.1@", b":0.8.0@")
-        case "awaiting-adoption":
-            previous["pyproject.toml"] = current["pyproject.toml"] = project.replace(
-                b"0.8.1", b"0.8.2"
-            )
+    previous = _paired_inputs(backend, frontend)
+    current = _changed_inputs(change, previous, backend, frontend)
     (tmp_path / "scripts").mkdir()
     for path, contents in current.items():
-        (tmp_path / path).write_bytes(contents)
+        checkout = contents
+        if change == f"dirty-{Path(path).stem}":
+            checkout += b"# uncommitted"
+        (tmp_path / path).write_bytes(checkout)
     base_sha = "a" * 40
     head_sha = "b" * 40
 
     def git_show(args: tuple[str, ...]) -> bytes:
+        if args[-2] == "--format=%P":
+            assert args[-1] == head_sha
+            return f"{base_sha} {'c' * 40}\n".encode()
         sha, path = args[-1].split(":", maxsplit=1)
         assert sha in {base_sha, head_sha}
         return (previous if sha == base_sha else current)[path]
@@ -444,7 +500,7 @@ def test_cli_contacts_public_services_only_when_required(
             "--event-name",
             event,
             "--base",
-            base_sha,
+            ("f" * 40 if event == "pull_request" else base_sha),
             "--head",
             head_sha,
         ]
@@ -601,13 +657,15 @@ def test_main_reads_exact_base_and_head_only_for_pending_transition(
     (tmp_path / "pyproject.toml").write_text(
         '[project]\nversion = "0.5.0"\n', encoding="utf-8"
     )
-    (tmp_path / "compose.yaml").write_text(
-        f"services:\n  markweave:\n    image: {public_alignment.IMAGE_REPOSITORY}:0.4.0@{REGISTRY_DIGEST}\n",
-        encoding="utf-8",
-    )
+    compose = (
+        f"services:\n  markweave:\n    image: {public_alignment.IMAGE_REPOSITORY}:0.4.0@{REGISTRY_DIGEST}\n"
+    ).encode()
+    (tmp_path / "compose.yaml").write_bytes(compose)
     inspected = mocker.patch(
         "scripts.release.public_alignment._git_output",
         side_effect=[
+            f"{'f' * 40} {'c' * 40}\n".encode(),
+            compose,
             b'[project]\nversion = "0.4.0"\n',
             b'[project]\nversion = "0.5.0"\n',
         ],
@@ -633,6 +691,8 @@ def test_main_reads_exact_base_and_head_only_for_pending_transition(
     assert result == 0
     assert "alignment: pending" in capsys.readouterr().out
     assert inspected.call_args_list == [
+        mocker.call(("-C", str(tmp_path), "show", "-s", "--format=%P", "e" * 40)),
+        mocker.call(("-C", str(tmp_path), "show", f"{'e' * 40}:compose.yaml")),
         mocker.call(("-C", str(tmp_path), "show", f"{'f' * 40}:pyproject.toml")),
         mocker.call(("-C", str(tmp_path), "show", f"{'e' * 40}:pyproject.toml")),
     ]

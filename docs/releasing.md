@@ -22,6 +22,8 @@ main pushes, Release events, scheduled and manual runs, and candidates that chan
 Other pull requests and merge-group candidates check local release metadata and image pins
 without contacting PyPI, GitHub Releases, or GHCR for alignment. A candidate that carries an
 unchanged pending release must adopt the published images before other changes can proceed.
+For pull requests, CI compares the synthetic merge commit with its first parent. The backend and
+frontend defaults in both quickstarts must match the Compose image pair.
 In the normal state, `project.version`, the latest PyPI version, the Compose image tag, the
 published GitHub tag and Release receipt, and the anonymous GHCR manifest digest must all agree;
 the Compose reference must include that immutable digest. The only exception is an exact version

@@ -36,3 +36,6 @@ adoption gates. Restore main CI alerts after a repository rename.
 - 2026-11-27: Reproduced both failure paths with regression tests. The light job now selects
   live checks from exact candidate inputs and the alert resolves the canonical issue endpoint
   from the stable GitHub repository ID. The optional workflow policy refactor was deferred.
+- 2026-11-27: Rebased after 0.9.0 image adoption. The pull request check compares the synthetic
+  merge commit with its first parent and verifies the committed pins against the checked-out
+  Compose file and both quickstarts. Each quickstart must match the Compose pair.

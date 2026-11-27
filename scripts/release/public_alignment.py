@@ -55,8 +55,12 @@ FRONTEND_IMAGE = re.compile(
 BACKEND_IMAGE_DEFAULT = re.compile(
     r"\$\{MARKWEAVE_CUTOVER_BACKEND_IMAGE:-(?P<image>[^}]+)\}"
 )
+FRONTEND_IMAGE_DEFAULT = re.compile(
+    r"\$\{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-(?P<image>[^}]+)\}"
+)
 PAIRED_RELEASE_FIRST_VERSION = Version("0.6.1")
 ZERO_SHA = "0" * 40
+PULL_REQUEST_MERGE_PARENTS = 2
 MAX_JSON_BYTES = 1_048_576
 MAX_RECEIPT_BYTES = 16_384
 MAX_TOKEN_BYTES = 16_384
@@ -69,7 +73,8 @@ OCI_SCHEMA_VERSION = 2
 CUTOVER_FRONTEND_ROLES = ("frontend", "router")
 QUICKSTARTS = ("scripts/quickstart.sh", "scripts/quickstart-simple.sh")
 QUICKSTART_PIN = re.compile(
-    rb"(?m)^[ \t]*readonly[ \t]+(cutover_(?:backend|frontend)_image)=([^\s]+)"
+    r'(?m)^[ \t]*readonly[ \t]+cutover_(backend|frontend)_image="([^"\n]+)"'
+    r"(?:[ \t]+#[^\n]*)?[ \t]*$"
 )
 
 
@@ -264,7 +269,6 @@ def parse_compose_identity(document: str) -> ComposeIdentity:
 
 def parse_frontend_compose_identity(document: str) -> ComposeIdentity:
     """Parse the shared published frontend default from compose.yaml."""
-    expression = re.compile(r"\$\{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-(?P<image>[^}]+)\}")
     try:
         compose = yaml.load(document, Loader=yaml.BaseLoader)  # noqa: S506
         services = compose["services"]
@@ -277,7 +281,7 @@ def parse_frontend_compose_identity(document: str) -> ComposeIdentity:
         raise AlignmentError(
             "cutover frontend services must share one trusted immutable public default"
         )
-    matches = [expression.fullmatch(image) for image in configured]
+    matches = [FRONTEND_IMAGE_DEFAULT.fullmatch(image) for image in configured]
     images = [match.group("image") for match in matches if match is not None]
     if (
         len(images) != len(CUTOVER_FRONTEND_ROLES)
@@ -520,6 +524,31 @@ def _git_output(arguments: Sequence[str]) -> bytes:
         raise AlignmentError("cannot inspect the exact Git transition") from error
 
 
+def _git_file(repository: Path, sha: str, path: str) -> bytes:
+    return _git_output(("-C", str(repository), "show", f"{sha}:{path}"))
+
+
+def _read_file(repository: Path, path: str, *, head: str = "") -> bytes:
+    document = (repository / path).read_bytes()
+    if head and document != _git_file(repository, head, path):
+        raise AlignmentError(f"head {path} does not match the checked-out source")
+    return document
+
+
+def _candidate_base(repository: Path, *, event: str, base: str, head: str) -> str:
+    if FULL_SHA.fullmatch(head) is None or head == ZERO_SHA:
+        raise AlignmentError("candidates require a nonzero full head SHA")
+    if event != "pull_request":
+        return base
+    # GitHub checks out the synthetic merge commit. Its first parent is the
+    # base it was built against, even when the event payload names an older SHA.
+    parents = _git_output(("-C", str(repository), "show", "-s", "--format=%P", head))
+    parent_shas = parents.decode("ascii").split()
+    if len(parent_shas) != PULL_REQUEST_MERGE_PARENTS:
+        raise AlignmentError("pull request head must be a two-parent merge commit")
+    return parent_shas[0]
+
+
 def _base_identity(
     repository: Path, *, base: str, head: str, project: bytes
 ) -> BaseIdentity:
@@ -532,10 +561,8 @@ def _base_identity(
         raise AlignmentError(
             "pending transitions require nonzero full base and head SHAs"
         )
-    previous = _git_output(("-C", str(repository), "show", f"{base}:pyproject.toml"))
-    reviewed_head = _git_output(
-        ("-C", str(repository), "show", f"{head}:pyproject.toml")
-    )
+    previous = _git_file(repository, base, "pyproject.toml")
+    reviewed_head = _git_file(repository, head, "pyproject.toml")
     if reviewed_head != project:
         raise AlignmentError(
             "head pyproject.toml does not match the checked-out source"
@@ -562,21 +589,47 @@ def _compose_images(document: str) -> tuple[ComposeIdentity, ComposeIdentity | N
     return backend, frontend
 
 
+def _quickstart_pins(document: bytes) -> list[tuple[str, str]]:
+    # A backslash followed by a newline is removed by Bash before parsing.
+    return sorted(QUICKSTART_PIN.findall(document.decode("utf-8").replace("\\\n", "")))
+
+
+def _check_quickstart_pins(
+    repository: Path, *, head: str, backend: ComposeIdentity, frontend: ComposeIdentity
+) -> dict[str, list[tuple[str, str]]]:
+    expected = [
+        (
+            "backend",
+            f"${{MARKWEAVE_CUTOVER_BACKEND_IMAGE:-{IMAGE_REPOSITORY}:{backend.version}@{backend.digest}}}",
+        ),
+        (
+            "frontend",
+            f"${{MARKWEAVE_CUTOVER_FRONTEND_IMAGE:-{FRONTEND_IMAGE_REPOSITORY}:{frontend.version}@{frontend.digest}}}",
+        ),
+    ]
+    pins = {
+        path: _quickstart_pins(_read_file(repository, path, head=head))
+        for path in QUICKSTARTS
+    }
+    for path, actual in pins.items():
+        if actual != expected:
+            raise AlignmentError(
+                f"{path} image pins do not match the public Compose pair"
+            )
+    return pins
+
+
 def _pin_changes(
     repository: Path,
     *,
     base: str,
     images: tuple[ComposeIdentity, ComposeIdentity | None],
+    quickstarts: Mapping[str, list[tuple[str, str]]],
 ) -> bool:
-    previous = _git_output(("-C", str(repository), "show", f"{base}:compose.yaml"))
-    if _compose_images(previous.decode("utf-8")) != images:
-        return True
-    return any(
-        QUICKSTART_PIN.findall(
-            _git_output(("-C", str(repository), "show", f"{base}:{path}"))
-        )
-        != QUICKSTART_PIN.findall((repository / path).read_bytes())
-        for path in QUICKSTARTS
+    previous = _git_file(repository, base, "compose.yaml")
+    return _compose_images(previous.decode("utf-8")) != images or any(
+        _quickstart_pins(_git_file(repository, base, path)) != pins
+        for path, pins in quickstarts.items()
     )
 
 
@@ -662,27 +715,49 @@ def main(arguments: Sequence[str] | None = None) -> int:
     """Check the current repository against fixed public release surfaces."""
     options = _arguments(arguments)
     try:
+        candidate = options.event_name in CANDIDATE_EVENTS
+        base_sha = (
+            _candidate_base(
+                options.repository,
+                event=options.event_name,
+                base=options.base,
+                head=options.head,
+            )
+            if candidate
+            else options.base
+        )
         project = (options.repository / "pyproject.toml").read_bytes()
         project_version = parse_project_version(project)
+        head = options.head if candidate else ""
         images = _compose_images(
-            (options.repository / "compose.yaml").read_text(encoding="utf-8")
+            _read_file(options.repository, "compose.yaml", head=head).decode("utf-8")
         )
         compose, frontend = images
         pending = project_version != compose.version
         base = None
-        if pending or options.event_name in CANDIDATE_EVENTS:
+        if pending or candidate:
             if options.event_name not in PENDING_EVENTS:
                 raise AlignmentError("this event requires fully published alignment")
             base = _base_identity(
                 options.repository,
-                base=options.base,
+                base=base_sha,
                 head=options.head,
                 project=project,
             )
-        if base is not None and options.event_name in CANDIDATE_EVENTS:
+        quickstarts = (
+            _check_quickstart_pins(
+                options.repository, head=head, backend=compose, frontend=frontend
+            )
+            if frontend is not None
+            else {}
+        )
+        if base is not None and candidate:
             release_changed = base.version != project_version or base.attempt_retry
             if not release_changed and not _pin_changes(
-                options.repository, base=base.source_sha, images=images
+                options.repository,
+                base=base.source_sha,
+                images=images,
+                quickstarts=quickstarts,
             ):
                 if pending:
                     raise AlignmentError("adopt published images before other changes")
