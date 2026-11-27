@@ -590,8 +590,8 @@ def _compose_images(document: str) -> tuple[ComposeIdentity, ComposeIdentity | N
 
 
 def _quickstart_pins(document: bytes) -> list[tuple[str, str]]:
-    # A backslash followed by a newline is removed by Bash before parsing.
-    return sorted(QUICKSTART_PIN.findall(document.decode("utf-8").replace("\\\n", "")))
+    # Receipt adoption replaces contiguous image references in these declarations.
+    return sorted(QUICKSTART_PIN.findall(document.decode("utf-8")))
 
 
 def _check_quickstart_pins(

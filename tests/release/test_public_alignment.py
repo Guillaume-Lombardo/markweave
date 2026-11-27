@@ -382,7 +382,7 @@ def _changed_inputs(
         case "unrelated":
             current["pyproject.toml"] += b'description = "updated"\n'
             current["compose.yaml"] += b"# deployment configuration\n"
-            current["scripts/quickstart.sh"] = b"# helper change\n\n" + quickstart
+            current["scripts/quickstart.sh"] = b"# helper change \\\n" + quickstart
         case "release-attempt":
             current["pyproject.toml"] += b"[tool.markweave.release]\nattempt = 2\n"
         case "backend-pin":
@@ -406,7 +406,7 @@ def _changed_inputs(
                 REGISTRY_DIGEST.encode(), other_digest
             )
         case "quickstart-continuation":
-            current["scripts/quickstart.sh"] = quickstart.replace(b'="', b'=\\\n"', 1)
+            current["scripts/quickstart.sh"] = quickstart.replace(b"@", b"@\\\n", 1)
         case "adoption":
             previous["compose.yaml"] = compose.replace(b":0.8.1@", b":0.8.0@")
         case "awaiting-adoption":
@@ -438,7 +438,12 @@ def _changed_inputs(
         ),
         ("pull_request", "simple-pin", "do not match the public Compose pair", False),
         ("pull_request", "quickstart-repair", "aligned", True),
-        ("pull_request", "quickstart-continuation", "skipped", False),
+        (
+            "pull_request",
+            "quickstart-continuation",
+            "do not match the public Compose pair",
+            False,
+        ),
         (
             "pull_request",
             "dirty-compose",
