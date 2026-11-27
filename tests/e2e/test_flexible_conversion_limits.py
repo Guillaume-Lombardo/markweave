@@ -95,12 +95,22 @@ def test_confirmed_archive_and_resized_docx() -> None:
 
 
 def _assert_upload_timeout(connection: http.client.HTTPConnection) -> None:
-    with connection.getresponse() as timed_out:
+    assert connection.sock is not None
+    with connection.sock.dup() as transport, connection.getresponse() as timed_out:
         assert timed_out.status == 408
         assert timed_out.getheader("Connection") == "close"
         assert json.loads(timed_out.read())["error"]["code"] == (
             "CONVERSION_UPLOAD_TIMED_OUT"
         )
+        transport.settimeout(3)
+        assert transport.recv(1) == b""
+
+
+def _finish_upload(connection: http.client.HTTPConnection, body: bytes) -> None:
+    connection.send(body)
+    with connection.getresponse() as admitted:
+        assert admitted.status == 202
+        admitted.read()
 
 
 def test_forward_upload_saturation_rejects_before_reading_and_allows_retry() -> None:
@@ -143,7 +153,7 @@ def test_forward_upload_saturation_rejects_before_reading_and_allows_retry() -> 
         connection.endheaders()
         return connection
 
-    with ExitStack() as connections:
+    def hold_all_slots(connections: ExitStack) -> list[http.client.HTTPConnection]:
         pending = [start_upload(connections) for _ in range(4)]
         for connection in pending:
             assert connection.sock is not None
@@ -151,7 +161,10 @@ def test_forward_upload_saturation_rejects_before_reading_and_allows_retry() -> 
             with connection.sock.makefile("rb") as stream:
                 assert stream.readline().split()[:2] == [b"HTTP/1.1", b"100"]
                 assert stream.readline() == b"\r\n"
+        return pending
 
+    with ExitStack() as connections:
+        pending = hold_all_slots(connections)
         # Send no body. If the application asks for it, getresponse will time out.
         with start_upload(connections).getresponse() as rejected:
             assert rejected.status == 503
@@ -165,11 +178,7 @@ def test_forward_upload_saturation_rejects_before_reading_and_allows_retry() -> 
         )
         assert client.request("GET", "/api/v1/audit").body == before_audit.body
 
-        first = pending[0]
-        first.send(body)
-        with first.getresponse() as admitted:
-            assert admitted.status == 202
-            admitted.read()
+        _finish_upload(pending[0], body)
         retried = client.request(
             "POST",
             path,
@@ -181,21 +190,14 @@ def test_forward_upload_saturation_rejects_before_reading_and_allows_retry() -> 
         finished = wait_for_job(client, retried.headers["location"])
         assert finished["state"] == "succeeded"
 
-        _assert_upload_timeout(pending[1])
+        for connection in pending[1:]:
+            _assert_upload_timeout(connection)
         assert (
             decode_object(client.request("GET", path), "list jobs after body timeout")[
                 "total"
             ]
             == before["total"] + 2
         )
-        expect(
-            client.request(
-                "POST",
-                path,
-                body=body,
-                content_type=content_type,
-                headers={"X-CSRF-Token": csrf},
-            ),
-            202,
-            "submit on a new connection after body timeout",
-        )
+        # Reacquire every slot to detect leaks among the expired uploads.
+        fresh = hold_all_slots(connections)
+        _finish_upload(fresh[0], body)
