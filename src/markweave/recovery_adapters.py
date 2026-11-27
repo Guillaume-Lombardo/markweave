@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import sqlite3
+from collections import defaultdict
 from collections.abc import Callable, Generator, Iterator, Mapping
 from contextlib import closing, contextmanager, suppress
 from dataclasses import dataclass
@@ -47,10 +48,6 @@ from markweave.recovery_schema import (
 from markweave.storage import ObjectScope
 
 RECOVERY_ADVISORY_LOCK = 1_297_337_037
-# Restore inserts these pointer columns only after every referenced row exists.
-_DEFERRED_POINTERS = {"templates": "current_version_id"}
-# Integrity triggers on these tables require restored template pointers.
-_POINTER_DEPENDENT_TABLES = frozenset({"conversion_jobs"})
 DATABASE_PAYLOAD = "database/metadata.json"
 SQLITE_PAYLOAD = "database/metadata.sqlite3"
 _SCOPES = frozenset(scope.value for scope in ObjectScope)
@@ -540,8 +537,8 @@ class PostgreSQLRecoveryAdapter:
 
         if {item["name"] for item in payload_tables} != set(tables_by_name):
             raise RecoveryError("PostgreSQL backup schema is incompatible")
-        pointers: list[tuple[Table, str, Any, Any]] = []
-        deferred: list[tuple[Table, list[dict[str, Any]]]] = []
+        selections: dict[str, tuple[str | None, str]] = {}
+        job_rows: list[dict[str, Any]] = []
         for item in payload_tables:
             deadline.remaining()
             table = tables_by_name[item["name"]]
@@ -561,30 +558,60 @@ class PostgreSQLRecoveryAdapter:
                 if rows != [{"id": 1}]:
                     raise RecoveryError("PostgreSQL backup schema is incompatible")
                 continue  # Migration has already seeded the singleton lock row.
-            if table.name in _POINTER_DEPENDENT_TABLES:
-                deferred.append((table, rows))
+            if table.name == "conversion_jobs":
+                job_rows.extend(rows)
                 continue
-            pointer = _DEFERRED_POINTERS.get(table.name)
-            if pointer is not None and pointer in columns:
-                pointers.extend(
-                    (table, pointer, row["id"], row[pointer])
+            if table.name == "templates":
+                selections.update(
+                    (row["id"], (row.get("current_version_id"), row["status"]))
                     for row in rows
-                    if row.get(pointer) is not None
                 )
-                rows = [row | {pointer: None} for row in rows]
+                rows = [row | {"current_version_id": None} for row in rows]
             if rows:
                 connection.execute(table.insert(), rows)
-        # Integrity triggers require the referenced version before the pointer, and
-        # the pointer before any conversion that names that template pair.
-        for table, pointer, identifier, value in pointers:
+        PostgreSQLRecoveryAdapter._restore_job_template_selections(
+            connection, tables_by_name, selections, job_rows, deadline
+        )
+
+    @staticmethod
+    def _restore_job_template_selections(
+        connection: Connection,
+        tables_by_name: Mapping[str, Table],
+        selections: Mapping[str, tuple[str | None, str]],
+        job_rows: list[dict[str, Any]],
+        deadline: RecoveryDeadline,
+    ) -> None:
+        templates = tables_by_name["templates"]
+        conversion_jobs = tables_by_name["conversion_jobs"]
+        jobs: dict[tuple[str | None, str | None], list[dict[str, Any]]] = defaultdict(
+            list
+        )
+        columns = set(conversion_jobs.c.keys())
+        for row in job_rows:
+            if row.keys() != columns:
+                raise RecoveryError("PostgreSQL backup schema is incompatible")
+            jobs[row["template_id"], row["template_version_id"]].append(row)
+        replayed: set[str] = set()
+        # Replay the selection at admission so the existing triggers validate each
+        # frozen pair. The isolated transaction publishes only the saved selections.
+        for (template_id, version_id), rows in jobs.items():
             deadline.remaining()
-            connection.execute(
-                table.update().where(table.c.id == identifier).values({pointer: value})
-            )
-        for table, rows in deferred:
-            deadline.remaining()
-            if rows:
-                connection.execute(table.insert(), rows)
+            if template_id is not None and version_id is not None:
+                connection.execute(
+                    templates.update()
+                    .where(templates.c.id == template_id)
+                    .values(current_version_id=version_id, status="active")
+                )
+                replayed.add(template_id)
+            connection.execute(conversion_jobs.insert(), rows)
+        for template_id, (version_id, status) in selections.items():
+            if version_id is not None or template_id in replayed:
+                deadline.remaining()
+                connection.execute(
+                    templates.update()
+                    .where(templates.c.id == template_id)
+                    .values(current_version_id=version_id, status=status)
+                )
 
     @staticmethod
     def _restore_tables(

@@ -9,8 +9,9 @@ from __future__ import annotations
 import os
 from collections.abc import Iterator
 from contextlib import ExitStack, closing
+from dataclasses import replace
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import boto3
 import pytest
@@ -18,6 +19,8 @@ from sqlalchemy import inspect, select, text
 from sqlalchemy.engine import make_url
 
 from markweave.config import StorageProfile
+from markweave.jobs.errors import JobRequestError
+from markweave.persistence.jobs import SqlJobRepository
 from markweave.persistence.migrations import upgrade_database, upgrade_database_to
 from markweave.persistence.schema import (
     ComposerRevisionRow,
@@ -30,6 +33,7 @@ from markweave.recovery_manifest import RecoveryError
 from markweave.recovery_schema import OLDEST_RECOVERY_SET_REVISION, head_revision
 from markweave.recovery_service import BackupRequest, RecoveryService, RestoreRequest
 from tests.e2e.recovery_cli_setup import write_historical_distributed_set
+from tests.job_repository_contracts import submission
 from tests.recovery_older_schema import (
     PRE_FILL_PLAN_REVISION,
     OlderSchemaRecords,
@@ -109,7 +113,7 @@ def _older_source(stack: ExitStack, client) -> tuple[str, str, OlderSchemaRecord
     engine = create_database_engine(database)
     try:
         upgrade_database_to(engine, PRE_FILL_PLAN_REVISION)
-        records = populate_older_schema(engine)
+        records = populate_older_schema(engine, archive_template=True)
     finally:
         engine.dispose()
     for key, content in records.objects.items():
@@ -193,14 +197,11 @@ def test_distributed_restores_pre_fill_plan_set_to_head_with_references(
                     records.template_id,
                     records.template_version_id,
                 )
-                assert (
-                    connection.scalar(
-                        select(TemplateRow.current_version_id).where(
-                            TemplateRow.id == records.template_id
-                        )
+                assert connection.execute(
+                    select(TemplateRow.current_version_id, TemplateRow.status).where(
+                        TemplateRow.id == records.template_id
                     )
-                    == records.template_version_id
-                )
+                ).one() == (records.current_version_id, "archived")
                 assert (
                     connection.scalar(
                         select(ComposerRevisionRow.publication_state).where(
@@ -217,8 +218,9 @@ def test_distributed_restores_pre_fill_plan_set_to_head_with_references(
                 assert body.read() == content
 
 
-def test_distributed_restores_current_template_pointer_from_a_head_backup(
-    tmp_path: Path, s3_client
+@pytest.mark.parametrize("migrated_target", [False, True])
+def test_distributed_restores_superseded_template_version_from_a_head_backup(
+    tmp_path: Path, s3_client, migrated_target: bool
 ) -> None:
     client = s3_client
     with ExitStack() as stack:
@@ -244,19 +246,24 @@ def test_distributed_restores_current_template_pointer_from_a_head_backup(
         )
         target_database = _schema_url(stack)
         target_bucket = _bucket(stack, client, "head-target")
-        _restore(
-            (tmp_path / "sets" / manifest.backup_id).resolve(),
-            target_database,
-            target_bucket,
-        )
         engine = create_database_engine(target_database)
         try:
+            if migrated_target:
+                upgrade_database(engine)
+            _restore(
+                (tmp_path / "sets" / manifest.backup_id).resolve(),
+                target_database,
+                target_bucket,
+            )
             with engine.connect() as connection:
-                assert connection.execute(
-                    select(TemplateRow.current_version_id).where(
-                        TemplateRow.id == records.template_id
-                    )
-                ).scalar_one() == (records.template_version_id)
+                assert (
+                    connection.execute(
+                        select(TemplateRow.current_version_id).where(
+                            TemplateRow.id == records.template_id
+                        )
+                    ).scalar_one()
+                    == records.current_version_id
+                )
                 assert (
                     connection.scalar(
                         select(ConversionJobRow.template_version_id).where(
@@ -265,8 +272,50 @@ def test_distributed_restores_current_template_pointer_from_a_head_backup(
                     )
                     == records.template_version_id
                 )
+            repository = SqlJobRepository(engine)
+            stale = replace(
+                submission(UUID(records.owner_id)),
+                template_id=UUID(records.template_id),
+                template_version_id=UUID(records.template_version_id),
+            )
+            with pytest.raises(JobRequestError):
+                repository.create(stale)
+            current_version = UUID(records.current_version_id)
+            job, replayed = repository.create(
+                replace(stale, template_version_id=current_version)
+            )
+            assert not replayed
+            assert job.template_version_id == current_version
         finally:
             engine.dispose()
+        for key, content in records.objects.items():
+            response = client.get_object(Bucket=target_bucket, Key=key)
+            with closing(response["Body"]) as body:
+                assert body.read() == content
+
+
+@pytest.mark.parametrize(
+    ("alteration", "expected_error"),
+    [
+        ("missing-version", "PostgreSQL restore failed"),
+        ("wrong-template", "PostgreSQL restore failed"),
+        ("wrong-owner", "PostgreSQL restore failed"),
+        ("missing-job-template-fields", "PostgreSQL backup schema is incompatible"),
+    ],
+)
+def test_distributed_refuses_inconsistent_frozen_template_references(
+    tmp_path: Path, s3_client, alteration: str, expected_error: str
+) -> None:
+    with ExitStack() as stack:
+        database, bucket, _ = _older_source(stack, s3_client)
+        source = _historical_set(
+            tmp_path, s3_client, database, bucket, invalid_template_reference=alteration
+        )
+        target_database = _schema_url(stack)
+        target_bucket = _bucket(stack, s3_client, "inconsistent-target")
+        with pytest.raises(RecoveryError, match=expected_error):
+            _restore(source, target_database, target_bucket)
+        _assert_untouched(s3_client, target_database, target_bucket)
 
 
 def test_distributed_refuses_earlier_set_missing_a_retained_object(

@@ -2,7 +2,7 @@
 ticket: T132
 linear_id: G1L-685
 linear_url: https://linear.app/g1lom/issue/G1L-685/t132-restore-distributed-recovery-sets-with-jobs-on-superseded
-status: Backlog
+status: In Progress
 priority: High
 project: Markdown to DOCX and PDF Converter
 ---
@@ -49,6 +49,16 @@ must accept historical jobs.
 - 2026-10-11: Created in Linear.
 - 2026-11-25: Mirrored here by T161; it was missing from the repository. Status unchanged
   (Backlog).
+- 2026-11-27: Started the restore fix and regression coverage for retained conversion jobs
+  with superseded template versions.
+- 2026-11-27: Reproduced the failure on a current PostgreSQL/S3 backup and a `20260923_24`
+  recovery set. Both restored after the fix, which replays the job's frozen template selection
+  inside the restore transaction with the existing integrity triggers and reinstates the saved
+  template selection before commit. The SQLite fixture also passed at head and earlier revisions.
+- 2026-11-27: Independent review reproduced a malformed job row being accepted when its
+  template fields were omitted. Restore now checks every job row against the recorded schema
+  before grouping inserts. PostgreSQL/S3 and the final-image smoke exercise rollback for this
+  case and for missing versions, wrong templates, and mismatched object owners.
 
 ## Synchronization
 

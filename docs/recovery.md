@@ -121,18 +121,17 @@ A distributed restore of an earlier-revision set requires a target database with
 recreates the recorded revision, inserts the rows, and migrates to the current head in one
 database transaction. A target database already migrated to the current head accepts only a set
 created at the current head, and refuses an earlier one with `Distributed database target must be
-empty for an earlier schema`. Restore inserts each template's current-version pointer after its
-template versions, and the conversion jobs that name a template pair after those pointers, so
-the integrity triggers stay enabled.
+empty for an earlier schema`.
 
-**Known limitation, tracked as T132 (G1L-685).** Distributed restore currently refuses a recovery set
-that contains a retained conversion job referencing a superseded template version, that is, a
-version that is no longer its template's current version because the template was replaced after
-the job ran. The restore fails with `PostgreSQL restore failed`: the database transaction rolls
-back, and the objects uploaded to the target bucket are deleted. This applies to sets at every
-supported revision, including the current head, and predates T128. Standalone restore is not
-affected. No workaround is supported: do not edit the recovery set or disable integrity triggers.
-Keep the set and its manifest unchanged until T132 is delivered.
+New conversions require the current published version of an active template at admission.
+Recovering a retained conversion preserves the published version that the job froze, even if a
+replacement superseded it or the template was later archived. In PostgreSQL, restore makes each
+frozen pair current and active for its insertion, with the integrity triggers enabled, then
+reinstates the saved template selections and statuses before committing. The version must exist,
+belong to the referenced template, and have the same object owner as that template. Jobs may use
+shared templates and retain their own owners. An inconsistent pair fails with `PostgreSQL restore
+failed`, rolling back the database and removing objects uploaded to the target bucket. This
+restore procedure uses the existing schema and triggers at each supported revision.
 
 Run `markweave backup` with the release that matches the database revision: it captures the
 model of its own release. Take the pre-upgrade backup with the release that is currently deployed,
