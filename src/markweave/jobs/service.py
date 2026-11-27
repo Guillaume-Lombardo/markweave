@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
+from markweave.conversion.document_options import DocumentOptions
 from markweave.jobs.errors import JobConflictError, JobNotFoundError
 from markweave.jobs.models import (
     ConversionJob,
@@ -84,6 +85,11 @@ def _request_digest(
             .canonical_json()
             .encode("utf-8")
         )
+    if (
+        request.document_options is not None
+        and request.document_options != DocumentOptions()
+    ):
+        fields.append(request.document_options.canonical_json().encode("utf-8"))
     return _digest(b"\0".join(fields))
 
 
@@ -138,6 +144,7 @@ class JobService:
                 source_sha256=source_sha256,
                 source_size=source_size,
                 presentation_options=request.presentation_options,
+                document_options=request.document_options,
                 size_override=request.size_override,
             )
         )
@@ -227,7 +234,7 @@ class JobService:
     def download_manifest(
         self, job_id: UUID, *, actor_id: UUID, actor_is_admin: bool
     ) -> tuple[ConversionJob, bytes]:
-        """Return the atomically published PDF traceability sidecar."""
+        """Return the atomically published document traceability sidecar."""
 
         job = self.get_visible(job_id, actor_id=actor_id, actor_is_admin=actor_is_admin)
         if job.state is not JobState.SUCCEEDED or job.result_manifest_object_id is None:

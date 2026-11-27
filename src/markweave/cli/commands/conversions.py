@@ -20,6 +20,10 @@ from markweave.cli.commands.conversion_http import (
     ConversionHttpClient,
     ConversionHttpResponse,
 )
+from markweave.cli.commands.document_options import (
+    add_document_arguments,
+    selected_options,
+)
 from markweave.cli.errors import CliError
 from markweave.cli.markdown_package import (
     PackageError,
@@ -130,6 +134,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     convert.add_argument(
         "--slide-level", type=int, choices=range(1, 7), action=_RequestOption
     )
+    add_document_arguments(convert, _RequestOption)
     convert.add_argument(
         "--no-package",
         action=_FlagOption,
@@ -263,6 +268,7 @@ def _convert(context: CommandContext, writer: OutputWriter, request: _Request) -
             "Retries require an explicit idempotency key.",
         )
     client = _client(context, request)
+    document_options = selected_options(request.values)
 
     def submit(*, confirmed: bool) -> ConversionHttpResponse:
         for attempt in range(retries + 1):
@@ -279,6 +285,11 @@ def _convert(context: CommandContext, writer: OutputWriter, request: _Request) -
                         for name in ("presentation_dialect", "slide_level")
                         if request.values.get(name) is not None
                     },
+                    **(
+                        {"document_options": document_options}
+                        if document_options is not None
+                        else {}
+                    ),
                     **({"allow_large_archive": True} if confirmed else {}),
                 )
             except CliError as error:

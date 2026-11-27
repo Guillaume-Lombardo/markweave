@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
+from markweave.conversion.document_options import DocumentOptions
 from markweave.templates.models import (
     TemplateAuditRecord,
     TemplateIdentity,
@@ -23,7 +24,7 @@ class TemplateIdentityRepository(Protocol):
 
     def get(self, template_id: UUID) -> TemplateIdentity | None: ...
 
-    def update_metadata(
+    def update_metadata(  # noqa: PLR0913 - explicit template metadata and CAS
         self,
         template_id: UUID,
         *,
@@ -31,6 +32,7 @@ class TemplateIdentityRepository(Protocol):
         name: str,
         description: str,
         audit: TemplateAuditRecord,
+        document_options: DocumentOptions | None = None,
     ) -> TemplateIdentity: ...
 
     def set_status(

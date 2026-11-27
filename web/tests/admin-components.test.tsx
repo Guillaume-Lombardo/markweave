@@ -337,6 +337,15 @@ test("template management uses server ETag, edits and explicitly clears replacem
   fireEvent.change(screen.getByRole("textbox", { name: "Template name" }), {
     target: { value: "Renamed" },
   });
+  const settings = within(
+    screen.getByRole("region", { name: "Manage Preferred template" }),
+  );
+  fireEvent.change(
+    settings.getByRole("combobox", { name: "Table of contents" }),
+    {
+      target: { value: "false" },
+    },
+  );
   fireEvent.click(screen.getByRole("button", { name: "Save details" }));
   await waitFor(() =>
     expect(api.updateMetadata).toHaveBeenCalledWith(
@@ -345,6 +354,7 @@ test("template management uses server ETag, edits and explicitly clears replacem
       "Renamed",
       "Preferred body",
       expect.any(AbortSignal),
+      { toc: false, toc_depth: undefined, number_sections: undefined },
     ),
   );
 

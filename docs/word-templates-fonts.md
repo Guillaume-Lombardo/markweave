@@ -22,6 +22,13 @@ not installed or used by the source. The rewritten package is therefore rechecke
 active content, relationships, and required styles; the original candidate remains authoritative
 for expected fonts.
 
+## Document structure defaults
+
+For a Word template, set the table of contents, heading depth, and section numbering in the
+template's **Document structure** fields when creating or updating it. These settings apply to new
+jobs that select the template. A conversion can override individual fields. Editing the settings
+leaves queued jobs with the values that were resolved when they were submitted.
+
 ## Pinned fonts
 
 The rootless toolchain installs exactly 32 upstream TTF files and exposes no system or LibreOffice

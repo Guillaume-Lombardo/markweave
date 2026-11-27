@@ -19,6 +19,12 @@ The default output is DOCX. The client sends a canonical private upload name bas
 output includes the job identifier, durable correlation identifier, and server-provided polling
 delay. Keep the correlation identifier when reporting a problem.
 
+Use `--toc true`, `--toc-depth 2`, and `--number-sections true` to add a table of contents
+and numbered headings. Boolean options also take `false`, which overrides an enabled template
+default. The depth accepts 1 through 6. The same flags work with `convert --local` and with
+`templates create` or `templates update` to set Word template defaults. When updating a template,
+provide all defaults you want to keep if you pass any of these flags.
+
 ## Markdown with local images
 
 When a Markdown source references local images, `markweave convert` collects them and uploads a

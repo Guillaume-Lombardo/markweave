@@ -7,6 +7,7 @@ import io
 import json
 import math
 import os
+import shutil
 import signal
 import stat
 import subprocess
@@ -20,11 +21,15 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import NoReturn
 from urllib.parse import urlsplit
+from xml.etree.ElementTree import ParseError
 
+from defusedxml.common import DefusedXmlException
+from defusedxml.ElementTree import fromstring
 from pypdf import PdfReader, apply_configuration
 from pypdf.errors import LimitReachedError, PyPdfError
 from pypdf.generic import ArrayObject, DictionaryObject, IndirectObject
 
+from markweave.conversion.document_options import DocumentOptions
 from markweave.conversion.engine_launcher import (
     ENGINE_UNAVAILABLE_EXIT_STATUS,
     isolated_engine_command,
@@ -78,6 +83,8 @@ _REQUIRED_DOCX_PARTS = frozenset(
     {"[Content_Types].xml", "_rels/.rels", "word/document.xml"}
 )
 _SUPPORTED_DOCX_COMPRESSION = frozenset({zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED})
+_WORD_NAMESPACE = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+_INDEX_EXPORT_SCRIPT = Path(__file__).resolve().with_name("update_document_indexes.py")
 
 
 def _safe_metadata(value: str) -> bool:
@@ -182,6 +189,7 @@ class PdfTraceabilityContext:
     chromium_version: str
     font_manifest_sha256: str
     template_mode: str = "versioned"
+    document_options: DocumentOptions | None = None
 
     def __post_init__(self) -> None:
         metadata = (
@@ -259,12 +267,16 @@ class PdfTraceabilityManifest:
     export_filter: str
     output_format: str
     template_mode: str = "versioned"
+    document_options: DocumentOptions | None = None
 
     def canonical_json(self) -> bytes:
         """Serialize without timestamps, paths, user data, or unstable whitespace."""
 
+        fields = asdict(self)
+        if self.document_options is None:
+            del fields["document_options"]
         return json.dumps(
-            asdict(self), ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            fields, ensure_ascii=False, sort_keys=True, separators=(",", ":")
         ).encode("utf-8")
 
 
@@ -347,6 +359,19 @@ def _safe_docx(data: bytes, limits: PdfLimits) -> bool:
                 return False
             names.add(member.filename)
         return names >= _REQUIRED_DOCX_PARTS
+
+
+def _has_toc_field(docx: bytes) -> bool:
+    """Recognize the field in the generated, already-bounded Word document."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(docx)) as archive:
+            document = fromstring(archive.read("word/document.xml"))
+    except OSError, zipfile.BadZipFile, ParseError, DefusedXmlException:
+        _error(ConversionErrorCode.INVALID_DOCX, "DOCX input is invalid.")
+    return any(
+        (node.text or "").split()[:1] == ["TOC"]
+        for node in document.iter(f"{_WORD_NAMESPACE}instrText")
+    )
 
 
 def _process_group_exists(process_group: int) -> bool:
@@ -709,19 +734,7 @@ class LibreOfficePdfConverter:
             source.write_bytes(docx)
         except OSError:
             self._workspace_error()
-        arguments = [
-            self._config.executable,
-            "--headless",
-            "--nologo",
-            "--nodefault",
-            "--nofirststartwizard",
-            f"-env:UserInstallation={(workspace / 'profile').as_uri()}",
-            "--convert-to",
-            _PDF_EXPORT_FILTER,
-            "--outdir",
-            str(workspace / "output"),
-            str(source),
-        ]
+        arguments = self._arguments(workspace, source, docx, traceability)
         process = self._start(arguments, workspace)
         self._wait(
             process,
@@ -733,7 +746,7 @@ class LibreOfficePdfConverter:
         pdf = _read_pdf(workspace / "output" / "source.pdf", self._limits.max_pdf_bytes)
         pages = _validate_pdf(pdf, self._limits)
         manifest = PdfTraceabilityManifest(
-            schema_version=2,
+            schema_version=3 if traceability.document_options is not None else 2,
             application_version=traceability.application_version,
             conversion_contract_version=traceability.conversion_contract_version,
             template_mode=traceability.template_mode,
@@ -752,8 +765,53 @@ class LibreOfficePdfConverter:
             font_manifest_sha256=traceability.font_manifest_sha256,
             export_filter=_PDF_EXPORT_FILTER,
             output_format=_OUTPUT_FORMAT,
+            document_options=traceability.document_options,
         )
         return PdfArtifact(pdf, manifest)
+
+    def _arguments(
+        self,
+        workspace: Path,
+        source: Path,
+        docx: bytes,
+        traceability: PdfTraceabilityContext,
+    ) -> list[str]:
+        if (
+            traceability.document_options is not None
+            and traceability.document_options.toc
+        ):
+            if not _has_toc_field(docx):
+                _error(
+                    ConversionErrorCode.INVALID_DOCX,
+                    "DOCX table of contents field is missing.",
+                )
+            executable = shutil.which(
+                self._config.executable, path=self._host_environment.get("PATH")
+            )
+            if executable is None:
+                _error(
+                    ConversionErrorCode.LIBREOFFICE_UNAVAILABLE,
+                    "LibreOffice is unavailable.",
+                )
+            soffice = Path(executable).resolve()
+            bundled_python = soffice.with_name("python")
+            uno_python = (
+                str(bundled_python) if bundled_python.is_file() else "/usr/bin/python3"
+            )
+            return [uno_python, str(_INDEX_EXPORT_SCRIPT), str(soffice)]
+        return [
+            self._config.executable,
+            "--headless",
+            "--nologo",
+            "--nodefault",
+            "--nofirststartwizard",
+            f"-env:UserInstallation={(workspace / 'profile').as_uri()}",
+            "--convert-to",
+            _PDF_EXPORT_FILTER,
+            "--outdir",
+            str(workspace / "output"),
+            str(source),
+        ]
 
     def _start(self, arguments: list[str], workspace: Path) -> subprocess.Popen[bytes]:
         try:

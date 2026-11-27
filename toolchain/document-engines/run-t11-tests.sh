@@ -86,6 +86,7 @@ podman run --rm \
     --env PYTHONDONTWRITEBYTECODE=1 \
     --entrypoint /deps/bin/python \
     "${IMAGE}" -m pytest \
+        tests/integration/document_engines/test_document_structure.py \
         tests/integration/document_engines/test_libreoffice_pdf.py \
         tests/integration/document_engines/test_pdf_rasterizer.py \
         -q --no-cov -p no:cacheprovider

@@ -8,6 +8,7 @@ from uuid import UUID
 
 from sqlalchemy import Engine
 
+from markweave.conversion.document_options import DocumentOptions
 from markweave.persistence.schema import (
     TemplateRow,
     TemplateVersionRow,
@@ -29,6 +30,11 @@ def _template(row: TemplateRow) -> TemplateIdentity:
         owner_id=UUID(row.owner_id),
         name=row.name,
         kind=TemplateKind(row.kind),
+        document_options=(
+            DocumentOptions.from_json(row.document_options.options)
+            if row.document_options is not None
+            else None
+        ),
         description=row.description,
         status=TemplateStatus(row.status),
         revision=row.revision,

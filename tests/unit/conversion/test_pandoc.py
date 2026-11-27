@@ -11,6 +11,7 @@ import pytest
 from PIL import Image
 
 from markweave.conversion.archive import ApprovedResource
+from markweave.conversion.document_options import DocumentOptions
 from markweave.conversion.engine_launcher import (
     ENGINE_UNAVAILABLE_EXIT_STATUS,
     isolated_engine_command,
@@ -65,6 +66,10 @@ def test_adapter_uses_fixed_arguments_isolated_workspace_and_allowlisted_environ
                 f"--reference-doc={workspace / 'reference.docx'}",
                 f"--resource-path={workspace / 'package'}",
                 f"--output={workspace / 'output.docx'}",
+                f"--lua-filter={Path('src/markweave/conversion/page_breaks.lua').resolve()}",
+                "--toc",
+                "--toc-depth=2",
+                "--number-sections",
                 str(workspace / "package/input.md"),
             ]
         )
@@ -94,7 +99,10 @@ def test_adapter_uses_fixed_arguments_isolated_workspace_and_allowlisted_environ
     popen = mocker.patch(
         "markweave.conversion.pandoc.subprocess.Popen", side_effect=start
     )
-    result = converter(tmp_path).convert(ApprovedMarkdown("# Safe"), reference)
+    result = converter(tmp_path).convert(
+        ApprovedMarkdown("# Safe", document_options=DocumentOptions(True, 2, True)),
+        reference,
+    )
     assert result == reference
     assert popen.call_count == 1
     assert list(tmp_path.iterdir()) == []
@@ -163,7 +171,7 @@ def test_adapter_materializes_only_approved_package_resources(
         )
         assert (workspace / "package/assets/image.svg").read_bytes() == png
         assert arguments[8] == f"--resource-path={workspace / 'package/docs'}"
-        assert arguments[10] == str(workspace / "package/docs/readme.md")
+        assert arguments[-1] == str(workspace / "package/docs/readme.md")
         (workspace / "output.docx").write_bytes(reference)
         return process
 

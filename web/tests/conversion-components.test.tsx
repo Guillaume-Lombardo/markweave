@@ -314,9 +314,29 @@ test("validated downloads use the server filename and dropped files reach submis
   expect(
     (screen.getByLabelText(/Source file/) as HTMLInputElement).files,
   ).toHaveLength(0);
+  fireEvent.change(
+    screen.getByRole("combobox", { name: "Table of contents" }),
+    {
+      target: { value: "true" },
+    },
+  );
+  fireEvent.change(
+    screen.getByRole("combobox", { name: "Table of contents depth" }),
+    {
+      target: { value: "2" },
+    },
+  );
+  fireEvent.change(screen.getByRole("combobox", { name: "Number sections" }), {
+    target: { value: "false" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Start conversion" }));
   await screen.findByText("Your conversion is ready to download.");
   expect((multipart.mock.calls[0]![1] as FormData).get("source")).toBe(source);
+  expect((multipart.mock.calls[0]![1] as FormData).get("toc")).toBe("true");
+  expect((multipart.mock.calls[0]![1] as FormData).get("toc_depth")).toBe("2");
+  expect((multipart.mock.calls[0]![1] as FormData).get("number_sections")).toBe(
+    "false",
+  );
   expect(screen.queryByRole("progressbar")).toBeNull();
   expect(screen.getByRole("button", { name: "Download result" })).toHaveClass(
     "primary-button",

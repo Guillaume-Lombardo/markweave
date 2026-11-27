@@ -115,6 +115,12 @@ def test_cli_conversion_lifecycle_idempotency_capacity_authorization_and_downloa
         str(source),
         "--output",
         "both",
+        "--toc",
+        "true",
+        "--toc-depth",
+        "2",
+        "--number-sections",
+        "false",
         "--idempotency-key",
         "cli-stable-request",
     )
@@ -125,6 +131,11 @@ def test_cli_conversion_lifecycle_idempotency_capacity_authorization_and_downloa
     first = _last_json(first_output.out)
     job_id = UUID(first["id"])
     assert first["template_mode"] == "pandoc-default"
+    assert first["document_options"] == {
+        "toc": True,
+        "toc_depth": 2,
+        "number_sections": False,
+    }
     assert first["poll_after_seconds"] == 1
 
     assert main(arguments) == 0

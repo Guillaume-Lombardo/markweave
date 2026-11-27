@@ -25,6 +25,10 @@ server failure. Repeating that request therefore cannot enqueue a second equival
 different file, output, or template starts a new request identity. Client-side suffix, emptiness, and
 configured-size checks provide immediate feedback, but FastAPI repeats and owns every validation.
 
+Use **Document structure** to enable a table of contents or number the headings. Leave an option
+on **Use template default** to inherit it. See the [Markdown guide](pandoc-docx.md#table-of-contents-section-numbering-and-page-breaks)
+for explicit page breaks and how to refresh a DOCX table of contents.
+
 ## Markdown with local images
 
 The 2docx and 2pptx workspaces accept several files, a selected folder, or a dropped folder. The

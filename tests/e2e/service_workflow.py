@@ -39,6 +39,11 @@ from scripts.container.api_workflow_smoke import (  # noqa: E402 - executable pa
     candidate_reference,
     multipart,
 )
+from tests.golden.document_structure import (  # noqa: E402 - executable path bootstrap
+    DOCUMENT_STRUCTURE,
+    assert_populated_pdf_toc,
+    assert_structure_docx,
+)
 
 TERMINAL_STATES = frozenset({"succeeded", "failed", "cancelled", "expired"})
 EXPIRATION_SCHEMA = "t21-service-expiration-v1"
@@ -366,12 +371,17 @@ def require_runtime_metadata(  # noqa: PLR0913 - explicit expected metadata cont
 
 
 def create_template(
-    owner: ServiceClient, template_path: Path, *, run_id: str
+    owner: ServiceClient,
+    template_path: Path,
+    *,
+    run_id: str,
+    document_options: tuple[tuple[str, str], ...] = (),
 ) -> dict[str, Any]:
     fields = [
         ("name", f"T21 E2E {run_id}"),
         ("description", "Final-image service workflow"),
         *(("expected_fonts", family) for family in EXPECTED_FONTS),
+        *document_options,
     ]
     body, content_type = multipart(
         fields,
@@ -545,6 +555,7 @@ def submit_conversion(  # noqa: PLR0913 - explicit conversion submission contrac
     *,
     idempotency_key: str | None = None,
     filename: str = "source.md",
+    document_options: tuple[tuple[str, str], ...] = (),
 ) -> tuple[dict[str, Any], str]:
     body, content_type = multipart(
         [
@@ -554,6 +565,7 @@ def submit_conversion(  # noqa: PLR0913 - explicit conversion submission contrac
                 required_string(template, "current_version_id", "template"),
             ),
             ("output", output),
+            *document_options,
         ],
         [("source", filename, source)],
     )
@@ -679,7 +691,7 @@ def validate_pdf(content: bytes, output: str, page_range: range | None) -> None:
         print(f"Quickstart PDF contains {page_count} pages.")
 
 
-def validate_result(  # noqa: PLR0912 - one final artifact contract covers all outputs
+def validate_result(  # noqa: PLR0912, PLR0915 - one final artifact contract covers all outputs
     client: ServiceClient,
     job: dict[str, Any],
     output: str,
@@ -701,8 +713,19 @@ def validate_result(  # noqa: PLR0912 - one final artifact contract covers all o
     embedded_manifest: bytes | None = None
     if output == "docx":
         validate_docx(result.body, "DOCX result")
-        unavailable = client.request("GET", f"{path}/manifest")
-        expect(unavailable, 409, "DOCX manifest denial")
+        manifest_response = client.request("GET", f"{path}/manifest")
+        if job.get("document_options") is None:
+            expect(manifest_response, 409, "legacy DOCX manifest denial")
+        else:
+            expect(manifest_response, 200, "DOCX manifest download")
+            manifest = decode_object(manifest_response, "DOCX manifest")
+            if (
+                manifest.get("schema_version") != 3
+                or manifest.get("document_options") != job["document_options"]
+                or manifest.get("output_docx_sha256")
+                != hashlib.sha256(result.body).hexdigest()
+            ):
+                raise WorkflowFailure("DOCX manifest invariants mismatch")
         return
     if output == "both":
         try:
@@ -734,9 +757,12 @@ def validate_result(  # noqa: PLR0912 - one final artifact contract covers all o
         compatible_mode = job_template_mode is None and "template_mode" not in manifest
     else:
         template_mode = manifest.get("template_mode")
-        compatible_mode = schema_version == 2 and template_mode == job_template_mode
+        compatible_mode = (
+            schema_version in {2, 3} and template_mode == job_template_mode
+        )
     if (
         not compatible_mode
+        or manifest.get("document_options") != job.get("document_options")
         or manifest.get("output_format") != "pdf"
         or manifest.get("output_pdf_sha256") != hashlib.sha256(pdf).hexdigest()
         or manifest.get("output_pdf_bytes") != len(pdf)
@@ -762,6 +788,57 @@ def validate_result(  # noqa: PLR0912 - one final artifact contract covers all o
         )
     if embedded_manifest is not None and embedded_manifest != manifest_result.body:
         raise WorkflowFailure("BOTH result: embedded and sidecar manifests differ")
+
+
+def exercise_document_structure(
+    owner: ServiceClient, template_path: Path, *, run_id: str
+) -> None:
+    template = create_template(
+        owner,
+        template_path,
+        run_id=f"{run_id}-structure",
+        document_options=(
+            ("toc", "true"),
+            ("toc_depth", "2"),
+            ("number_sections", "true"),
+        ),
+    )
+    source = (REPOSITORY_ROOT / DOCUMENT_STRUCTURE).read_bytes()
+    for output, overrides, expected in (
+        (
+            "both",
+            (("toc_depth", "1"),),
+            {"toc": True, "toc_depth": 1, "number_sections": True},
+        ),
+        (
+            "docx",
+            (("toc", "false"), ("number_sections", "false")),
+            {"toc": False, "toc_depth": 2, "number_sections": False},
+        ),
+    ):
+        job, location = submit_conversion(
+            owner, template, output, source, document_options=overrides
+        )
+        if job.get("document_options") != expected:
+            raise WorkflowFailure(
+                "document structure: effective options were not frozen"
+            )
+        terminal = wait_for_job(owner, location)
+        if terminal.get("state") != "succeeded":
+            raise WorkflowFailure(
+                f"document structure: {output} conversion did not succeed"
+            )
+        validate_result(owner, terminal, output)
+        result = owner.request("GET", f"{location}/result")
+        expect(result, 200, f"download document structure {output}")
+        if output == "both":
+            with zipfile.ZipFile(io.BytesIO(result.body)) as archive:
+                assert_structure_docx(
+                    archive.read("document.docx"), toc=True, numbered=True
+                )
+                assert_populated_pdf_toc(archive.read("document.pdf"))
+        else:
+            assert_structure_docx(result.body, toc=False, numbered=False)
 
 
 def validate_docx(content: bytes, operation: str) -> None:
@@ -1314,6 +1391,7 @@ def exercise(arguments: argparse.Namespace) -> None:  # noqa: PLR0912, PLR0915
 
     exercise_cancellation(alice, template)
     exercise_pdf_limit_failure(alice, template)
+    exercise_document_structure(alice, arguments.template, run_id=run_id)
 
     replay_key = f"t21-{run_id}-replay"
     replay_first, replay_location = submit_conversion(

@@ -14,6 +14,7 @@ from sqlalchemy import Engine, inspect, select, update
 from sqlalchemy.orm import Session as DatabaseSession
 
 from markweave.auth.models import Role, User
+from markweave.conversion.document_options import DocumentOptions
 from markweave.conversion.errors import ConversionError, ConversionErrorCode
 from markweave.jobs.models import (
     ConversionJob,
@@ -28,7 +29,7 @@ from markweave.jobs.service import JobService, JobServicePolicy
 from markweave.jobs.worker import ConversionWorker, WorkerPolicy, WorkerRuntime
 from markweave.persistence.jobs import SqlJobRepository
 from markweave.persistence.migrations import downgrade_database, upgrade_database
-from markweave.persistence.schema import ConversionJobRow
+from markweave.persistence.schema import ConversionJobRow, TemplateDocumentOptionsRow
 from markweave.persistence.sql import (
     SqlUserRepository,
     create_database_engine,
@@ -98,6 +99,53 @@ def test_optional_template_migration_round_trip(tmp_path: Path) -> None:
 
     upgrade_database(engine)
     engine.dispose()
+
+
+@pytest.mark.integration
+def test_document_options_rollback_preserves_existing_templates_and_jobs(
+    tmp_path: Path,
+) -> None:
+    engine = create_database_engine(standalone_database_url(tmp_path))
+    enforce_sqlite_334_alter_grammar(engine)
+    try:
+        upgrade_database(engine)
+        owner = User(
+            uuid4(), "Owner", "document-options-owner", "hash:owner", Role.USER
+        )
+        SqlUserRepository(engine).create(owner)
+        publish_template_pair(engine, owner.id, TEMPLATE_ID, TEMPLATE_VERSION_ID)
+        with DatabaseSession(engine) as database, database.begin():
+            database.add(
+                TemplateDocumentOptionsRow(
+                    template_id=str(TEMPLATE_ID),
+                    options=DocumentOptions(True, 2, True).canonical_json(),
+                )
+            )
+        repository = SqlJobRepository(engine)
+        request = replace(
+            submission(owner.id),
+            document_options=DocumentOptions(number_sections=False),
+        )
+        job, _ = repository.create(request)
+        assert job.document_options == DocumentOptions(True, 2, False)
+
+        downgrade_database(engine, "20261126_28")
+        assert not inspect(engine).has_table("template_document_options")
+        assert "document_options" not in {
+            column["name"] for column in inspect(engine).get_columns("conversion_jobs")
+        }
+        upgrade_database(engine)
+
+        restored = repository.get(job.id)
+        assert restored is not None and restored.document_options is None
+        catalog = SqlTemplateCatalogRepository(engine)
+        template = catalog.get(TEMPLATE_ID)
+        assert (
+            template is not None and template.current_version_id == TEMPLATE_VERSION_ID
+        )
+        assert template.document_options is None
+    finally:
+        engine.dispose()
 
 
 @pytest.mark.integration

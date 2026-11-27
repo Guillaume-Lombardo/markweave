@@ -233,6 +233,15 @@ Verify application readiness, representative stable objects, and an authorized c
 before reopening traffic. Require broker `READY` and an authenticated reverse smoke check
 before reopening reverse admission.
 
+### Document structure options
+
+Migration `20261127_29` adds a table for template document defaults and a nullable column for
+the frozen options of conversion jobs.
+Existing jobs keep their original conversion settings. Before downgrading to `20261126_28`,
+stop admission and drain running and queued jobs, then take a coordinated database and object
+backup. Downgrading removes the template defaults and the effective settings from job records.
+Restore the backup to recover those settings if you upgrade again.
+
 ## Stable links
 
 - [Upgrade guide top](#upgrading)

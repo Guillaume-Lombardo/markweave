@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import os
 import zipfile
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Literal
 
 from markweave.config import ConfigurationError, Settings
@@ -174,7 +175,20 @@ class ProductionTemplateAwareProcessor:
         self._require_active(cancelled)
         if job.output is JobOutput.DOCX:
             progress(JobStep.PUBLISHING, 95)
-            return JobProcessResult(docx, warnings=warnings)
+            manifest = None
+            if job.document_options is not None:
+                manifest = json.dumps(
+                    {
+                        **asdict(self._traceability_context(job, template)),
+                        "schema_version": 3,
+                        "output_format": "docx",
+                        "output_docx_sha256": hashlib.sha256(docx).hexdigest(),
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            return JobProcessResult(docx, manifest, warnings=warnings)
 
         artifact = self._pdf.convert(
             docx,
@@ -242,6 +256,7 @@ class ProductionTemplateAwareProcessor:
             content = self._docx.convert_document(
                 document,
                 template_content,
+                document_options=job.document_options,
                 deadline_monotonic=deadline_monotonic,
                 cancellation_requested=cancellation_requested,
             )
@@ -262,6 +277,7 @@ class ProductionTemplateAwareProcessor:
         content = self._docx.convert(
             markdown,
             template_content,
+            document_options=job.document_options,
             deadline_monotonic=deadline_monotonic,
             cancellation_requested=cancellation_requested,
         )
@@ -288,6 +304,7 @@ class ProductionTemplateAwareProcessor:
             mermaid_version=versions["mermaid-cli"],
             chromium_version=versions["chromium"],
             font_manifest_sha256=self._traceability.font_manifest_sha256,
+            document_options=job.document_options,
         )
 
     @staticmethod

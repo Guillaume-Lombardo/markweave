@@ -1,5 +1,7 @@
+import { appendDocumentOptions } from "../conversion/document-options";
 import type {
   IdleSessionPolicyResponse,
+  DocumentOptions,
   TemplateAdministrationContextResponse,
   TemplatePageResponse,
   TemplateResponse,
@@ -39,6 +41,7 @@ export interface TemplateFilters {
 }
 
 export interface TemplateCreateInput {
+  documentOptions?: DocumentOptions;
   kind?: "docx" | "pptx";
   content: File;
   description: string;
@@ -127,6 +130,7 @@ export class AdministrationApi {
     form.append("kind", input.kind ?? "docx");
     form.append("description", input.description);
     appendExpectedFonts(form, input.expectedFonts);
+    appendDocumentOptions(form, input.documentOptions);
     form.append("content", input.content);
     return this.transport.multipart(
       "/api/v1/templates",
@@ -142,12 +146,17 @@ export class AdministrationApi {
     name: string,
     description: string,
     signal?: AbortSignal,
+    documentOptions?: DocumentOptions,
   ): Promise<JsonResult<TemplateResponse>> {
     return this.transport.jsonWithMetadata(
       `/api/v1/templates/${id}`,
       vUpdateTemplateApiV1TemplatesTemplateIdPatchResponse,
       {
-        body: JSON.stringify({ description, name }),
+        body: JSON.stringify({
+          description,
+          name,
+          document_options: documentOptions,
+        }),
         csrf: true,
         etag,
         method: "PATCH",

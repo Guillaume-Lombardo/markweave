@@ -257,6 +257,10 @@ export type BodyCreateConversionApiV1ConversionsPost = {
      * Allow Large Archive
      */
     allow_large_archive?: boolean;
+    /**
+     * Number Sections
+     */
+    number_sections?: boolean | null;
     output: JobOutput;
     presentation_dialect?: PresentationDialect | null;
     /**
@@ -275,6 +279,14 @@ export type BodyCreateConversionApiV1ConversionsPost = {
      * Template Version Id
      */
     template_version_id?: string | null;
+    /**
+     * Toc
+     */
+    toc?: boolean | null;
+    /**
+     * Toc Depth
+     */
+    toc_depth?: number | null;
 };
 
 /**
@@ -367,6 +379,18 @@ export type BodyCreateTemplateApiV1TemplatesPost = {
      * Name
      */
     name: string;
+    /**
+     * Number Sections
+     */
+    number_sections?: boolean | null;
+    /**
+     * Toc
+     */
+    toc?: boolean | null;
+    /**
+     * Toc Depth
+     */
+    toc_depth?: number | null;
 };
 
 /**
@@ -2025,6 +2049,7 @@ export type ConversionResponse = {
      * Created At
      */
     created_at: string;
+    document_options?: DocumentOptions | null;
     /**
      * Error Code
      */
@@ -2106,6 +2131,46 @@ export type CredentialWriteRequest = {
      * Revoke
      */
     revoke?: boolean;
+};
+
+/**
+ * DocumentOptions
+ *
+ * Optional Word document settings, with unset fields inherited at submission.
+ */
+export type DocumentOptions = {
+    /**
+     * Number Sections
+     */
+    number_sections?: boolean | null;
+    /**
+     * Toc
+     */
+    toc?: boolean | null;
+    /**
+     * Toc Depth
+     */
+    toc_depth?: number | null;
+};
+
+/**
+ * DocumentOptionsRequest
+ *
+ * Template defaults for future Word and PDF jobs.
+ */
+export type DocumentOptionsRequest = {
+    /**
+     * Number Sections
+     */
+    number_sections?: boolean | null;
+    /**
+     * Toc
+     */
+    toc?: boolean | null;
+    /**
+     * Toc Depth
+     */
+    toc_depth?: number | null;
 };
 
 /**
@@ -3169,6 +3234,7 @@ export type TemplateMetadataRequest = {
      * Description
      */
     description: string;
+    document_options?: DocumentOptionsRequest | null;
     /**
      * Name
      */
@@ -3218,6 +3284,7 @@ export type TemplateResponse = {
      * Description
      */
     description: string;
+    document_options?: DocumentOptions | null;
     /**
      * Id
      */
@@ -9324,7 +9391,7 @@ export type DownloadConversionManifestApiV1ConversionsJobIdResultManifestGetErro
 
 export type DownloadConversionManifestApiV1ConversionsJobIdResultManifestGetResponses = {
     /**
-     * Canonical PDF traceability manifest
+     * Canonical Word or PDF traceability manifest
      */
     200: {
         [key: string]: unknown;

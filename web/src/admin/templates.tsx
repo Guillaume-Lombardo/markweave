@@ -10,9 +10,14 @@ import {
 } from "react";
 import type {
   TemplateAdministrationContextResponse,
+  DocumentOptions,
   TemplateResponse,
   TemplateVersionResponse,
 } from "../api/generated/types.gen";
+import {
+  DocumentOptionFields,
+  readDocumentOptions,
+} from "../conversion/document-options";
 import type { EffectiveUser } from "../auth/controller";
 import {
   Alert,
@@ -339,6 +344,8 @@ export function TemplatesWorkspace({
             kind: createKind,
             description: String(form.get("description") ?? ""),
             expectedFonts: String(form.get("expected-fonts") ?? ""),
+            documentOptions:
+              createKind === "docx" ? readDocumentOptions(form) : undefined,
             name: String(form.get("name") ?? ""),
           },
           signal,
@@ -407,6 +414,12 @@ export function TemplatesWorkspace({
               type="file"
             />
           </label>
+          {createKind === "docx" && (
+            <DocumentOptionFields
+              disabled={pending}
+              inheritLabel="Use built-in default"
+            />
+          )}
           {context && (
             <p className="text-sm text-muted">
               Maximum upload: {context.template_max_archive_bytes} bytes.
@@ -555,8 +568,11 @@ export function TemplatesWorkspace({
             disabled={pending}
             key={`metadata-${managed.etag}`}
             managed={managed}
-            submit={(name, description) =>
-              mutation(
+            submit={(name, description, documentOptions) => {
+              const options: [DocumentOptions?] = documentOptions
+                ? [documentOptions]
+                : [];
+              return mutation(
                 (signal) =>
                   api.updateMetadata(
                     managed.template.id,
@@ -564,12 +580,13 @@ export function TemplatesWorkspace({
                     name,
                     description,
                     signal,
+                    ...options,
                   ),
                 "Template details updated.",
                 undefined,
                 "management",
-              )
-            }
+              );
+            }}
           />
           {managed.template.status === "active" && (
             <ReplacementForm
@@ -731,7 +748,11 @@ function MetadataForm({
 }: {
   disabled: boolean;
   managed: ManagedTemplate;
-  submit: (name: string, description: string) => Promise<unknown>;
+  submit: (
+    name: string,
+    description: string,
+    documentOptions?: DocumentOptions,
+  ) => Promise<unknown>;
 }) {
   return (
     <form
@@ -739,9 +760,14 @@ function MetadataForm({
       onSubmit={(event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
+        const options = readDocumentOptions(form);
+        const hasOptions =
+          managed.template.document_options ||
+          Object.values(options).some((value) => value !== undefined);
         void submit(
           String(form.get("metadata-name") ?? ""),
           String(form.get("metadata-description") ?? ""),
+          hasOptions ? options : undefined,
         );
       }}
     >
@@ -759,6 +785,13 @@ function MetadataForm({
           required
         />
       </label>
+      {managed.template.kind !== "pptx" && (
+        <DocumentOptionFields
+          disabled={disabled}
+          inheritLabel="Use built-in default"
+          options={managed.template.document_options ?? undefined}
+        />
+      )}
       <button disabled={disabled} type="submit">
         Save details
       </button>

@@ -13,11 +13,15 @@ import json
 import os
 import time
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any, Protocol
 
 from markweave.conversion.archive import ApprovedDocument, prepare_archive
+from markweave.conversion.document_options import (
+    DEFAULT_DOCUMENT_OPTIONS,
+    DocumentOptions,
+)
 from markweave.conversion.engine_versions import (
     EngineObservation,
     EngineProbeConfig,
@@ -78,6 +82,7 @@ class LocalConversionRequest:
     template: bytes | None = None
     require_pinned: bool = False
     allow_large_archive: bool = False
+    document_options: DocumentOptions | None = None
 
     def __post_init__(self) -> None:
         if not self.outputs or not self.outputs <= set(LocalOutput):
@@ -145,6 +150,15 @@ class LocalConverter:
         cancelled = cancellation_requested or (lambda: False)
         self._checkpoint(deadline_monotonic, cancelled)
         template_sha256 = self._validate_template(request.template)
+        options = (
+            {
+                "document_options": request.document_options.resolve(
+                    DEFAULT_DOCUMENT_OPTIONS
+                )
+            }
+            if request.document_options is not None
+            else {}
+        )
         pdf_requested = LocalOutput.PDF in request.outputs
         font_manifest_sha256 = self._font_manifest_sha256() if pdf_requested else ""
         engines = self._observe(
@@ -176,6 +190,7 @@ class LocalConverter:
             docx = pipeline.docx.convert(
                 markdown,
                 request.template,
+                **options,
                 deadline_monotonic=deadline_monotonic,
                 cancellation_requested=cancelled,
             )
@@ -183,6 +198,7 @@ class LocalConverter:
             docx = pipeline.docx.convert_document(
                 document,
                 request.template,
+                **options,
                 deadline_monotonic=deadline_monotonic,
                 cancellation_requested=cancelled,
             )
@@ -205,6 +221,7 @@ class LocalConverter:
                     mermaid_version=_version(engines, "mermaid-cli"),
                     chromium_version=_version(engines, "chromium"),
                     font_manifest_sha256=font_manifest_sha256,
+                    document_options=options.get("document_options"),
                     template_mode=(
                         "local-file"
                         if template_sha256 is not None
@@ -419,6 +436,10 @@ def _manifest(
         ],
         "pdf": pdf_manifest,
     }
+    if request.document_options is not None:
+        payload["document_options"] = asdict(
+            request.document_options.resolve(DEFAULT_DOCUMENT_OPTIONS)
+        )
     return json.dumps(
         payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")

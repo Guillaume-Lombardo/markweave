@@ -32,6 +32,27 @@ forbidden. The adapter does not claim operating-system network isolation; deploy
 supplies that boundary. Pandoc's `--sandbox` option is not enabled because it also prevents the
 approved local resource behavior.
 
+## Table of contents, section numbering, and page breaks
+
+Enable the table of contents or numbered sections under **Document structure**. Word templates
+can supply defaults, and each conversion can override them. The built-in settings turn off
+both options and include up to three heading levels when the table of contents is enabled.
+Choose a depth from 1 through 6. Section numbering follows the Markdown heading hierarchy.
+
+DOCX contains an editable table-of-contents field. In Word, use **Update Table** to populate
+or refresh it after editing. PDF export populates entries and their page numbers before rendering.
+
+To start a new page, insert the following empty fenced div at the top level with blank lines
+around it.
+
+```markdown
+::: {.page-break}
+:::
+```
+
+The marker also works in Markdown inside a resource archive. Markers in code blocks are literal.
+The bundled filter emits a Word page break for the empty div and only uses fixed OpenXML.
+
 ## Math
 
 The reader's `tex_math_dollars` extension turns `$...$` into inline math and `$$...$$` into display

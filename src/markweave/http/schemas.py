@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from markweave.auth.models import Role
+from markweave.conversion.document_options import MAX_TOC_DEPTH, DocumentOptions
 from markweave.jobs.models import JobOutput, TemplateMode
 from markweave.presentations.models import PresentationOptions
 from markweave.reversion_jobs.models import ReversionJobState, ReversionJobStep
@@ -136,6 +137,9 @@ class ConversionResponse(BaseModel):
     template_version_id: UUID | None
     output: JobOutput
     presentation_options: PresentationOptions | None = None
+    document_options: DocumentOptions | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     warnings: tuple[str, ...] = Field(default=(), exclude_if=lambda value: not value)
     component_versions: tuple[tuple[str, str], ...]
     correlation_id: str
@@ -174,6 +178,9 @@ class TemplateResponse(BaseModel):
     current_version_id: UUID | None
     owner_username: str
     kind: TemplateKind = TemplateKind.DOCX
+    document_options: DocumentOptions | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class ConversionOptionsResponse(BaseModel):
@@ -361,9 +368,22 @@ class AuditRecordResponse(BaseModel):
     )
 
 
+class DocumentOptionsRequest(BaseModel):
+    """Template defaults for future Word and PDF jobs."""
+
+    model_config = ConfigDict(extra="forbid")
+    toc: Annotated[bool, Field(strict=True)] | None = None
+    toc_depth: Annotated[int, Field(strict=True, ge=1, le=MAX_TOC_DEPTH)] | None = None
+    number_sections: Annotated[bool, Field(strict=True)] | None = None
+
+    def to_domain(self) -> DocumentOptions:
+        return DocumentOptions(self.toc, self.toc_depth, self.number_sections)
+
+
 class TemplateMetadataRequest(BaseModel):
     name: str
     description: str
+    document_options: DocumentOptionsRequest | None = None
 
 
 class ErrorDetail(BaseModel):

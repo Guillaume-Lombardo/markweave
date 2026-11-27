@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -24,6 +25,7 @@ from markweave.storage import ObjectKey, ObjectScope, ObjectStore
 
 _TRACEABILITY_SCHEMA_V1 = 1
 _TRACEABILITY_SCHEMA_V2 = 2
+_TRACEABILITY_SCHEMA_V3 = 3
 _TRACEABILITY_V1_KEYS = frozenset(
     {
         "schema_version",
@@ -47,6 +49,15 @@ _TRACEABILITY_V1_KEYS = frozenset(
     }
 )
 _TRACEABILITY_V2_KEYS = _TRACEABILITY_V1_KEYS | {"template_mode"}
+_TRACEABILITY_V3_KEYS = _TRACEABILITY_V2_KEYS | {"document_options"}
+_DOCX_TRACEABILITY_KEYS = _TRACEABILITY_V3_KEYS - {
+    "export_filter",
+    "libreoffice_version",
+    "output_pdf_bytes",
+    "output_pdf_sha256",
+    "pages",
+    "source_docx_sha256",
+} | {"output_docx_sha256"}
 
 
 def _reject_json_constant(_value: str) -> None:
@@ -76,7 +87,7 @@ def _has_valid_template_traceability(
             and template_sha256 == result.template_sha256
             and _is_sha256(result.template_sha256)
         )
-    if schema_version != _TRACEABILITY_SCHEMA_V2:
+    if schema_version not in {_TRACEABILITY_SCHEMA_V2, _TRACEABILITY_SCHEMA_V3}:
         return False
     template_mode = decoded.get("template_mode")
     if template_mode == "pandoc-default":
@@ -115,14 +126,49 @@ def _is_canonical_traceability_manifest(  # noqa: PLR0911
     expected_keys = {
         _TRACEABILITY_SCHEMA_V1: _TRACEABILITY_V1_KEYS,
         _TRACEABILITY_SCHEMA_V2: _TRACEABILITY_V2_KEYS,
+        _TRACEABILITY_SCHEMA_V3: (
+            _DOCX_TRACEABILITY_KEYS
+            if job.output is JobOutput.DOCX
+            else _TRACEABILITY_V3_KEYS
+        ),
     }.get(schema_version)
     if expected_keys is None or frozenset(decoded) != expected_keys:
         return False
+    if schema_version == _TRACEABILITY_SCHEMA_V3:
+        if (
+            job.document_options is None
+            or json.dumps(
+                decoded["document_options"], sort_keys=True, separators=(",", ":")
+            )
+            != job.document_options.canonical_json()
+        ):
+            return False
+    elif job.document_options is not None:
+        return False
+    if not _has_valid_template_traceability(decoded, job, result):
+        return False
+    canonical = json.dumps(
+        decoded, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    if canonical != content:
+        return False
+    if job.output is JobOutput.DOCX:
+        return (
+            schema_version == _TRACEABILITY_SCHEMA_V3
+            and decoded.get("output_format") == "docx"
+            and decoded.get("output_docx_sha256")
+            == hashlib.sha256(result.content).hexdigest()
+            and _is_sha256(decoded.get("font_manifest_sha256"))
+        )
+    return _has_valid_pdf_metadata(decoded)
+
+
+def _has_valid_pdf_metadata(decoded: dict[str, object]) -> bool:
+    output_bytes = decoded.get("output_pdf_bytes")
     if (
         decoded.get("output_format") != "pdf"
-        or type(decoded.get("output_pdf_bytes")) is not int
-        or decoded["output_pdf_bytes"] <= 0
-        or not _has_valid_template_traceability(decoded, job, result)
+        or type(output_bytes) is not int
+        or output_bytes <= 0
         or not all(
             _is_sha256(decoded.get(name))
             for name in (
@@ -144,12 +190,7 @@ def _is_canonical_traceability_manifest(  # noqa: PLR0911
             for name in ("width_points", "height_points")
         ):
             return False
-    return (
-        json.dumps(
-            decoded, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-        ).encode("utf-8")
-        == content
-    )
+    return True
 
 
 def _validated_manifest(job: ConversionJob, result: JobProcessResult) -> bytes | None:
@@ -162,7 +203,11 @@ def _validated_manifest(job: ConversionJob, result: JobProcessResult) -> bytes |
             raise RuntimeError(
                 "PDF conversion processor returned no canonical traceability manifest"
             )
-    elif manifest is not None:
+    elif manifest is not None and (
+        job.output is not JobOutput.DOCX
+        or job.document_options is None
+        or not _is_canonical_traceability_manifest(manifest, job, result)
+    ):
         raise RuntimeError("DOCX conversion processor returned a traceability manifest")
     return manifest
 

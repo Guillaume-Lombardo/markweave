@@ -24,6 +24,7 @@ from pypdf.generic import (
 from pytest_mock import MockerFixture
 
 from markweave.conversion import libreoffice
+from markweave.conversion.document_options import DocumentOptions
 from markweave.conversion.engine_launcher import ENGINE_UNAVAILABLE_EXIT_STATUS
 from markweave.conversion.errors import ConversionError, ConversionErrorCode
 from markweave.conversion.libreoffice import (
@@ -60,11 +61,12 @@ TRACE = PdfTraceabilityContext(
 )
 
 
-def _docx() -> bytes:
+def _docx(document: str = "safe") -> bytes:
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w") as archive:
-        for name in ("[Content_Types].xml", "_rels/.rels", "word/document.xml"):
+        for name in ("[Content_Types].xml", "_rels/.rels"):
             archive.writestr(name, b"safe")
+        archive.writestr("word/document.xml", document)
     return output.getvalue()
 
 
@@ -119,6 +121,68 @@ def _successful_process(
     popen = mocker.patch.object(libreoffice.subprocess, "Popen", side_effect=start)
     mocker.patch.object(libreoffice, "_terminate_group")
     return process, popen
+
+
+TOC_DOCUMENT = (
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+    '<w:instrText>TOC \\o "1-2"</w:instrText></w:document>'
+)
+
+
+@pytest.mark.parametrize("bundled", [True, False])
+def test_pdf_index_export_uses_the_same_isolated_launcher(
+    tmp_path: Path, mocker: MockerFixture, bundled: bool
+) -> None:
+    soffice = tmp_path / "soffice"
+    interpreter = tmp_path / "python"
+    if bundled:
+        interpreter.touch()
+    mocker.patch.object(libreoffice.shutil, "which", return_value=str(soffice))
+    _process, popen = _successful_process(mocker)
+    options = DocumentOptions(True, 2, False)
+
+    result = _converter(tmp_path).convert(
+        _docx(TOC_DOCUMENT), replace(TRACE, document_options=options)
+    )
+
+    argv = popen.call_args.args[0]
+    assert argv[-3:] == [
+        str(interpreter if bundled else Path("/usr/bin/python3")),
+        str(libreoffice._INDEX_EXPORT_SCRIPT),
+        str(soffice),
+    ]
+    assert "engine_launcher.py" in argv[3]
+    assert popen.call_args.kwargs["start_new_session"] is True
+    assert json.loads(result.manifest.canonical_json())["document_options"] == {
+        "toc": True,
+        "toc_depth": 2,
+        "number_sections": False,
+    }
+
+
+@pytest.mark.parametrize(
+    ("document", "expected"),
+    [
+        ("<document/>", ConversionErrorCode.INVALID_DOCX),
+        (
+            "<!DOCTYPE bad [<!ENTITY e SYSTEM 'file:///etc/passwd'>]><bad>&e;</bad>",
+            ConversionErrorCode.INVALID_DOCX,
+        ),
+        (TOC_DOCUMENT, ConversionErrorCode.LIBREOFFICE_UNAVAILABLE),
+    ],
+)
+def test_pdf_index_export_rejects_invalid_fields_before_starting(
+    tmp_path: Path, mocker: MockerFixture, document: str, expected: ConversionErrorCode
+) -> None:
+    mocker.patch.object(libreoffice.shutil, "which", return_value=None)
+    popen = mocker.patch.object(libreoffice.subprocess, "Popen")
+    with pytest.raises(ConversionError) as failure:
+        _converter(tmp_path).convert(
+            _docx(document),
+            replace(TRACE, document_options=DocumentOptions(True, 2, False)),
+        )
+    assert failure.value.code is expected
+    popen.assert_not_called()
 
 
 @pytest.mark.parametrize(

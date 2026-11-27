@@ -38,6 +38,10 @@ authorization from an HTTP status alone; clients should use both the status and 
 - `output`: `docx`, `pdf`, or `both`;
 - `template_id` and `template_version_id`: optional as a pair. Omit both to use Pandoc's native
   reference document, or provide both for the exact visible, active template resolved by the client.
+- `toc` and `number_sections` are optional multipart booleans. Send `true` to enable the option or
+  `false` to disable it even when the template enables it. Omit the field to inherit the default.
+- `toc_depth` is an optional integer from 1 through 6, applied when a table of contents is enabled.
+  Omit it to inherit the template depth, or 3 when the template has no depth setting.
 
 An `Idempotency-Key` header makes retries owner-scoped and payload-sensitive. Reusing a key with the
 same canonical request returns the existing submission; reusing it with different input is a
@@ -59,6 +63,10 @@ them. Filters apply before `offset` and `limit`, and `total` counts only matchin
 filters preserves the complete owner-scoped history. Use `GET /api/v1/conversions/{job_id}` for one
 job. `DELETE` on the job requests cancellation.
 Completed output is available from `/result`; `/result/manifest` returns its traceability manifest.
+Word and PDF jobs expose the effective `document_options` in the job response and in version 3
+of the traceability manifest. Retrying the same idempotent request returns its original values,
+even after a template settings change. Jobs submitted before these options were introduced may
+omit the field and use the earlier manifest contract.
 The result download filename preserves the uploaded source stem and uses `.docx`, `.pdf`, or `.zip`
 for the requested output. Jobs without persisted source metadata use `conversion-<job-id>` as the
 filename stem. Result downloads use the `application/octet-stream` media type. Poll no faster than
@@ -430,6 +438,12 @@ their unique number then ID. Invalid orders return 422. Draft and revision lists
 compact metadata; fetch one ID to read complete draft text or frozen revision values.
 
 ## Templates
+
+Word template uploads accept the optional multipart settings `toc`, `toc_depth`, and
+`number_sections`. Send `document_options` as an object with those fields in the template
+metadata `PATCH` request to replace the defaults. Omit the object to preserve existing
+defaults, or send an empty object to restore the built-in defaults. The usual `If-Match`
+requirement applies. Template responses include the configured defaults when present.
 
 `GET /api/v1/templates` supports visibility-aware pagination and filters for name, description,
 owner, and status. `POST /api/v1/templates` creates an identity and initial immutable DOCX version

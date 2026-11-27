@@ -2,6 +2,7 @@ import type { TemplateSelection } from "./controller";
 import type { ReversionSubmissionOptions } from "../reversion/controller";
 import type {
   JobOutput,
+  DocumentOptions,
   PresentationDialect,
 } from "../api/generated/types.gen";
 
@@ -56,6 +57,7 @@ export type SavedConversionInputs = {
   selection?: TemplateSelection;
   dialect: PresentationDialect;
   slideLevel: number;
+  documentOptions?: DocumentOptions;
   query: string;
   activeJobId?: string;
 };
@@ -162,6 +164,9 @@ export function writeConversionInputs(
     slideLevel: state.slideLevel,
     query,
     ...(state.selection ? { selection: state.selection } : {}),
+    ...(state.documentOptions
+      ? { documentOptions: state.documentOptions }
+      : {}),
     ...(state.activeJobId ? { activeJobId: state.activeJobId } : {}),
     ...(state.source
       ? {

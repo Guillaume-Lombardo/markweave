@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session as DatabaseSession
 from sqlalchemy.sql.dml import Update
 from sqlalchemy.sql.elements import ColumnElement
 
+from markweave.conversion.document_options import DocumentOptions
 from markweave.jobs.errors import (
     JobRepositoryError,
 )
@@ -56,6 +57,11 @@ def _job(row: ConversionJobRow) -> ConversionJob:
         presentation_options=(
             PresentationOptions.from_json(row.presentation_options)
             if row.presentation_options
+            else None
+        ),
+        document_options=(
+            DocumentOptions.from_json(row.document_options)
+            if row.document_options is not None
             else None
         ),
         component_versions=_component_versions(row.component_versions),

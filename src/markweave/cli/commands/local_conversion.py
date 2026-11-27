@@ -22,6 +22,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from markweave.cli.commands.conversions import _confirm_large_archive
+from markweave.cli.commands.document_options import (
+    DOCUMENT_OPTION_NAMES,
+    selected_options,
+)
 from markweave.cli.errors import CliError
 from markweave.cli.local_outputs import check_destination, publish_outputs
 from markweave.cli.output import OutputWriter
@@ -76,7 +80,7 @@ def register(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) ->
             # Remote handlers read their own request values, never these attributes;
             # suppressing defaults lets local mode detect explicit remote options.
             action.default = argparse.SUPPRESS
-            if action.dest != "allow_large_archive":
+            if action.dest not in ("allow_large_archive", *DOCUMENT_OPTION_NAMES):
                 remote_options.append((action.dest, action.option_strings[-1]))
     convert.set_defaults(local_remote_options=tuple(remote_options))
     _keep_remote_abbreviations(convert)
@@ -240,6 +244,7 @@ def _convert_locally(
         if template_path is not None
         else None
     )
+    document_options = selected_options(vars(namespace))
     outputs = frozenset(LocalOutput(value) for value in formats)
     names = [f"{stem}.{value}" for value in formats]
     manifest_name = f"{stem}.traceability.json"
@@ -261,6 +266,7 @@ def _convert_locally(
                         outputs=outputs,
                         template=template,
                         require_pinned=require_pinned,
+                        document_options=document_options,
                         **({"allow_large_archive": True} if confirmed else {}),
                     ),
                     deadline_monotonic=deadline,

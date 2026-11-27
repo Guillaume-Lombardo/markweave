@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Callable
 from dataclasses import replace
@@ -12,6 +13,7 @@ from uuid import UUID, uuid4
 import pytest
 from pytest_mock import MockerFixture
 
+from markweave.conversion.document_options import DocumentOptions
 from markweave.conversion.errors import ConversionError, ConversionErrorCode
 from markweave.jobs.errors import JobLeaseLostError, JobProcessingCancelled
 from markweave.jobs.models import (
@@ -31,7 +33,7 @@ from markweave.jobs.worker import (
     WorkerPolicy,
     WorkerRuntime,
 )
-from markweave.jobs.worker_publication import _is_sha256
+from markweave.jobs.worker_publication import _is_sha256, _validated_manifest
 from markweave.observability import (
     OperationalMetrics,
     QueueSnapshot,
@@ -308,6 +310,38 @@ def test_worker_rejects_versioned_manifest_for_pandoc_default_job(
 
     objects.put.assert_not_called()
     repository.succeed.assert_not_called()
+
+
+@pytest.mark.parametrize("output", [JobOutput.DOCX, JobOutput.PDF, JobOutput.BOTH])
+def test_structure_manifest_matches_effective_job_options(output: JobOutput) -> None:
+    job = replace(
+        running_job(), output=output, document_options=DocumentOptions(True, 2, False)
+    )
+    decoded = json.loads(traceability_manifest_v2("versioned"))
+    decoded["schema_version"] = 3
+    decoded["document_options"] = {
+        "toc": True,
+        "toc_depth": 2,
+        "number_sections": False,
+    }
+    if output is JobOutput.DOCX:
+        for name in (
+            "export_filter",
+            "libreoffice_version",
+            "output_pdf_bytes",
+            "output_pdf_sha256",
+            "pages",
+            "source_docx_sha256",
+        ):
+            del decoded[name]
+        decoded["output_format"] = "docx"
+        decoded["output_docx_sha256"] = hashlib.sha256(b"result").hexdigest()
+
+    manifest = json.dumps(decoded, sort_keys=True, separators=(",", ":")).encode()
+    assert _validated_manifest(job, versioned_result(b"result", manifest)) == manifest
+    invalid = replace(job, document_options=DocumentOptions(False, 2, False))
+    with pytest.raises(RuntimeError, match="traceability manifest"):
+        _validated_manifest(invalid, versioned_result(b"result", manifest))
 
 
 @pytest.mark.parametrize(
