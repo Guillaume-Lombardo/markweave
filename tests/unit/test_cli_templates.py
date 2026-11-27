@@ -273,11 +273,15 @@ def test_update_fetches_current_etag_or_forwards_explicit_stale_etag(
         "--description",
         "Updated",
     )
-    assert main(arguments) == 0
+    assert main((*arguments, "--reset-document-options")) == 0
     assert main((*arguments, "--etag", stale)) == 1
 
     assert transport.requests[0][:2] == ("GET", f"/api/v1/templates/{TEMPLATE_ID}")
     assert transport.requests[1][2]["headers"] == {"If-Match": current}
+    reset_body = transport.requests[1][2]["json_body"]
+    stale_body = transport.requests[2][2]["json_body"]
+    assert isinstance(reset_body, dict) and reset_body["document_options"] == {}
+    assert isinstance(stale_body, dict) and "document_options" not in stale_body
     assert transport.requests[2][2]["headers"] == {"If-Match": stale}
     assert capsys.readouterr().err == "error: Template changed.\n"
 

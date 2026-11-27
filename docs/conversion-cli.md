@@ -24,6 +24,7 @@ and numbered headings. Boolean options also take `false`, which overrides an ena
 default. The depth accepts 1 through 6. The same flags work with `convert --local` and with
 `templates create` or `templates update` to set Word template defaults. When updating a template,
 provide all defaults you want to keep if you pass any of these flags.
+Use `templates update --reset-document-options` to restore the built-in defaults.
 
 ## Markdown with local images
 

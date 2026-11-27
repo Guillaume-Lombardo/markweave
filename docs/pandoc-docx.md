@@ -94,10 +94,16 @@ and unrelated environment values are not inherited.
 
 The arguments are fixed to the approved reader, DOCX writer, workspace resource path, and fixed
 input/output names. Versioned-template mode adds the workspace reference document; Pandoc-default
-mode omits `--reference-doc`. There are no user-controlled options, filters, or include files.
+mode omits `--reference-doc`. The approved document options add fixed switches and the internal
+page-break filter receives no user-selected arguments or include files.
 Conversion and termination-grace timeouts are required configuration; the adapter does not select
 production values. A timed-out process group is
 terminated and then killed after its configured grace period.
+
+LibreOffice uses the same isolated launcher and a fresh user profile for every PDF export.
+An export with a Word table-of-contents field uses a fixed UNO script via a Unix-domain socket
+in a private conversion directory. The script disables macros and external link updates and
+updates document indexes before export. Other PDF jobs use LibreOffice's direct conversion mode.
 
 ## Stable failures
 

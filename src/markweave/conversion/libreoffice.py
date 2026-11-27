@@ -7,6 +7,7 @@ import io
 import json
 import math
 import os
+import pwd
 import shutil
 import signal
 import stat
@@ -16,7 +17,7 @@ import time
 import unicodedata
 import zipfile
 from collections.abc import Callable, Mapping
-from contextlib import suppress
+from contextlib import ExitStack, suppress
 from dataclasses import asdict, dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import NoReturn
@@ -24,7 +25,7 @@ from urllib.parse import urlsplit
 from xml.etree.ElementTree import ParseError
 
 from defusedxml.common import DefusedXmlException
-from defusedxml.ElementTree import fromstring
+from defusedxml.ElementTree import iterparse
 from pypdf import PdfReader, apply_configuration
 from pypdf.errors import LimitReachedError, PyPdfError
 from pypdf.generic import ArrayObject, DictionaryObject, IndirectObject
@@ -85,6 +86,7 @@ _REQUIRED_DOCX_PARTS = frozenset(
 _SUPPORTED_DOCX_COMPRESSION = frozenset({zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED})
 _WORD_NAMESPACE = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 _INDEX_EXPORT_SCRIPT = Path(__file__).resolve().with_name("update_document_indexes.py")
+_UNO_PIPE_BASES = (Path("/tmp"), Path("/var/tmp"))  # noqa: S108 - LibreOffice ABI, private directory below
 
 
 def _safe_metadata(value: str) -> bool:
@@ -364,14 +366,42 @@ def _safe_docx(data: bytes, limits: PdfLimits) -> bool:
 def _has_toc_field(docx: bytes) -> bool:
     """Recognize the field in the generated, already-bounded Word document."""
     try:
-        with zipfile.ZipFile(io.BytesIO(docx)) as archive:
-            document = fromstring(archive.read("word/document.xml"))
+        with (
+            zipfile.ZipFile(io.BytesIO(docx)) as archive,
+            archive.open("word/document.xml") as document,
+        ):
+            for _, node in iterparse(document, forbid_dtd=True):
+                if node.tag == f"{_WORD_NAMESPACE}instrText" and (
+                    node.text or ""
+                ).split()[:1] == ["TOC"]:
+                    return True
+                node.clear()
     except OSError, zipfile.BadZipFile, ParseError, DefusedXmlException:
         _error(ConversionErrorCode.INVALID_DOCX, "DOCX input is invalid.")
-    return any(
-        (node.text or "").split()[:1] == ["TOC"]
-        for node in document.iter(f"{_WORD_NAMESPACE}instrText")
-    )
+    return False
+
+
+def _private_uno_pipe(cleanup: ExitStack) -> str:
+    # LibreOffice prefixes the supplied pipe name with this directory and, for
+    # known accounts, the UID. Some builds chmod sockets for unknown accounts
+    # to 0777. A private parent restricts access regardless of the socket mode.
+    base = next((path for path in _UNO_PIPE_BASES if os.access(path, os.W_OK)), None)
+    if base is None:
+        _error(
+            ConversionErrorCode.WORKSPACE_FAILURE, "The conversion workspace failed."
+        )
+    prefix = "OSL_PIPE_"
+    with suppress(KeyError):
+        prefix += f"{pwd.getpwuid(os.getuid()).pw_uid}_"
+    try:
+        directory = cleanup.enter_context(
+            tempfile.TemporaryDirectory(prefix=f"{prefix}markweave_", dir=base)
+        )
+    except OSError:
+        _error(
+            ConversionErrorCode.WORKSPACE_FAILURE, "The conversion workspace failed."
+        )
+    return f"{Path(directory).name.removeprefix(prefix)}/uno"
 
 
 def _process_group_exists(process_group: int) -> bool:
@@ -734,13 +764,16 @@ class LibreOfficePdfConverter:
             source.write_bytes(docx)
         except OSError:
             self._workspace_error()
-        arguments = self._arguments(workspace, source, docx, traceability)
-        process = self._start(arguments, workspace)
-        self._wait(
-            process,
-            cancelled,
-            deadline_monotonic=deadline_monotonic,
-        )
+        with ExitStack() as cleanup:
+            arguments = self._arguments(
+                workspace, source, docx, traceability, cleanup=cleanup
+            )
+            process = self._start(arguments, workspace)
+            self._wait(
+                process,
+                cancelled,
+                deadline_monotonic=deadline_monotonic,
+            )
         if self._cancelled(cancelled):
             self._cancelled_error()
         pdf = _read_pdf(workspace / "output" / "source.pdf", self._limits.max_pdf_bytes)
@@ -775,6 +808,8 @@ class LibreOfficePdfConverter:
         source: Path,
         docx: bytes,
         traceability: PdfTraceabilityContext,
+        *,
+        cleanup: ExitStack,
     ) -> list[str]:
         if (
             traceability.document_options is not None
@@ -798,7 +833,12 @@ class LibreOfficePdfConverter:
             uno_python = (
                 str(bundled_python) if bundled_python.is_file() else "/usr/bin/python3"
             )
-            return [uno_python, str(_INDEX_EXPORT_SCRIPT), str(soffice)]
+            return [
+                uno_python,
+                str(_INDEX_EXPORT_SCRIPT),
+                str(soffice),
+                _private_uno_pipe(cleanup),
+            ]
         return [
             self._config.executable,
             "--headless",

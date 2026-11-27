@@ -7,10 +7,9 @@ import sys
 import time
 from importlib import import_module
 from pathlib import Path
-from uuid import uuid4
 
 
-def export_with_indexes(soffice: str, workspace: Path) -> int:
+def export_with_indexes(soffice: str, workspace: Path, pipe_name: str) -> int:
     """Start a private office session, update indexes and export its PDF."""
     uno = import_module("uno")
     local_context = uno.getComponentContext()
@@ -18,7 +17,7 @@ def export_with_indexes(soffice: str, workspace: Path) -> int:
         "com.sun.star.bridge.UnoUrlResolver", local_context
     )
     no_connection = uno.getClass("com.sun.star.connection.NoConnectException")
-    connection = f"pipe,name=markweave_{uuid4().hex};urp;StarOffice.ComponentContext"
+    connection = f"pipe,name={pipe_name};urp;StarOffice.ComponentContext"
     office = subprocess.Popen(  # noqa: S603 - fixed arguments and inherited isolation
         [
             soffice,
@@ -97,4 +96,4 @@ def export_with_indexes(soffice: str, workspace: Path) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(export_with_indexes(sys.argv[1], Path.cwd()))
+    raise SystemExit(export_with_indexes(sys.argv[1], Path.cwd(), sys.argv[2]))

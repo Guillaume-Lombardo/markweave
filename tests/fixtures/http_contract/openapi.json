@@ -422,6 +422,17 @@
             "title": "Allow Large Archive",
             "type": "boolean"
           },
+          "number_sections": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number Sections"
+          },
           "output": {
             "$ref": "#/components/schemas/JobOutput"
           },
@@ -476,6 +487,30 @@
               }
             ],
             "title": "Template Version Id"
+          },
+          "toc": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toc"
+          },
+          "toc_depth": {
+            "anyOf": [
+              {
+                "maximum": 6.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toc Depth"
           }
         },
         "required": [
@@ -624,6 +659,41 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "number_sections": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number Sections"
+          },
+          "toc": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toc"
+          },
+          "toc_depth": {
+            "anyOf": [
+              {
+                "maximum": 6.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toc Depth"
           }
         },
         "required": [
@@ -3449,6 +3519,16 @@
             "title": "Created At",
             "type": "string"
           },
+          "document_options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "error_code": {
             "anyOf": [
               {
@@ -3654,6 +3734,89 @@
           }
         },
         "title": "CredentialWriteRequest",
+        "type": "object"
+      },
+      "DocumentOptions": {
+        "description": "Optional Word document settings, with unset fields inherited at submission.",
+        "properties": {
+          "number_sections": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number Sections"
+          },
+          "toc": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toc"
+          },
+          "toc_depth": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toc Depth"
+          }
+        },
+        "title": "DocumentOptions",
+        "type": "object"
+      },
+      "DocumentOptionsRequest": {
+        "additionalProperties": false,
+        "description": "Template defaults for future Word and PDF jobs.",
+        "properties": {
+          "number_sections": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number Sections"
+          },
+          "toc": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toc"
+          },
+          "toc_depth": {
+            "anyOf": [
+              {
+                "maximum": 6.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toc Depth"
+          }
+        },
+        "title": "DocumentOptionsRequest",
         "type": "object"
       },
       "ErrorDetail": {
@@ -5272,6 +5435,16 @@
             "title": "Description",
             "type": "string"
           },
+          "document_options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentOptionsRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -5342,6 +5515,16 @@
           "description": {
             "title": "Description",
             "type": "string"
+          },
+          "document_options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "id": {
             "format": "uuid",
@@ -23701,7 +23884,7 @@
                 }
               }
             },
-            "description": "Canonical PDF traceability manifest",
+            "description": "Canonical Word or PDF traceability manifest",
             "headers": {
               "X-Correlation-ID": {
                 "description": "Server-generated request correlation identifier.",

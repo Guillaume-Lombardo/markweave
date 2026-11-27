@@ -48,16 +48,21 @@ def test_uno_load_update_export_and_cleanup(
 
     if case == "update-failed":
         with pytest.raises(RuntimeError):
-            update_document_indexes.export_with_indexes("/trusted/soffice", tmp_path)
+            update_document_indexes.export_with_indexes(
+                "/trusted/soffice", tmp_path, "markweave_fixture/uno"
+            )
     else:
         assert update_document_indexes.export_with_indexes(
-            "/trusted/soffice", tmp_path
+            "/trusted/soffice", tmp_path, "markweave_fixture/uno"
         ) == (0 if case == "success" else 1)
 
     argv = start.call_args.args[0]
     assert argv[0] == "/trusted/soffice"
     assert argv[-2] == f"-env:UserInstallation={(tmp_path / 'profile').as_uri()}"
-    assert argv[-1].startswith("--accept=pipe,name=markweave_")
+    assert (
+        argv[-1]
+        == "--accept=pipe,name=markweave_fixture/uno;urp;StarOffice.ComponentContext"
+    )
     assert start.call_args.kwargs == {"close_fds": True, "umask": 0o077}
     office.terminate.assert_called_once_with()
     office.wait.assert_called_once_with()

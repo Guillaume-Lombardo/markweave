@@ -51,6 +51,8 @@ class DocumentOptions:
                     f"--toc-depth={self.toc_depth or DEFAULT_DOCUMENT_OPTIONS.toc_depth}",
                 )
             )
+        elif self.toc is False:
+            arguments.append("--metadata=toc:false")
         if self.number_sections:
             arguments.append("--number-sections")
         return arguments

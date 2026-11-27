@@ -174,6 +174,11 @@ def register(  # noqa: PLR0915 - the fixed public family is registered together
     update.add_argument("--name", action=_Option, required=True)
     update.add_argument("--description", action=_Option, required=True)
     add_document_arguments(update, _Option)
+    update.add_argument(
+        "--reset-document-options",
+        action=_Flag,
+        help="Restore the built-in document structure defaults.",
+    )
     _etag(update)
 
     replace = _leaf(commands, "replace", "Publish replacement template content.")
@@ -422,6 +427,11 @@ def _update(
 ) -> None:
     del context
     options = supplied_fields(selected_options(command.values))
+    reset_options = command.values.get("reset_document_options", False)
+    if reset_options and options:
+        raise CliError(
+            "invalid_request", "Use --reset-document-options without document options."
+        )
     response = transport.request(
         "PATCH",
         _template_path(command),
@@ -430,7 +440,7 @@ def _update(
         json_body={
             "name": str(command.values["name"]),
             "description": str(command.values["description"]),
-            **({"document_options": options} if options else {}),
+            **({"document_options": options} if options or reset_options else {}),
         },
     )
     payload = _expect_json(response, 200)
