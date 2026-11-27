@@ -76,7 +76,7 @@ async def _assert_retry(
 
 
 @pytest.fixture
-def service(tmp_path: Path):
+def service(tmp_path: Path, request: pytest.FixtureRequest):
     settings = Settings(
         **template_settings(),
         storage_profile="standalone",
@@ -87,6 +87,7 @@ def service(tmp_path: Path):
         argon2_time_cost=1,
         conversion_upload_max_bytes=1_000_000,
         conversion_request_max_bytes=1_100_000,
+        conversion_upload_body_timeout_seconds=getattr(request, "param", 120),
         conversion_retry_after_seconds=2,
         job_result_retention_seconds=3_600,
     )
@@ -219,3 +220,39 @@ def test_authenticated_upload_pressure(
     assert not any(
         record["operation"] == "large_archive_override" for record in audit.json()
     )
+
+
+@pytest.mark.parametrize("service", [0.5], indirect=True)
+def test_upload_body_timeout_has_no_durable_side_effect(
+    service, mocker: MockerFixture
+) -> None:
+    app, admin, admin_headers, users, *_ = service
+    spool = mocker.spy(formparsers, "SpooledTemporaryFile")
+
+    async def stalled_body():
+        yield (
+            b'--upload-pressure\r\nContent-Disposition: form-data; name="source"; '
+            b'filename="stalled.md"\r\n\r\n' + b"x" * 2_000_000
+        )
+        await asyncio.Future()
+
+    async def exercise() -> None:
+        headers = users["alice"]
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="https://testserver"
+        ) as client:
+            timed_out = await client.post(
+                CONVERSIONS,
+                headers={**headers, "Content-Type": CONTENT_TYPE},
+                content=stalled_body(),
+            )
+            assert timed_out.status_code == 408
+            assert timed_out.json()["error"]["code"] == "CONVERSION_UPLOAD_TIMED_OUT"
+            assert spool.spy_return.closed
+            assert (await client.get(CONVERSIONS, headers=headers)).json()["total"] == 0
+            await _assert_retry(client, headers, spool)
+
+    before = admin.get("/api/v1/audit", headers=admin_headers)
+    assert admin.portal is not None
+    admin.portal.call(exercise)
+    assert admin.get("/api/v1/audit", headers=admin_headers).json() == before.json()

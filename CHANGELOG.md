@@ -26,6 +26,7 @@ private reporting, and the [support policy](SUPPORT.md) for help with a publishe
 
 - Each API process limits concurrent authenticated forward-conversion uploads before reading
   multipart data. Saturated requests return HTTP 503 with `Retry-After` and leave no job or spool.
+  Forward upload bodies also have a configurable deadline to release stalled slots.
 
 <a id="release-0-9-0"></a>
 

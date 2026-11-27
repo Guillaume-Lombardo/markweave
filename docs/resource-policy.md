@@ -8,7 +8,10 @@ configure them through `MARKWEAVE_*` environment variables.
 Each API process has four forward-upload slots by default
 (`MARKWEAVE_CONVERSION_UPLOAD_MAX_IN_FLIGHT`). They are shared by all authenticated callers of
 `POST /api/v1/conversions`. The API checks the session and CSRF token before reserving a slot.
-The slot covers multipart reading and spooling, scanning, validation, and job submission.
+The slot covers multipart reading and spooling, scanning, validation, job submission, and
+response cleanup. The API allows 120 seconds by default for the entire request body
+(`MARKWEAVE_CONVERSION_UPLOAD_BODY_TIMEOUT_SECONDS`). Receiving another chunk does not reset
+the deadline. After expiry the API discards the partial upload and returns HTTP 408.
 When every slot is in use, the server returns HTTP 503 and `Retry-After` before reading the body.
 Rejected uploads create no spool, job, or audit record. An upload is eligible for an idempotent
 replay once it gets a slot.

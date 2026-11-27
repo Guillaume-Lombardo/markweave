@@ -247,6 +247,8 @@ def isolated_client(  # noqa: PLR0913 - explicit adapter configuration
     public_origin: str | None = None,
     insecure_evaluation_mode: bool = False,
     reversion_upload_max_bytes: int | None = None,
+    conversion_upload_max_in_flight: int = 4,
+    conversion_upload_body_timeout_seconds: float = 120,
 ) -> tuple[TestClient, Any, User, User]:
     """Assemble only the HTTP adapter while replacing all application ports."""
     password = "admin-" + "password"
@@ -261,6 +263,8 @@ def isolated_client(  # noqa: PLR0913 - explicit adapter configuration
         standalone_data_directory="/data",
         conversion_upload_max_bytes=1_000_000,
         conversion_request_max_bytes=1_100_000,
+        conversion_upload_max_in_flight=conversion_upload_max_in_flight,
+        conversion_upload_body_timeout_seconds=conversion_upload_body_timeout_seconds,
         reversion_upload_max_bytes=reversion_upload_max_bytes,
         conversion_retry_after_seconds=1,
         job_result_retention_seconds=3_600,
@@ -945,6 +949,7 @@ def test_openapi_declares_stable_error_contracts_and_actual_readiness_503(
             "202",
             "401",
             "403",
+            "408",
             "409",
             "413",
             "422",
@@ -1221,21 +1226,44 @@ def test_conversion_counts_stream_bytes_and_closes_partial_file(
 
 
 @pytest.mark.unit
-def test_conversion_capacity_survives_request_cancellation_during_scan(
-    mocker: MockerFixture,
+@pytest.mark.parametrize("phase", ["scan", "spool"])
+def test_conversion_capacity_survives_cancellation_of_running_thread_io(
+    mocker: MockerFixture, phase: str
 ) -> None:
-    finish_scan = Event()
-    active_scans = [Event() for _ in range(4)]
-    scans = iter(active_scans)
+    thread_started = Event()
+    finish_thread = Event()
+    scanner = mocker.Mock(spec=UploadScanner)
+    formparsers = sys.modules["starlette.formparsers"]
+    real_spool = formparsers.SpooledTemporaryFile
+    files = []
 
-    def scan(_content: bytes) -> None:
-        started = next(scans, None)
-        if started is not None:
-            started.set()
-            assert finish_scan.wait(timeout=10)
+    def pause() -> None:
+        thread_started.set()
+        assert finish_thread.wait(timeout=10)
 
-    scanner = mocker.Mock(spec=UploadScanner, scan=scan)
-    client, _, _, _ = isolated_client(mocker, scanner=scanner)
+    def make_spool(**kwargs):
+        file = real_spool(**kwargs)
+        original_write = file.write
+
+        def write(chunk: bytes):
+            pause()
+            return original_write(chunk)
+
+        if phase == "spool":
+            file.write = write
+        files.append(file)
+        return file
+
+    spool = mocker.patch.object(
+        formparsers, "SpooledTemporaryFile", side_effect=make_spool
+    )
+    if phase == "spool":
+        mocker.patch.object(formparsers.MultiPartParser, "spool_max_size", 1)
+    else:
+        scanner.scan.side_effect = lambda _content: pause()
+    client, _, _, _ = isolated_client(
+        mocker, scanner=scanner, conversion_upload_max_in_flight=1
+    )
     client.app.state.components.jobs.submit.return_value = job(), False
     body = (
         b'--private\r\nContent-Disposition: form-data; name="output"\r\n\r\ndocx\r\n'
@@ -1250,20 +1278,107 @@ def test_conversion_capacity_survives_request_cancellation_during_scan(
         return send.await_args_list[0].args[0]["status"]
 
     async def exercise() -> None:
-        tasks = [asyncio.create_task(submit()) for _ in active_scans]
+        upload = asyncio.create_task(submit())
         try:
-            for started in active_scans:
-                assert await asyncio.to_thread(started.wait, 5)
-            tasks[0].cancel()
+            assert await asyncio.to_thread(thread_started.wait, 5)
+            upload.cancel()
             assert await submit() == 503
+            assert not upload.done()
         finally:
-            finish_scan.set()
-            outcomes = await asyncio.gather(*tasks, return_exceptions=True)
-        assert isinstance(outcomes[0], asyncio.CancelledError)
-        assert outcomes[1:] == [202, 202, 202]
+            finish_thread.set()
+            (outcome,) = await asyncio.gather(upload, return_exceptions=True)
+        assert isinstance(outcome, asyncio.CancelledError)
+        assert spool.call_count == 1
+        assert files[0].closed
+        client.app.state.components.jobs.submit.assert_not_called()
         assert await submit() == 202
 
     asyncio.run(exercise())
+
+
+@pytest.mark.unit
+def test_conversion_keeps_slot_until_multipart_validation_response_finishes(
+    mocker: MockerFixture,
+) -> None:
+    client, _, _, _ = isolated_client(mocker, conversion_upload_max_in_flight=1)
+    body = (
+        b'--private\r\nContent-Disposition: form-data; name="unexpected"\r\n\r\n'
+        + b"x" * 512_000
+        + b"\r\n--private--\r\n"
+    )
+
+    async def exercise() -> None:
+        sending_error = asyncio.Event()
+        finish_response = asyncio.Event()
+
+        async def blocked_send(message):
+            if message["type"] == "http.response.body":
+                sending_error.set()
+                await finish_response.wait()
+
+        def receive_body():
+            return mocker.AsyncMock(return_value={"type": "http.request", "body": body})
+
+        first = asyncio.create_task(
+            client.app(_conversion_scope(), receive_body(), blocked_send)
+        )
+        try:
+            await asyncio.wait_for(sending_error.wait(), timeout=5)
+            receive = receive_body()
+            send = mocker.AsyncMock()
+            await client.app(_conversion_scope(), receive, send)
+            receive.assert_not_awaited()
+            assert send.await_args_list[0].args[0]["status"] == 503
+        finally:
+            finish_response.set()
+            await first
+
+        send = mocker.AsyncMock()
+        await client.app(_conversion_scope(), receive_body(), send)
+        assert send.await_args_list[0].args[0]["status"] == 422
+
+    asyncio.run(exercise())
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("delay_after_write", [False, True])
+def test_conversion_body_deadline_closes_partial_spool(
+    mocker: MockerFixture, delay_after_write: bool
+) -> None:
+    scanner = mocker.Mock(spec=UploadScanner)
+    client, _, _, _ = isolated_client(
+        mocker,
+        scanner=scanner,
+        conversion_upload_max_in_flight=1,
+        conversion_upload_body_timeout_seconds=0.25,
+    )
+    if delay_after_write:
+        # Expire the total budget before the parser asks for its next chunk.
+        mocker.patch(
+            "markweave.http.routers.conversions.current_time",
+            side_effect=[0, 0, 1] * 2,
+        )
+    spool = mocker.spy(sys.modules["starlette.formparsers"], "SpooledTemporaryFile")
+    part = b'--private\r\nContent-Disposition: form-data; name="source"; filename="a.md"\r\n\r\n'
+
+    async def receive():
+        if spool.call_count == 0 or spool.spy_return.closed:
+            return {
+                "type": "http.request",
+                "body": part + b"x" * 2_000_000,
+                "more_body": True,
+            }
+        return await asyncio.Future()
+
+    for _ in range(2):
+        send = mocker.AsyncMock()
+        _conversion_asgi_request(client, receive, send)
+        assert send.await_args_list[0].args[0]["status"] == 408
+        assert json.loads(send.await_args_list[1].args[0]["body"])["error"]["code"] == (
+            "CONVERSION_UPLOAD_TIMED_OUT"
+        )
+        assert spool.spy_return.closed
+    scanner.scan.assert_not_called()
 
 
 @pytest.mark.unit

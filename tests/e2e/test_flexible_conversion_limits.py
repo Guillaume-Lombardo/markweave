@@ -98,7 +98,8 @@ def test_forward_upload_saturation_rejects_before_reading_and_allows_retry() -> 
     base_url = os.environ["MARKWEAVE_E2E_CONVERSION_URL"]
     origin = urlsplit(base_url)
     assert origin.scheme == "http"
-    assert origin.hostname is not None
+    host = origin.hostname
+    assert host is not None
     client = ServiceClient(base_url)
     login = client.request(
         "POST",
@@ -121,37 +122,34 @@ def test_forward_upload_saturation_rejects_before_reading_and_allows_retry() -> 
     before_audit = client.request("GET", "/api/v1/audit")
     expect(before_audit, 200, "read audit before upload")
 
+    def start_upload(connections: ExitStack) -> http.client.HTTPConnection:
+        connection = http.client.HTTPConnection(host, origin.port, timeout=10)
+        connections.callback(connection.close)
+        connection.putrequest("POST", path)
+        connection.putheader("Cookie", cookie)
+        connection.putheader("X-CSRF-Token", csrf)
+        connection.putheader("Content-Type", content_type)
+        connection.putheader("Content-Length", str(len(body)))
+        connection.putheader("Expect", "100-continue")
+        connection.endheaders()
+        return connection
+
     with ExitStack() as connections:
-        pending = []
-        for _ in range(4):
-            connection = http.client.HTTPConnection(
-                origin.hostname, origin.port, timeout=10
-            )
-            connections.callback(connection.close)
-            connection.putrequest("POST", path)
-            connection.putheader("Cookie", cookie)
-            connection.putheader("X-CSRF-Token", csrf)
-            connection.putheader("Content-Type", content_type)
-            connection.putheader("Content-Length", str(len(body)))
-            connection.putheader("Expect", "100-continue")
-            connection.endheaders()
+        pending = [start_upload(connections) for _ in range(4)]
+        for connection in pending:
             assert connection.sock is not None
             # Uvicorn acknowledges only when the application first reads the body.
             with connection.sock.makefile("rb") as stream:
                 assert stream.readline().split()[:2] == [b"HTTP/1.1", b"100"]
                 assert stream.readline() == b"\r\n"
-            pending.append(connection)
 
-        rejected = client.request(
-            "POST",
-            path,
-            body=body,
-            content_type=content_type,
-            headers={"X-CSRF-Token": csrf},
-        )
-        expect(rejected, 503, "forward upload saturation")
-        assert error_payload(rejected)["code"] == "CONVERSION_UPLOAD_CAPACITY_EXCEEDED"
-        assert rejected.headers["retry-after"] == "1"
+        # Send no body. If the application asks for it, getresponse will time out.
+        with start_upload(connections).getresponse() as rejected:
+            assert rejected.status == 503
+            assert rejected.getheader("Retry-After") == "1"
+            assert json.loads(rejected.read())["error"]["code"] == (
+                "CONVERSION_UPLOAD_CAPACITY_EXCEEDED"
+            )
         assert (
             decode_object(client.request("GET", path), "list jobs at capacity")["total"]
             == before["total"]

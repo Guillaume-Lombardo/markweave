@@ -20,7 +20,8 @@ persistent quota checks.
   upload slots before reading the request body. Reject saturation with a documented HTTP 503 and
   `Retry-After`, without creating a spool, job, or audit record.
 - Release capacity after success, validation or scanner failure, disconnect, and cancellation.
-  Keep a slot occupied while its scanner or spool I/O is still running.
+  Keep a slot occupied while its scanner or spool I/O is still running or while the response
+  retains parsed multipart data. Expire incomplete bodies after a configurable total deadline.
 - Measure memory and spool use with concurrent authenticated uploads. Document the default and
   verify that it supports the quickstart and final-image workflows.
 - Cover admission and rejection in unit, integration, and final rootless-image tests. Pass the
@@ -36,6 +37,13 @@ budgets.
 ## Progress
 
 - 2026-11-27: Started implementation on `feat/t164-global-upload-budget`.
+- 2026-11-27: Chose four upload slots per API process and a 120-second total body deadline.
+  The quickstart's 4,100,000-byte hard request ceiling puts at most 16,400,000 bytes of concurrent
+  input under the four slots, with room in the 64 MiB backend temporary filesystem. The deadline
+  lets a 4.1 MB request finish at approximately 35 kB/s and prevents one incomplete request
+  from holding a slot indefinitely.
+  Reproduce the pressure measurement with
+  `uv run pytest --no-cov tests/integration/sqlite/test_conversion_upload_capacity.py -k pressure -o junit_family=legacy --junitxml=upload-pressure.xml`.
 
 ## Synchronization
 

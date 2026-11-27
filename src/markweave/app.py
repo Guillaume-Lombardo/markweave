@@ -7,7 +7,7 @@ from markweave.http.components import AppComponents, build_components
 from markweave.http.dependencies import HttpDependencies
 from markweave.http.errors import install_error_handlers
 from markweave.http.lifecycle import build_lifespan, resolve_components
-from markweave.http.middleware import BoundedRequestBody
+from markweave.http.middleware import BoundedRequestBody, ConversionUploadLifetime
 from markweave.http.openapi import document_openapi_contract
 from markweave.http.routers import (
     administration,
@@ -83,6 +83,7 @@ def create_app(  # noqa: PLR0913 - explicit lifecycle composition inputs
         ),
         composer_maximum_bytes=resolved_settings.composer_http_request_max_bytes,
     )
+    app.add_middleware(ConversionUploadLifetime)
     app.add_middleware(
         CorrelationMiddleware,
         metrics=resolved_components.metrics,

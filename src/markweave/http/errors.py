@@ -92,6 +92,7 @@ ERROR_DESCRIPTIONS = {
     401: "Authentication failed or is required",
     403: "The operation is forbidden",
     404: "The requested resource was not found",
+    408: "The upload body did not arrive before its deadline",
     409: "The request conflicts with current state",
     412: "A request precondition failed",
     413: "The request body is too large",
@@ -125,13 +126,33 @@ def capacity_error_responses(*status_codes: int) -> dict[int | str, dict[str, An
     return responses
 
 
-class ConversionRequestTooLarge(HTTPException):
+class ConversionUploadHTTPError(HTTPException):
+    """A sanitized error that may interrupt FastAPI's multipart parsing."""
+
+    code: str
+
+
+class ConversionRequestTooLarge(ConversionUploadHTTPError):
     """Abort multipart parsing when the conversion body exceeds its ceiling."""
+
+    code = "CONVERSION_REQUEST_TOO_LARGE"
 
     def __init__(self) -> None:
         super().__init__(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail="The conversion request is too large.",
+        )
+
+
+class ConversionUploadTimedOut(ConversionUploadHTTPError):
+    """Abort multipart parsing when the upload body deadline expires."""
+
+    code = "CONVERSION_UPLOAD_TIMED_OUT"
+
+    def __init__(self) -> None:
+        super().__init__(
+            status_code=status.HTTP_408_REQUEST_TIMEOUT,
+            detail="The forward upload did not finish before its deadline.",
         )
 
 
@@ -142,15 +163,15 @@ class ConversionUploadCapacityExceeded(Exception):
 def install_error_handlers(app: FastAPI) -> None:
     """Install sanitized functional and request-validation error handlers."""
 
-    @app.exception_handler(ConversionRequestTooLarge)
-    def conversion_request_size_handler(
-        _request: Request, error: ConversionRequestTooLarge
+    @app.exception_handler(ConversionUploadHTTPError)
+    def conversion_upload_error_handler(
+        _request: Request, error: ConversionUploadHTTPError
     ) -> JSONResponse:
         return JSONResponse(
             status_code=error.status_code,
             content={
                 "error": {
-                    "code": "CONVERSION_REQUEST_TOO_LARGE",
+                    "code": error.code,
                     "message": error.detail,
                 }
             },
