@@ -256,7 +256,8 @@ write_checkpoint() {
       --template "$template_file" \
       --state-file "$state_file" \
       --artifact-dir "$artifact_directory" \
-      --output both
+      --output both \
+      --quickstart-pdf
 }
 
 verify_podman_mermaid() {

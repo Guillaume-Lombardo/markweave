@@ -1107,30 +1107,6 @@ priority notes are in the non-normative [delivery history](delivery-history.md).
 
 Only one ticket edits this specification at a time.
 
-Open tickets on 2026-11-25 (status neither Done nor Canceled in the ticket mirrors of this
-revision, excluding T161, which produces this revision):
-
-| Ticket | Outcome | Status | Depends on |
-|---|---|---|---|
-| T102 | Rename the GitHub repository to markweave | In Progress | — |
-| T105 | Allow a sanitized inline HTML subset | Backlog | T96 |
-| T111 | Add table of contents, section numbering and page breaks | Backlog | T96 |
-| T112 | Add cross-references for figures, tables and equations | Backlog | T96, T111 |
-| T113 | Add citations and bibliography | Backlog | T96 |
-| T114 | Add scoped revocable API tokens | Backlog | T96 |
-| T115 | Add OIDC single sign-on with group-to-role mapping | Backlog | T96 |
-| T116 | Add signed job-completion webhooks | Backlog | T96, T114 |
-| T117 | Add an MCP server for AI agents | Backlog | T96, T114 |
-| T118 | Add PDF/A and tagged accessible PDF output | Backlog | T96 |
-| T120 | Add batch conversion and a CLI watch mode | Backlog | T106 |
-| T121 | Provide a GitHub Action and a pre-commit hook | Backlog | T106 |
-| T122 | Add self-contained HTML and ODT outputs (EPUB deferred by D11) | Backlog | T96 |
-| T131 | Show the stable failure reason of Composer generations (bug fixes only under D16) | Backlog | — |
-| T132 | Restore distributed recovery sets with jobs on superseded template versions | Backlog | T128 |
-| T145 | Audit the release-after-close slot pattern in the metrics server | Backlog | T141 |
-| T148 | Spike: shorten reverse worker leases in the E2E runtime | Backlog | T137 |
-| T149 | Investigate E2E worker containers that need SIGKILL to stop | Backlog | — |
-
 ## 14. Deferred decisions and initial-scope exclusions
 
 - Exact UBI 9 Python 3.14 image digest and availability of Chromium, LibreOffice, and Pandoc from approved build sources.

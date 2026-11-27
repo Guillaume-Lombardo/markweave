@@ -19,6 +19,8 @@ private reporting, and the [support policy](SUPPORT.md) for help with a publishe
   only when the source version, release attempt, or deployment pins change.
 - Main CI failure tracking resolves the current repository name before creating or updating
   the alert issue, so a repository rename no longer causes a redirected write.
+- The Compose quickstarts and bundled local conversion example now allow up to 50 pages per
+  PDF, up from 5.
 
 <a id="release-0-9-0"></a>
 

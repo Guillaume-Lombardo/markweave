@@ -29,6 +29,10 @@ existing finer-grained validated limits with these shared projections before ext
 rendering. Adapter-specific limits remain independently strict and cannot be widened by the shared
 budget.
 
+`MARKWEAVE_CONVERSION_PDF_MAX_PAGES` bounds the number of pages in each generated PDF. The Compose
+quickstarts and the bundled local conversion example set it to 50 for evaluation. Production
+deployments supply a limit sized for their workload.
+
 `MARKWEAVE_JOB_MAX_DURATION_SECONDS` is converted into a monotonic `JobExecutionBudget` for each
 claim. The processor receives a callable cancellation probe exposing that budget, including its
 monotonic deadline and remaining duration. A durable user cancellation wins over duration
@@ -87,6 +91,7 @@ In addition to the conversion upload, request, retry, and result-retention setti
 - `MARKWEAVE_CONVERSION_MAX_FILES`
 - `MARKWEAVE_CONVERSION_MAX_IMAGES`
 - `MARKWEAVE_CONVERSION_MAX_DIAGRAMS`
+- `MARKWEAVE_CONVERSION_PDF_MAX_PAGES`
 - `MARKWEAVE_JOB_ACTIVE_LIMIT_PER_USER`
 - `MARKWEAVE_JOB_GLOBAL_QUEUE_CAPACITY`
 - `MARKWEAVE_JOB_MAX_DURATION_SECONDS`

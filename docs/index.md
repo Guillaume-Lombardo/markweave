@@ -97,5 +97,8 @@ See the [documentation archive](archive/index.md) for completed qualifications a
 The [product specification](product-specification.md) is normative for product, architecture,
 security, deployment, and acceptance decisions. The guides explain the implemented system; they do
 not replace that specification or approve values that section 14 leaves unresolved.
+For current delivery work, see the
+[Linear project](https://linear.app/g1lom/project/markdown-to-docx-and-pdf-converter-3724edb949f9)
+and the repository ticket mirrors in `tickets/`.
 The non-normative [delivery history](delivery-history.md) records completed delivery order, dated
 owner decisions, release narratives, and the complete historical ticket table.

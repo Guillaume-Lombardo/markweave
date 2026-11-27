@@ -41,7 +41,8 @@ scripts/quickstart-simple.sh password
 Open <http://localhost:8080> and sign in as `admin` with the displayed password.
 In **2docx**, upload `examples/quickstart-source.md`, keep **Pandoc default**,
 choose DOCX, PDF, or both, and start the conversion. Download the result when ready.
-The first startup can take several minutes while ClamAV loads its signatures.
+The quickstart allows up to 50 pages per PDF. The first startup can take several minutes
+while ClamAV loads its signatures.
 
 For editable PowerPoint, open **2pptx** and follow the [PowerPoint guide](docs/powerpoint.md).
 The ordinary quickstart supports both forward workflows; **2md** requires the external broker.
@@ -71,13 +72,20 @@ and the explicit trusted-upstream and insecure SSH-tunnel modes with their restr
 
 ## Convert a file without a server
 
-With the bundled engines of the final image, or Pandoc and LibreOffice installed on your host,
-`markweave convert doc.md --local --to docx,pdf -o out/` converts your own file through the same
-validation, limits, and engines as the service, without an account or upload. It records the engine
-versions in `out/doc.traceability.json`, warns when one differs from the approved pin, and
-`--require-pinned` makes that a failure. See
-[local conversion](docs/conversion-cli.md#convert-locally-without-a-server) for its settings and
-the container command.
+The `--local` mode converts your own file through the same validation, limits, and engines as
+the service, without an account or upload. A host installation requires Linux with user and
+network namespaces and seccomp available to the engine launcher, plus the configured engines.
+Follow the [local settings instructions](docs/conversion-cli.md#configuration) and create `out/`
+before running the host command.
+
+```bash
+markweave convert doc.md --local --to docx,pdf -o out/
+```
+
+On macOS, use the [bundled-image command](docs/conversion-cli.md#run-it-with-the-bundled-engines)
+with a Linux/AMD64 Podman environment. It also works on Linux and supplies the approved engines.
+Local conversion records engine versions in `out/doc.traceability.json` and warns when one
+differs from the approved pin. Use `--require-pinned` to fail on a version mismatch.
 
 ## Use and operate Markweave
 

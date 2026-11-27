@@ -106,7 +106,7 @@ row and its immutable audits in database backup, restore, and rollback procedure
 | `MARKWEAVE_CONVERSION_PDF_CANCELLATION_POLL_SECONDS` | Required positive finite number | Worker modes |
 | `MARKWEAVE_CONVERSION_PDF_MAX_BYTES` | Required positive integer | Both |
 | `MARKWEAVE_CONVERSION_PDF_MAX_DECODED_STREAM_BYTES` | Required positive integer | Both |
-| `MARKWEAVE_CONVERSION_PDF_MAX_PAGES` | Required positive integer | Both |
+| `MARKWEAVE_CONVERSION_PDF_MAX_PAGES` | Required positive integer | Both profiles and local CLI. Compose quickstarts and the bundled local example set 50 |
 | `MARKWEAVE_CONVERSION_PDF_MAX_OBJECTS` | Required positive integer | Both |
 | `MARKWEAVE_CONVERSION_PDF_MAX_OBJECT_DEPTH` | Required positive integer | Both |
 | `MARKWEAVE_CONVERSION_FONT_MANIFEST_PATH` | Required path | Both; image's locked font manifest |

@@ -196,8 +196,8 @@ empty mount options before removing only that disposable volume. `markweave-data
 accounts, templates, jobs, results, signatures, and credentials survive normal shutdown. Do not add the
 `--volumes` option unless you intentionally want the container engine to remove durable local data.
 
-Completed conversion results remain downloadable for 10 minutes in this evaluation profile. This
-is a local convenience value, not a recommended production retention policy.
+The evaluation profile allows up to 50 pages per PDF and keeps completed results downloadable
+for 10 minutes. Choose limits for your own workload when configuring a production deployment.
 
 Both paths support repeated `up`, stopped-stack restart, `ps`, `logs`, and `down`. A stopped restart
 discards only the disposable work volume and preserves durable data. If Compose fails while
